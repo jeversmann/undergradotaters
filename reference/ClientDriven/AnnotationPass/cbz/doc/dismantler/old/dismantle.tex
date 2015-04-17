@@ -1,0 +1,205 @@
+\documentclass[10pt]{article}
+\usepackage{times}
+\usepackage{epsfig}
+\setlength{\topmargin}{0in}
+\setlength{\textheight}{9in}
+\setlength{\textwidth}{6.5in}
+\setlength{\oddsidemargin}{0in}
+
+\newcommand{\widehzline}{\makebox[\textwidth]{\hrulefill}}
+\newcommand{\hozline}{\rule{\textwidth}{0.3mm}}
+
+\begin{document}
+
+\title{Intermediate Code Description}
+\author{
+Nicolas Savoire 
+%  Department of Computer Sciences \\
+%  The University of Texas \\
+%  Austin, TX 78712 USA 
+}
+%\date{\today}
+
+\maketitle
+
+
+This document describes the structure of the code resulting from the dismantle phase of the C-Breeze compiler.
+
+\section{Overview}
+
+
+The dismantle phase breaks the C code into basic statements. These statements are simpler and less numerous than those of the source language, enabling easier analysis of the code. The goal is to lower significantly the code level to obtain a code largely independent of the source language but which still remains machine independent. The dismantle phase translates all high-level control structures into simpler ones. As a result each procedure is hold into a unique block, which stores all the definitions of the procedure, and the statements. The code is nearly flattened,which means that nearly all the nested block of the code are removed. The only remaining nested blocks are those of labelNode and ifNode and they contain only flow control statements.
+
+The last statement is compulsorily a return statement, which is the unique exit point from the function.
+
+\section{Statements}
+Only five statements remain:
+\\
+\begin{tabular}{|l|c|l|}
+\hline
+statements & AST tree & comment \\ \hline
+{\tt return} {\it varname} & 
+\raisebox{-33pt}[0pt][36pt]{
+  \epsfbox{fig1.eps}
+} &
+\parbox{3in}{
+  \begin{itemize} 
+  \item {\tt return} is the last statement
+  \item {\it varname} is a variable name 
+\end{itemize}} \\ \hline
+
+{\it label} {\tt : \{\};}  & 
+\raisebox{-33pt}[0pt][36pt]{
+  \epsfbox{fig2.eps}
+} &
+\parbox{3in}{
+  \begin{itemize} 
+  \item the blockNode child of the labelNode is empty
+\end{itemize}} \\ \hline 
+
+{\tt goto} {\it label} {\tt ;}  & 
+\raisebox{-33pt}[18pt][36pt]{
+  \epsfbox{fig3.eps}
+} &
+\\ \hline 
+
+{\tt if(} {\it sexpr} {\tt ) goto} {\it label} {\tt ;}  & 
+\raisebox{-25pt}[0pt][30pt]{
+  \epsfbox{fig4.eps}
+} &
+\parbox{3in}{
+  \begin{itemize} 
+  \item {\it sexpr} is a simple expression ( see Section~(\ref{sexpr}))
+  \item the ifNode has only one conditional branch, which is a blockNode with a single goto statement
+\end{itemize}} \\ \hline 
+
+expression statement  & 
+\raisebox{-33pt}[0pt][36pt]{
+  \epsfbox{fig5.eps}
+} &
+\parbox{3in}{
+  \begin{itemize} 
+  \item the expression is either an assignment or a function call
+\end{itemize}} \\ \hline 
+
+
+\end{tabular}
+
+
+
+
+\section{Expressions}
+
+\label{sexpr}
+The expressions encountered at the statement level (i.e. in an expression statement) are either assignments or function calls. A convenient way to describe these expressions is to introduce the notion of ``simple expression''. A ``simple expression'' is a constant, a variable name, a structure pointer field access or a pointer dereferencing: 
+{\tt {\it constant}, {\it varname}, *({\it varname}), {\it varname}->{\it fieldname}, *({\it varname}->{\it fieldname})} are all ``simple expressions''.\\
+%An arrow operator can't follow another arrow operator in a simple expression.
+The structure field access are converted into structure pointer field access:\\
+\indent {\tt a.b} becomes {\tt temp = \&a; temp->b } 
+
+
+
+\subsection{Assignment}
+The left hand side is a ``simple expression'', which is not a constant, and the right hand side of the assignment can be a constant, a variable name, a unary operation, a binary operation, a cast or a call:
+
+\begin{minipage}{5in}
+\begin{tabular}{|p{0.9in}|l|c|p{2in}|}
+\multicolumn{1}{l}{} & \multicolumn{1}{c}{statements}
+ & \multicolumn{1}{c}{AST tree} & \multicolumn{1}{c}{comment} \\ \hline
+Left hand side expression & {\it lhs-expr} & & {\it lhs-expr} is a non-constant simple expression 
+\\ \hline \hline
+Right hand side expression & {\it sexpr} &
+\raisebox{-30pt}[22pt][35pt]{
+  \epsfbox{fig5.eps}
+} & Simple expression \\ \cline{2-4}
+
+& {\it sexpr binop sexpr} & 
+\raisebox{-30pt}[12pt][35pt]{
+  \epsfbox{fig6.eps}
+} & Binary operation\footnote{Structure pointer field accesses are represented by binary operations whose operator is '{\tt ->}', so the field is an idNode, nevertheless the field is not visited during walks of the ast tree} \\ \cline{2-4}
+
+& {\it unaryexpr sexpr} &  
+\raisebox{-30pt}[14pt][35pt]{
+  \epsfbox{fig7.eps}
+} & Unary Operation\footnote{The unary operator is any common unary operator but also the {\tt sizeof} operator, whose the argument is hoisted either in a child exprNode containing a variable name when the argument is a variable, either in the sizeof\_type field of the unaryNode when the argument is a type}  \\ \cline{2-4}
+
+& {\tt (} {\it Type} {\tt ) } {\it rhs-expr} {\tt ;}  & 
+\raisebox{-30pt}[24pt][35pt]{
+  \epsfbox{fig8.eps}
+} & Cast: {\it rhs-expr} is a right hand side expression \\ \cline{2-4}
+
+& {\tt f(} {\it arglist} {\tt )} &  
+\raisebox{-30pt}[24pt][30pt]{
+  \epsfbox{fig9.eps}
+} & 
+\parbox[t]{2in}{
+  Function Call:
+  \begin{itemize} 
+  \item {\it arglist} is an expr\_list of simple expressions
+  \item the exprNode is an idNode containing the function name or an unaryNode dereferencing a function pointer
+\end{itemize}} \\ \hline 
+
+
+\end{tabular}
+\end{minipage}
+
+\subsection{Function call}
+
+The function call has the same description as in an assignment except that its return type is void. As a result the function calls which return a result, but without an assignment are assigned to temporaries after the dismantle phase.
+
+ 
+
+\section{Dismantle flags}
+
+Several flags can be used to modify the behaviour of the dismantler. The dismantle phase, when called through the {\tt -dismantle} flag or through the DismantleChangerPhase class, uses a fixed standard set of flags, but a user defined phase can call the dismantler directly through the Dismantle class and specify the dismantle flags.
+There are seven flags:
+\begin{itemize} 
+\item {\tt INDEX\_IS\_PRIMITIVE}: the dismantler considers {\tt []} as a primitive operator, hence the array indexed access are not dismantled
+\item {\tt NO\_MULTIPLE\_INDIRECTION}: multiple indirections are not allowed in expressions, expressions like {\tt **p} are dismantled into {\tt tmp = *p; *tmp} 
+\item {\tt DISMANTLE\_LOGICAL\_TO\_GOTOS}: logical expressions involving {\tt \&\&}, {\tt ||} or {\tt ?:} are dismantled into combination of {\tt if} and {\tt goto}. 
+\begin{tabbing}
+{\tt a = b \&\& c} \hspace{5pt} \= becomes \hspace{5pt} \= 
+\begin{minipage}[t]{2in}
+{\tt  if (b) goto checkc;\\
+  a = 0;\\
+  goto out;\\
+  checkc: if (c) goto b4out;\\
+  a = 0;\\
+  goto out;\\
+  b4out: a = 1;\\
+  out: ;}\\
+\end{minipage}
+\end{tabbing}		
+
+\item {\tt TWO\_JUMP\_IF}: {\tt if}s without a {\tt else} branch are dismantled as the two branches {\tt if}s, i.e. with two jumps.\\
+\begin{tabbing}
+{\tt if (cond) stmt;} \hspace{5pt} \= becomes \hspace{5pt} \=
+\begin{minipage}[t]{1.6in}
+{\tt	if (cond) goto L1;\\
+	goto L2;\\
+	L1: stmt;\\
+	L2: ;
+}
+\end{minipage} \= instead of \hspace{5pt} \= 
+\begin{minipage}[t]{2in}
+{\tt	if (!cond) goto L;\\
+	stmt;\\
+	L: ;
+}
+\end{minipage}
+\end{tabbing}
+  
+\item {\tt LOOP\_INVERSION}: {\it while} loops are converted into {\it repeat} loops
+
+\item {\tt INVERT\_CONDITIONALS}: the conditionals are negated, {\tt if (!(cond))}  becomes {\tt if (invcond) } where {\tt invcond} denotes the negated condition
+\item {\tt CONVERT\_LOGICALS\_TO\_IFS}: {\tt if} conditions involving {\tt \&\&} or {\tt ||} are dismantled into several {\tt if}s. \\ {\tt if (a \&\& b)} becomes {\tt if (a) if (b)} 
+
+\parbox{6in}{
+This flag could seem redundant with DISMANTLE\_LOGICAL\_TO\_GOTOS but in fact DISMANTLE\_LOGICAL\_TO\_GOTOS process all expressions whereas CONVERT\_LOGICALS\_TO\_IFS process only {\tt if} expressions and produces simpler results in this case. CONVERT\_LOGICALS\_TO\_IFS is applied before DISMANTLE\_LOGICAL\_TO\_GOTOS.
+}
+\end{itemize}
+
+\end{document}
+
+
+

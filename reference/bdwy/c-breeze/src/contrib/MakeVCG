@@ -1,0 +1,24 @@
+#CBZHOME         = $(HOME)/Broadway/C-Breeze
+CXX             = g++
+CFLAGS          = -I$(CBZHOME)/include -w -DEGCS #-O2
+LDFLAGS         = -L$(CBZHOME)/lib -lc-breeze 
+LD              = $(CXX)
+
+now: vcgCCG
+all: vcgCCG vcgast
+
+VCGCCG_O = vcgCCG.o vcg.o
+VCGAST_O = vcgast.o vcg.o
+
+vcgCCG: $(VCGCCG_O)
+	$(CXX) -o $@ $(VCGCCG_O) $(LDFLAGS)
+vcgast: $(VCGAST_O)
+	$(CXX) -o $@ $(VCGAST_O) $(LDFLAGS)
+
+vcg.o: vcg.cc vcg.h
+	$(CXX) $(CFLAGS) -c vcg.cc
+vcgCCG.o: vcgCCG.cc vcg.h
+	$(CXX) $(CFLAGS) -c vcgCCG.cc
+vcgast.o: vcgast.cc vcg.h
+	$(CXX) $(CFLAGS) -c vcgast.cc
+

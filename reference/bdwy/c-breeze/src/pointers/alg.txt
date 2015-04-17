@@ -1,0 +1,10 @@
+
+1. At a location, if there is no min value, take min(dominator) + 1.
+
+2. When we hit a location that dominates nothing:
+
+   (a) Set max = min
+   (b) Move up the dominator tree, setting max(dominator) = max + 1
+   (c) When we hit a basic block that has a sibling,
+         set min(sibling) = max + 1 and stop.
+

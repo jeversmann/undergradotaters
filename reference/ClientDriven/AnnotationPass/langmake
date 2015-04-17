@@ -1,0 +1,10 @@
+all: language-lexer.cc language-parser.cc
+
+language-lexer.cc: language.l
+	flex language.l
+	mv lex.ann.c language-lexer.cc
+
+language-parser.cc: language.y
+	bison -d -pann language.y
+	mv language.tab.c language-parser.cc
+

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+lib=$1
+
+for header in $lib/*.h; do {
+    local=`basename $header`
+    ln -s $header $local
+} done

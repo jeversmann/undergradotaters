@@ -1,0 +1,13 @@
+#CBZHOME         = $(HOME)/Broadway/C-Breeze
+CXX             = g++
+CFLAGS          = -I. -I$(CBZHOME)/include -w -DEGCS #-O4
+LDFLAGS         = -L$(CBZHOME)/lib -lc-breeze 
+LD              = $(CXX)
+
+now: testNodeInfo
+
+testNodeInfo: testNodeInfo.o $(CBZHOME)/lib/libc-breeze.a
+	g++ -o testNodeInfo testNodeInfo.o $(LDFLAGS)
+
+testNodeInfo.o: testNodeInfo.cc
+	g++ $(CFLAGS) -c testNodeInfo.cc

@@ -1,0 +1,23 @@
+
+#include <iostream>
+#include <map>
+#include <string>
+
+using namespace std;
+
+typedef set< string > str_set;
+typedef str_set::iterator str_set_p;
+
+typedef pair< string, string > str_pair;
+
+typedef map< str_pair, str_set > error_class_map;
+typedef error_class_map::iterator error_class_map_p;
+
+error_class_map Errors;
+
+int main(int argc, char * argv[])
+{
+  Errors[str_pair("LocalFile", "LocalFile")] = "LocalCopy";
+
+
+}

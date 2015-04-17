@@ -1,0 +1,160 @@
+\documentclass[10pt]{article}
+\usepackage{amssymb}
+%\usepackage{times}
+%\usepackage{epsfig}
+\setlength{\topmargin}{-.7in}
+\setlength{\textheight}{9in}
+\setlength{\textwidth}{6.5in}
+\setlength{\oddsidemargin}{0in}
+
+\title{C-breeze MIR}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\newcounter{note} \setcounter{note}{1}
+
+\newcommand{\m}[1]{\ensuremath{\mathit{#1}}}
+\newcommand{\ar}{\ensuremath{\rightarrow}}
+\newcommand{\ars}{\ensuremath{\rightarrow_{\thenote\addtocounter{note}{1}}}}
+\renewcommand{\b}{\ensuremath{|\ }}
+\newcommand{\ter}[1]{\textbf{#1}}
+\newcommand{\tes}[1]{\ensuremath{\mathbf{#1}}}
+\renewcommand{\t}{\textbf{;}}
+
+Note:
+\begin{itemize}
+\item Terminals appear in \ter{bold}.  Non-terminals appear in \m{italics}.
+\item The subscripts to non-terminals on the lefthand-side of a rule indicate
+      the non-terminal's C-breeze AST node type.
+\item ``Well-known'' rules such as those for type, identifier and constant are
+  omitted.
+\end{itemize}
+
+\section{XBNF of MIR after \texttt{-dismantle} phase}
+\begin{center}
+\begin{tabular}{lll} \hline
+ \m{ProcBlock_{block}} &\ar& \ter{\{} \m{Declaration^*} \m{Statement^*}
+   \m{RetStmt} \ter{\}} \\
+ \m{Declaration_{decl}} &\ar&
+   \{\m{DeclNoInit} \b \m{StaticDecl} \b \m{DeclArray}\} \t \\
+ \m{DeclNoInit_{decl}} &\ar& \m{NonVoidType} \m{VarName} \t \\
+ \m{StaticDecl_{decl}} &\ars& \ter{static} \m{NonVoidType} \m{VarName}
+   \ter{=} \m{Constant} \t \\
+ \m{DeclArray_{decl}} &\ar& \m{NonVoidType} \m{VarName} \ter{=} \m{ArrayInit}
+   \t \\
+ \m{ArrayInit_{initializer}} &\ars&
+    %\ter{\{} \{\m{CVA} \ter{,}\m{\}^*} [\m{CVA}] \ter{\}}\\
+    \ter{\{} \{\m{AllExpr} \ter{,}\m{\}^*} [\m{AllExpr}] \ter{\}}\\
+ \m{AllExpr} &\ars& \m{Expression} \b \m{MoreExpr} \\
+%\m{CVA_{expr}} &\ar& \m{Constant} \b \m{Variable} \b \m{ArrayInit} \\
+%\m{Type} &\ar& \\
+ \\
+ \m{Statement_{stmt}} &\ar& \m{LabelStmt} \b \m{GotoStmt} \b
+                            \m{IfStmt} \b \m{ExprStmt} \\
+ \m{LabelStmt_{label}} &\ars& \m{Label} \ter{:} \t \\
+ \m{Label} &\ar& \m{Identifier} \\
+ \m{GotoStmt_{goto}} &\ar& \ter{goto} \m{Label} \t \\
+ \m{IfStmt_{if}} &\ar& \ter{if (} \m{SimpleExpr} \ter{)} \m{GotoStmtBlock} \t\\
+ \m{GotoStmtBlock_{block}} &\ars& \m{GotoStmt} \\
+ \m{RetStmt_{return}} &\ars& \ter{return} [\m{VarName}] \t \\
+%\m{RetVal_{id}} &\ar& \m{Identifier} \\
+ \m{ExprStmt_{exprstmt}} &\ar& [\m{Expression}] \t \\
+ \\
+ \m{Expression_{expr}} &\ars& \m{Assign} \b \m{Call} \\
+ \m{Assign_{binary}} &\ar& [\tes{*}] \m{VarName} [\tes{-\!\!>} \m{VarName}]
+   \ter{=} \m{NonAssign} \\
+ \m{NonAssign_{expr}} &\ars& \m{Constant} \b \m{VarName} \b \m{Cast} \b
+   \m{Unary} \b \m{Call} \\ && \b \m{SimpleExpr} \m{BinaryOp} \m{SimpleExpr} \\
+ %&& %\b \m{SimpleExpr} \ter{[} \m{SimpleExpr} \ter{]}
+ \m{Cast_{cast}} &\ar& \ter{(} \m{NonVoidType} \ter{)} \m{NonAssign} \\
+ \m{Unary_{unary}} &\ar& 
+   \{\tes{+} \b\tes{-} \b\tes{*} \b\tes{\&} \b\tes{!} \b\ter{\~}\}
+   \m{SimpleExpr} \b \ter{sizeof (} \m{NonVoidType} \ter{)} \\
+ \m{BinaryOp} &\ar& \tes{+} \b\tes{-} \b\tes{*} \b\tes{/} \b\tes{\%} \b\tes{\&}
+   \b\tes{\shortmid} \b\tes{\ll} \b\tes{\gg} \b\ter{\^} %\b\tes{-\!\!>}
+   \b\tes{<} \b\tes{>} \b\tes{<\!=} \b\tes{>\!=} \b\tes{==} \b\tes{!\!\!=} \\
+ \m{Call_{call}} &\ar& \m{CallName} \ter{(} [\m{ArgList}] \ter{)} \\
+ \m{CallName_{expr}} &\ar& [\tes{*}] \m{VarName} \\
+ \m{ArgList} &\ar& \m{SimpleExpr} \b \m{ArgList} \ter{,} \m{SimpleExpr} \\
+ %\m{ConstOrVar_{expr}} &\ar& \m{Constant} \b \m{VarName} \\
+ \m{SimpleExpr_{expr}} &\ar& \m{Constant} \b \m{VarName} [\tes{-\!\!>} \m{VarName}] \\
+%\m{Variable} &\ar& \m{VarName} [\tes{-\!\!>} \m{VarName}] \\
+ \m{VarName_{id}} &\ar& \m{Identifier} \\
+%\m{Identifier} &\ar& \{\m{Letter} \b \ter{\_}\}
+%                     \{\m{Letter} \b \m{Digit} \b \ter{\_}\m{\}^*} \\
+%\m{Letter} &\ar& \ter{a} \b \m{\ldots} \b \ter{z} \b
+%                 \ter{A} \b \m{\ldots} \b \ter{Z} \\
+%\m{Constant} &\ar& \m{Integer} \b \m{Float} \\
+%\m{Integer} &\ar& \ter [-] 
+%\m{Digit} &\ar& \ter{0} \b \m{NZDigit} \\
+%\m{NZDigit} &\ar& \ter{1} \b \m{\ldots} \b \ter{9} \\
+%\m{HexDigit} &\ar& \ter{1} \b \m{\ldots} \b \ter{9} \\
+\hline
+\end{tabular}
+\end{center}
+
+Notes:
+\begin{enumerate}
+\item C-breeze does not report an error if the static variable is assigned a
+  non-constant value.
+\item Element type must be enforced.  The element expressions are not
+  dismantled.
+\item \m{MoreExpr} are more expressions not captured by \m{Expression}, 
+  because they are not dismantled by the C-breeze dismantler.  These include 
+  array indexing, structure field access, pre/post increment/decrement, 
+  assignments other than `\texttt{=}', and boolean operators `\texttt{\&\&}' 
+  and `\texttt{||}'.
+  Their ``well-known'' rules are omitted here to keep this document simple.
+\item The statement of the \texttt{labelNode} for \m{LabelStmt} is an empty
+  \texttt{blockNode}.
+\item \m{GotoStmtBlock} is a \texttt{blockNode} with a single statement
+  \m{GotoStmt}.
+\item There is exactly one return statement (sink) in each procedure.
+\item The call has void return type.
+\item The call has non-void return type.
+\end{enumerate}
+
+
+%more:
+%- each block is always "label: decls stmts [if-goto [goto]]" ??
+%- check define: LOOP\_INVERSION, TWO\_JUMP\_IF DISMANTLE\_LOGICAL\_TO\_GOTOS
+%  NO\_MULTIPLE\_INDIRECTION, INDEX\_IS\_PRIMITIVE
+%- binaryNode . : left or right is id?
+%- Variable in Initializer: dismantle '.' ? dismantle at all?
+%- Index
+%- Expression -> NonAssign ?
+
+\section{XBNF of MIR after \texttt{-cfg} phase}
+Note:
+\begin{itemize}
+\item The code is first dismantled.
+\item The \texttt{-cfg} phase reorders statements and creates basic blocks.
+  XBNF rules for declarations, expressions and many statements will be the 
+  same as those presented in previous section.  This section therefore only 
+  presents the new rules and rules that differ from those in the previous 
+  section.
+\item In the second rule, the first basic block in a procedure will have no
+  label.
+\end{itemize}
+
+\begin{center}
+\begin{tabular}{lll} \hline
+ \m{ProcBlock_{block}} &\ar& \ter{\{} \m{Declaration^*} \m{BasicBlock^*}
+   \ter{\}} \\
+ \m{BasicBlock_{basicblock}} &\ar& \ter{\{}
+   [\m{LabelStmt}] \m{ExprStmt^*} [\m{LastStmt}] \ter{\}}\\
+ \m{LastStmt_{stmt}} &\ar& \m{RetStmt} \b
+   \m{IfStmt} [\m{GotoStmt}] \b \m{GotoStmt} \\
+\hline
+\end{tabular} \end{center}
+
+
+\vspace{2in}
+\noindent
+\rule[0.01in]{1.5in}{0.01in} \\
+\em Prepared by: Teck Bok Tok \\
+\today
+\end{document}

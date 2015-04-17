@@ -1,0 +1,13 @@
+/cfengine.pal/1.1.1.1/Wed Feb 13 16:24:00 2002//
+/foo.pal/1.1.1.1/Wed Feb 13 16:24:00 2002//
+/gnupg.pal/1.1.1.1/Wed Feb 13 16:24:01 2002//
+/lprng.pal/1.1.1.1/Wed Feb 13 16:24:00 2002//
+/memory.pal/1.1.1.1/Wed Feb 13 16:24:01 2002//
+/sockets.pal/1.1.1.1/Wed Feb 13 16:24:01 2002//
+/stdclib.old.pal/1.1.1.1/Wed Feb 13 16:24:01 2002//
+/traceroute.pal/1.1.1.1/Wed Feb 13 16:24:01 2002//
+/ci-stdclib.pal/1.2/Tue Apr 30 18:03:09 2002//
+/ci-stdclib.c/1.2/Wed Jul 17 23:50:00 2002//
+/plapack.pal/1.5/Tue Jan 28 19:38:04 2003//
+/stdclib.pal/1.10/Wed Feb  5 21:33:20 2003//
+D

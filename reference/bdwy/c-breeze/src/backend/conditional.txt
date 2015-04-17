@@ -1,0 +1,125 @@
+// results.txt
+// these are the results after implementing control flow
+// in the code generator
+// the most recent progress is in augmenting the Register class
+
+// conditional.c
+int main(void){
+
+	int int1, int2;
+	float float1;
+	
+	int1 = 5;
+	int2 = 6;
+
+	if (int2 >= int1){
+		float1 = 1.0;
+		if (int2 >= int1) {
+			float1 = 1.0;		
+		}
+	}
+
+	else {
+		float1 = 5.0;
+	}
+		
+	return 0;
+
+}
+
+// conditional.p.c
+int main(void)
+{
+  int int1;
+  int int2;
+  float float1;
+  int __RVL1;
+  int __IES2;
+  int __IES5;
+  
+  {
+    /* # 1: preds( ) succs( 2 4 ) */
+    int1 = 5;
+    int2 = 6;
+    __IES2 = int2 >= 5.325;
+    if (__IES2) 
+      goto __IES0;
+    goto __IES1;
+  }
+  {
+    /* # 2: preds( 1 ) succs( 3 5 ) */
+    __IES0:
+      ;
+    float1 = 1;
+    __IES5 = int2 >= int1;
+    if (__IES5) 
+      goto __IES3;
+    goto __ICS0;
+  }
+  {
+    /* # 3: preds( 2 ) succs( 5 ) */
+    __IES3:
+      ;
+    float1 = 1;
+    goto __ICS0;
+  }
+  {
+    /* # 4: preds( 1 ) succs( 5 ) */
+    __IES1:
+      ;
+    float1 = 5;
+  }
+  {
+    /* # 5: preds( 2 3 4 ) succs( ) */
+    __ICS0:
+      ;
+    __RVL1 = 0;
+    return __RVL1;
+  }
+}
+
+
+-----------------------------------
+ above code converted to LIR using 
+"cbz -code_gen_walker conditional.p.c"
+-----------------------------------
+
+load_int	R1, #5		instruction added to list
+store_int	R1, int1	instruction added to list
+load_int	R2, #6		instruction added to list
+store_int	R2, int2	instruction added to list
+load_float	R3, #5.325	instruction added to list
+load_int	R4, int2	instruction added to list
+cvt_int2flt	R5, R4		instruction added to list
+CompareFloat	R6, R5, R3	instruction added to list
+store_int	R6, __IES2	instruction added to list
+load_int	R7, __IES2	instruction added to list
+branch_ge	R7, __IES0	instruction added to list
+jmp		__IES1		instruction added to list
+
+__IES0:
+load_int	R8, #1		instruction added to list
+cvt_int2flt	R9, R8		instruction added to list
+store_float	R9, float1	instruction added to list
+load_int	R10, int1	instruction added to list
+load_int	R11, int2	instruction added to list
+cmp_fixed	R12, R11, R10	instruction added to list
+store_int	R12, __IES5	instruction added to list
+load_int	R13, __IES5	instruction added to list
+branch_ge	R13, __IES3	instruction added to list
+jmp		__ICS0		instruction added to list
+
+__IES3:
+load_int	R14, #1		instruction added to list
+cvt_int2flt	R15, R14	instruction added to list
+store_float	R15, float1	instruction added to list
+jmp		__ICS0		instruction added to list
+
+__IES1:
+load_int	R16, #5		instruction added to list
+cvt_int2flt	R17, R16	instruction added to list
+store_float	R17, float1	instruction added to list
+
+__ICS0:
+load_int	R18, #0		instruction added to list
+store_int	R18, __RVL1	instruction added to list

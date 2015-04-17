@@ -1,0 +1,54 @@
+// arithmetic.c
+int main(void){
+
+	int int1;
+	float float1;
+	
+	int1 = int1 + int1;
+	int1 = int1 + 5;
+	float1 = int1 + 5;
+	float1 = int1 + 5.5;
+	
+	int1 = 8;
+	float1 = 1.25;
+	int1 = 1.25;
+	float1 = 1;
+	
+	return 0;
+
+}
+
+
+-----------------------------------
+ above code converted to LIR using 
+"cbz -code_gen_walker arithmetic.c"
+-----------------------------------
+
+load_int	R0, int1	instruction added to list
+load_int	R1, int1	instruction added to list
+add_fixed	R2, R1, R0	instruction added to list
+store_int	R2, int1	instruction added to list
+load_int	R3, 5		instruction added to list
+load_int	R4, int1	instruction added to list
+add_fixed	R5, R4, R3	instruction added to list
+store_int	R5, int1	instruction added to list
+load_int	R6, 5		instruction added to list
+load_int	R7, int1	instruction added to list
+add_fixed	R8, R7, R6	instruction added to list
+cvt_int2float	R9, R8		instruction added to list
+store_float	R9, float1	instruction added to list
+load_float	R10, 5.5	instruction added to list
+load_int	R11, int1	instruction added to list
+cvt_int2float	R12, R11	instruction added to list
+add_float	R13, R12, R10	instruction added to list
+store_float	R13, float1	instruction added to list
+load_int	R14, 8		instruction added to list
+store_int	R14, int1	instruction added to list
+load_float	R15, 1.25	instruction added to list
+store_float	R15, float1	instruction added to list
+load_float	R16, 1.25	instruction added to list
+cvt_float2int	R17, R16	instruction added to list
+store_int	R17, int1	instruction added to list
+load_int	R18, 1		instruction added to list
+cvt_int2float	R19, R18	instruction added to list
+store_float	R19, float1	instruction added to list

@@ -1,0 +1,29 @@
+
+Abstract (Too long)
+
+In this paper we show that precise pointer analysis is critical for
+effective error checking of real C programs. Recent work has focused on
+improving the precision of the primary error checking mechanisms, such as
+type inference [Foster], typestate analysis [ESP], or other variants of
+dataflow analysis [Metal]. If they have pointer analysis at all, it is
+often a fast, but superficial algorithm with little attention paid to
+its interaction with the error checker.
+
+We first explore the space of precision and efficiency for both the error
+checking mechanism (in this case, typestate analysis), and the accompanying
+pointer analysis framework. We test a number of variants by checking for a
+number of non-trivial errors in real, unmodified C programs. We find that
+the precision needed for accurate error detection varies significantly
+depending on the particular kind of error and the progam begin
+analyzed. More importantly, the precision of the pointer analysis is often
+the deciding factor. It appears that no single pointer analysis algorithm
+is general enough to support a wide variety of program checking problems,
+precise enough to detect non-trivial errors, and efficient enough for large
+programs.
+
+We present a new error checking algorithm that adaptively adjusts pointer
+analysis precision to provide both accuracy and efficiency. The algorithm
+starts with a fast, but imprecise analysis, and then increases the
+precision only where it's needed to improve the results. Specifically, it
+post-processes the results of the initial typestate analysis to selectively
+increase precision in the pointer analyzer.

@@ -1,0 +1,39 @@
+%{
+
+void openFile(int* fd, char* path);
+
+void closeFile(int* fd);
+
+void readFile(int* fd, char* buff, int size);
+
+}%
+
+property FileState : { Open, Closed }
+  initially Closed
+
+procedure openFile(fd, path)
+{
+  on_entry { path --> pathstring
+	     fd --> file }
+
+  analyze FileState {
+    file <- Open
+  }
+}
+
+procedure closeFile(fd)
+{
+  on_entry { fd --> file }
+  
+  analyze FileState {
+    file <- Closed
+  }
+}
+
+procedure readFile(fd, buff, size)
+{
+  on_entry { fd --> file }
+  error
+    if (FileState : file is-exactly Closed)
+      "Read from file that is closed!";
+}

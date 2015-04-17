@@ -1,0 +1,44 @@
+  void cleanup_unit(unitNode * Unit)
+  {
+    for (def_list_p dp = Unit->defs().begin();
+	 dp != Unit->defs().end();
+	 ++dp)
+      {
+	defNode * dn = (*dp);
+	if (dn->typ() == Proc) {
+	  procNode * pr = (procNode *) dn;
+
+	  // -- Visit all block-level declarations and removed the unused
+	  // ones
+
+	  decl_list & decls = pr->body()->decls();
+	  decl_list_p p = decls.begin();
+	  decl_list_p temp;
+
+	  while (p != decls.end()) {
+	    declNode * decl = *p;
+	    temp = p;
+	    p++;
+	    if (decl->references() == 0)
+	      decls.erase(temp);
+	  }
+
+	  // -- Visit the basic blocks and remove any unused labels
+
+	  stmt_list & stmts = pr->body()->stmts();
+	  stmt_list_p q = stmts.begin();
+	  stmt_list_p temp2;
+
+	  while (q != stmts.end()) {
+	    stmtNode * stmt = *q;
+	    temp2 = q;
+	    q++;
+	    if (stmt->typ() == Label) {
+	      labelNode * label = (labelNode *) stmt;
+	      if (label->references().empty())
+		stmts.erase(temp2);
+	    }
+	  }
+	}
+      }
+  }

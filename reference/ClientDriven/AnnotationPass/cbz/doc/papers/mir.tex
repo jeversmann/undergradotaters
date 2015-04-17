@@ -1,0 +1,328 @@
+The goal of the MIR level is to provide a well-defined internal
+representation that is simpler than the AST representation while still
+remaining machine-independent.  At the MIR level, the tree structure of the
+AST has been flattened so that each basic block is a list of instructions,
+and each instruction is considerably simpler, allowing only a single
+assignment operator and only goto's as control flow.  In addition to the
+canonical MIR format, there is also an intermediate MIR format that
+simplifies control flow without simplifying expressions.
+
+The {\em dismantler} is responsible for converting an AST into MIR format.
+The dismantler can be invoked from the command line by specifying the 
+\texttt{-dismantle} flag; to dismantle control flow only, use the
+\texttt{-dismantle-control} flag.  
+
+The dismantler can also be invoked programmatically, which can be useful for
+restoring the MIR format after a transformation.  Note that the dismantler
+has been designed to be idempotent, so that dismantling a portion of code
+multiple times has the same effect as dismantling it once.\footnote{Within
+the context of C-Breeze, it is important to note that dismantling a file,
+outputting it to C code, and then re-dismantling the generated C file is
+\emph{not} guaranteed to be idempotent.  We view the dismantler as idempotent
+only when applied to ASTs.} To use the new dismantler programmatically, use
+one of the static methods defined on the \texttt{Dismantle} class.  You must
+include the file \texttt{dismantle.h} in order to see this class.  The method
+\texttt{Dismantle\\::dismantle\_control()} will dismantle control flow only.
+To completely dismantle the code, use the method
+\texttt{Dismantle::dismantle()}.  Note that although the \texttt{Dismantle}
+class is a \texttt{Changer}, it is \emph{not} intended to be used in a call
+to \texttt{Node::change()}; using the class directly in this way can lead to
+subtle bugs.
+
+Finally, as mentioned in Section~\ref{sec:Basics}, the {\tt -cfg} flag 
+instructs C-Breeze to both convert to MIR and create a CFG.
+
+The MIR format is not well-suited for loop transformations on
+multi-dimensional arrays, such as loop interchange or unroll and jam.  The
+difficulty arises because in our MIR format each \texttt{operandNode} has an
+optional array subscript at the end.  Since it only has a single subscript,
+multi-dimensional arrays cannot be represented directly but instead require
+the use of a temporary variable.
+
+
+
+\subsection{\label{assume:ast} AST input}
+
+The code that the dismantler accepts as input must be a tree, and not
+a more general graph.  If the input code is not a tree, the output of
+the dismantler is not guaranteed to be correct, reasonable, or
+meaningful.  Two practices will ensure that the code the dismantler
+receives is a tree.  First, use the dismantler as the first phase after
+parsing the input file.  Second, use the
+\texttt{ref\_clone\_changer::clone()} method whenever you are assigning a
+node subclass pointer from a field in one object to a field in another
+object.
+
+The dismantler also assumes that it may destructively change any
+\node\ in the input AST for use in the output AST.  This assumption
+seriously affects what assumptions code using the dismantler can make
+both before and after using the dismantler.  For example, any code
+which relies on a particular instance of \node\ being the same before
+and after dismantling is likely to have untold problems.  
+
+% To help reduce the risk of these unintended consequences, any
+% \texttt{Annotation}s in the input are \emph{guaranteed} to be invalid in
+% the output.
+
+% \footnote{The currently held view of \texttt{Annotation}s is that they are a
+% bad idea.  Any information that an \texttt{Annotation} can contain would be
+% best codified either in a field of a \node-subclass or in a user-maintained
+% data structure that is passed from one phase to another.}
+
+
+\subsection{\label{assume:hw} Hardware platform}
+
+The MIR representation corresponds to the operations available on a modern
+microprocessor.  There are three major assumptions underlying this
+statement.
+
+First, we assume that we are generating code for a load-store RISC-type
+processor.  This assumption guides the selection of the basic addressable
+memory location used in operations.  
+
+Second, we assume that the architecture supports a register indirect with
+offset addressing mode; if the base address of an array or structure is
+loaded in a register, we can load the value from the proper offset location
+in a single instruction.\footnote{Actually, this is a slight simplification.
+For arrays, we allow the index to be either a constant, in which case the
+previous statement is true, or a variable, in which case we require an
+additional load of the variable's value and a multiply of the array element
+size.  In this later case, we require the architecture to support a register
+indirect with register offset addressing mode.}
+
+Third, we assume that the instruction set architecture (ISA) supports
+moving values from a condition register(s) into a general-purpose
+register.  This assumption allows us to leave assignments where the
+right-hand side uses a relational operator.  To determine the value of the
+assignment, we can use shifting, masking, and inverting to extract the
+relevant bit from the condition register value.
+
+\subsection{\label{output} The MIR Format}
+
+This section describes the details of the MIR format.  Three \node-subclasses
+can appear in at the MIR level that cannot appear at the AST level:
+\texttt{operandNode, conditiongotoNode,} and \texttt{threeAddrNode}.  We then
+describe the restrictions that are placed on existing \node\ types that may
+appear at the MIR level.
+
+
+\subsubsection{\node-subclass prototypes}
+\label{output:node} 
+
+The \texttt{indexNode} class simply acts as a superclass for
+\texttt{constNode} and \texttt{idNode}:
+
+\begin{small}
+\begin{verbatim}
+class indexNode : public exprNode {
+  indexNode(NodeType typ, typeNode * type, const Coord coord);
+};
+
+class constNode : public indexNode { ... };
+class idNode : public indexNode { ... };
+\end{verbatim}
+\end{small}
+
+
+The \texttt{conditiongotoNode} class corresponds to a conditional branch in
+the ISA.  At the MIR level, all control flow structures in the input AST are
+represented by combinations of \texttt{conditiongotoNode}s,
+\texttt{gotoNode}s, and \texttt{labelNode}s.  The \texttt{Operator} in the
+\texttt{op} field of the \texttt{conditiongotoNode} must be a relational
+operator (eg: \texttt{<, <=, ==,} etc.).
+
+\begin{small}
+\begin{verbatim}
+class conditiongotoNode : public gotoNode {
+  conditiongotoNode(labelNode * label, indexNode * left, unsigned int op_id,
+                    indexNode * right, const Coord coord = Coord::Unknown);
+  void left(indexNode * left);
+  indexNode * left(void);
+  void right(indexNode * right);
+  indexNode * right(void);
+  void op(Operator * op);
+  Operator * op(void);
+};
+\end{verbatim}
+\end{small}
+
+The \texttt{operandNode} class represents a memory location or address.
+
+\begin{small}
+\begin{verbatim}
+class operandNode : public exprNode {
+  operandNode(indexNode * the_var, const Coord coord = Coord::Unknown);
+  operandNode(indexNode * the_var, bool star, bool addr, 
+              const Coord coord = Coord::Unknown);
+  operandNode(indexNode * the_var, bool star, bool addr, id_list * fields, 
+              indexNode * array_index, const Coord coord = Coord::Unknown);
+
+  void addr(bool addr) { _addr = addr; }
+  bool addr() { return _addr; }
+  void star(bool star) { _star = star; }
+  bool star() { return _star; }
+  void cast(typeNode * cast) { _cast = cast; }
+  typeNode * cast(void) { return _cast; }
+  const typeNode * cast(void) const { return _cast; }
+  inline id_list & fields() { return _fields; }
+  inline const id_list & fields() const { return _fields; }
+  void index(indexNode * index) { _index = index; }
+  indexNode * index(void) { return _index; }
+  const indexNode * index(void) const { return _index; }
+  void var(indexNode * var) { _var = var; }
+  indexNode * var(void) { return _var; }
+  const indexNode * var(void) const { return _var; }
+};
+\end{verbatim}
+\end{small}
+
+An \texttt{operandNode} represents a simple variable or constant when only
+the \texttt{var} field is set.  Otherwise, it represents a memory location
+(or the address of a memory location) that can be loaded in a single
+instruction.  This latter case assumes that the base address of the
+\texttt{var} field is already loaded into a register and the offset is either
+constant or already computed.  In a grammatical sense, the
+\texttt{operandNode} is defined by the following rules:
+
+\begin{eqnarray*}
+operand & \rightarrow & [typecast][\texttt{\&}] (\texttt{*} var) \{.field\}^*
+          [ \texttt{[} index \texttt{]}] \\
+        & \rightarrow & [typecast][\texttt{\&}] var \{.field\}^*
+          [ \texttt{[} index \texttt{]}]
+\end{eqnarray*}
+
+The \texttt{threeAddrNode} is the quintessential form for all arithmetic
+statements in the dismantler's output:  
+
+\begin{small}
+\begin{verbatim}
+class threeAddrNode : public stmtNode {
+ public:
+  // a = b;
+  threeAddrNode(operandNode * lhs, operandNode * rhs, 
+                const Coord coord = Coord::Unknown);
+  // a = -b;
+  threeAddrNode(operandNode * lhs, unsigned int op_id, 
+                operandNode * rhs, const Coord coord = Coord::Unknown);
+  // a = sizeof(<type>)
+  threeAddrNode(operandNode * lhs, typeNode * type,
+                const Coord coord = Coord::Unknown);
+  // a = b (op) c;
+  threeAddrNode(operandNode * lhs, operandNode * rhs1, unsigned int op_id,
+                operandNode * rhs2, const Coord coord = Coord::Unknown);
+  // a = b(...);
+  threeAddrNode(operandNode * lhs, operandNode * func, 
+                operand_list * arg_list, const Coord coord = Coord::Unknown);
+  // a(...);
+  threeAddrNode(operandNode * func, operand_list * arg_list, 
+                const Coord coord = Coord::Unknown);
+
+  void lhs(operandNode * lhs);
+  operandNode * lhs(void);
+  void rhs1(operandNode * rhs1);
+  operandNode * rhs1(void);
+  void op(Operator * op);
+  Operator * op(void);
+  void rhs2(operandNode * rhs2);
+  operandNode * rhs2(void);
+  void sizeof_type(typeNode * type);
+  typeNode * sizeof_type(void);
+  inline operand_list & arg_list();
+  inline const operand_list & arg_list() const;
+};
+\end{verbatim}
+\end{small}
+
+Using \texttt{threeAddrNode}, we can represent assignment of variables, unary
+operations to operands, binary operations to operands, function calls, and
+determining the \texttt{sizeof} a type or operand.  For function calls, the
+assignment is optional.  The following grammar describes the forms that
+a \texttt{threeAddrNode} can take.
+
+\begin{eqnarray*}
+threeAddrNode & \rightarrow & \texttt{lhs} = [unaryOperator]\ \texttt{rhs1} \\
+              & \rightarrow & \texttt{lhs} = \texttt{rhs1}\ binaryOperator\ 
+					     \texttt{rhs2} \\
+              & \rightarrow & \texttt{lhs} = \texttt{sizeof(} type | 
+						\texttt{rhs1} \texttt{)} \\
+              & \rightarrow & [\texttt{lhs} =]\ \texttt{rhs1}(arglist) \\
+arglist & \rightarrow & arg\ argrest \\
+argrest & \rightarrow & , arg\ argrest \\
+        & \rightarrow & \epsilon\\
+arg     & \rightarrow & operand
+\end{eqnarray*}
+
+\subsubsection{Details of the MIR Format}
+\label{output:output}
+
+The MIR format transforms the AST in the following ways.  It converts the
+initialization of automatic variables into assignment statements at the
+beginning of the relevant block.  Next, all \texttt{labelNode}s are modified
+so that the \texttt{stmt} field contains a \texttt{blockNode} containing only
+an empty statement (\texttt{exprstmtNode} with a \texttt{NULL} expression).
+Finally, the resulting AST is flattened to remove unnecessary nesting of
+blocks, and all variable declarations are moved up to the \texttt{procNode}
+level.
+
+The first level of dismantling transforms complex control flow constructs.
+During this phase, all loops (\texttt{whileNode, doNode, forNode}), if
+statements (\texttt{ifNode}), and switch statements (\texttt{switchNode}) are
+replaced with equivalent \texttt{conditiongotoNode}s, \texttt{gotoNode}s, and
+\texttt{labelNode}s.  Additionally, the ternary operator
+(\texttt{ternaryNode}) and short-circuit conditional operators (\texttt{\&\&,
+||}) are transformed into equivalent \texttt{ifNode}s, which are subsequently
+transformed as mentioned above.
+
+The second dismantling level transforms expressions into a series of
+\emph{simple expression} with intermediate results.  Roughly speaking, a
+simple expression corresponds to an instruction of a modern RISC
+microprocessor.  Thus, simple expressions contain at most one operator
+(excluding assignments ) and one assignment; operands must be addressable by
+a single \texttt{load} instruction.
+
+Fully dismantled code only contains five types of statement nodes in the body
+of a procedure: \texttt{labelNode, gotoNode, conditiongotoNode,
+threeAddrNode,} and \texttt{returnNode}.  This means that for processing the
+code only five methods for \texttt{Walker}s, \texttt{Visitor}s, and
+\texttt{Changer}s are needed to visit these nodes: \texttt{at\_label(),
+at\_goto(), at\_conditiongoto(), at\_threeAddr(),} and
+\texttt{at\_return().}  The argument lists for these methods matches the
+convention for the other \texttt{at\_*()} methods in the relevant class.
+
+In MIR form, the \texttt{procNode} for the procedure has two new fields.  The
+\texttt{return\_label()} methods access a field containing a pointer to the
+\texttt{labelNode} at the beginning of the return block.  The
+\texttt{declNode} for the returned value is accessible using the
+\texttt{return\_decl()} methods.
+
+
+\subsubsection{Tree Traversal of MIR Code}
+\label{migrate:tree}
+
+This section describes how to traverse MIR code.  
+
+Traversal of \texttt{conditiongotoNode}:  Since \texttt{conditiongotoNode}
+inherits from \texttt{gotoNode}, unless a traverser (\texttt{Visitor,
+Walker,} or \texttt{Changer}) defines an \texttt{at\_conditiongoto()} method,
+the traverser's \texttt{at\_goto()} method will be invoked on the
+\texttt{conditiongotoNode}.  In addition to traversing the
+\texttt{conditiongoto\-Node}, \texttt{Walker}s and \texttt{Changer}s will
+traverse the \texttt{indexNode}s on the left and right of the conditional
+expression (the \texttt{left()} and \texttt{right()} fields).
+
+Traversal of \texttt{operandNode}:  Unless a traverser defines an
+\texttt{at\_operand()} method, the traverser's \texttt{at\_expr()} method
+will be invoked.  \texttt{Walker}s and \texttt{Changer}s will traverse the
+\texttt{indexNode} for the \texttt{var()} field, the \texttt{idNode}s in the
+\texttt{id\_list} in the \texttt{fields()} field, and the \texttt{indexNode}
+in the \texttt{index()} field.
+
+Traversal of \texttt{threeAddrNode}:  By default, traversing a
+\texttt{threeAddrNode} will invoke \texttt{at\_stmt()} if a traverser does
+not define an \texttt{at\_threeAddr()} method.  Traversing the
+\texttt{threeAddrNode} will also traverse the \texttt{operandNode}s in the
+\texttt{lhs(), rhs1(),} and \texttt{rhs2()} fields, assuming that the field
+is non-\texttt{NULL}, the \texttt{typeNode} in the \texttt{sizeof\_type()}
+field, when the operator is a \texttt{sizeof}, and the \texttt{operandNode}s
+in the \texttt{operand\_list} in the \texttt{arg\_list} field, when the
+operator is a \texttt{FUNC\_CALL}.

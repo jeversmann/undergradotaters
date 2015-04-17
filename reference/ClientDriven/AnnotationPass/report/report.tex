@@ -1,0 +1,59 @@
+\documentclass[12pt]{report}
+\usepackage{natbib}
+\usepackage{graphicx} 
+\usepackage{multirow}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsfonts,amsthm,xspace,bm}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage{subfigure}
+\usepackage{bm}
+\usepackage{hyperref}  
+
+\everymath{\displaystyle}
+%\newcommand{\code}[1]{\texttt{#1}}
+
+
+\newcommand{\nncite}{\citep}
+\newcommand{\namecite}{\cite}
+
+\bibpunct{(}{)}{,}{a}{,}{,}
+
+\title{Broadway Annotation Language for LLVM}
+%\numberwithin{equation}{section}
+
+\author{Andy Luong, Tim Malone\\
+Department of Computer Science\\
+University of Texas at Austin\\
+{\tt aluong24@gmail.com, ttim.malone@gmail.com}}
+\date{}
+
+\begin{document}
+\maketitle
+\newpage
+
+\tableofcontents
+%\listoffigures
+\newpage
+
+\input{introduction}
+
+\input{approach}
+
+\input{evaluation}
+
+\input{discussion}
+
+\input{conclusion}
+
+\input{builds}
+
+\input{tests}
+
+
+\begin{small}
+\bibliographystyle{plaintNat}
+\bibliography{report.bib}
+\end{small}
+
+\end{document}

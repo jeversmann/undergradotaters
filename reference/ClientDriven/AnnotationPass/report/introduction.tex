@@ -1,0 +1,15 @@
+\chapter{Introduction}
+The {\bf Broadway Compiler} is a \textit{library-level} compiler, that is design to perform domain-specific compilation through the compiler support of software libraries \citep{bdwythesis}. 
+One of its novel contributions was an Annotation Language that conveyed domain-specific information about libraries to the Broadway compiler \citep{Guyer1999}. Consequently, the compiler was able to utilize this information to perform library-level program analysis and optimizations. 
+
+Although the compiler showed good results, it has not been maintained today. In addition, Broadway was built upon an in-house compiler called C-Breeze. The goal of our project was to port Broadway into a more modern and maintained compiler, and remove its dependencies on C-Breeze.
+
+\chapter{Project Scope and Goals}
+The specific portion of porting Broadway that we undertook was to port the annotation language to a more modern compiler. This included updating the tokens and grammar of the Annotation Language to support newer versions of flex and bison, removing the annotation AST's dependencies on C-Breeze, and providing call-backs supports for the client-driven configurable data-flow analysis supported by pointer analysis (The pointer analysis was done by another group).  We wanted to lift as much code from the original Broadway implemented with an older GCC and C-Breeze compiler into a new the GCC and more-supported LLVM compiler framework. We knew that recreating a fully exhaustive annotation language for an LLVM supported AST would not be realistic. The annotation language had a complex grammar and supported the transformation of arbitrary C-code into C-Breeze's AST which would not be trivial to decouple from the C-Breeze library. Therefore, we decided to have two major goals:
+
+\begin{enumerate}
+\item A functional Annotation class that could at least parse the Broadway annotation language, but not necessarily support transformations and analysis. By being able to parse the annotations, our Annotation class would be able to provide the annotation support for the pointer analysis through a new query interface. 
+\item An analysis engine for a subset of analysis annotations for configurable data-flow analysis; in particular, we chose to explore error-checking and enumeration properties.
+\end{enumerate}
+
+In order to fully execute these goals we do rely on another group to develop/port over the pointer analysis and data-flow analysis.  The annotations can not really independently provide any analysis.

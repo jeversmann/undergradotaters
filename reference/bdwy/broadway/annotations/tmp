@@ -1,0 +1,28 @@
+property Taint : { Tainted { Untainted } }
+    initially Untainted
+
+property Kind : { Unknown { Device { File,
+			             Socket },
+			    Environment }}
+
+property Trust : { Unknown { Local { Internal,
+				     External },
+                             Remote }}
+    initially Internal
+
+property FileState : { Unknown { Open { Read, Write },
+			         Closed
+			     }
+		   }
+    initially Closed
+
+property SocketKind : { Unknown { Stream,
+				  Datagram,
+				  Raw }
+		      }
+
+property SocketState : { Unknown { Connected,
+                                   Unconnected { New,
+						 Bound,
+						 Listening }}}
+

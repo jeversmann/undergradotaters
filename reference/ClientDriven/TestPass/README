@@ -1,0 +1,20 @@
+// LLVM ANNOTATIONS PASS
+// Andy Luong
+// Tim Malone
+
+/**********************
+// AnnotationPass
+**********************/
+Currently the pass requires one argument passed to the "-pal" flag indicating where the annotation file will be. It will then print out the annotations.
+
+/**********************
+// MAKEFILE
+**********************/
+The Makefile is very simple. Currently it load the broadway and and c-breeze libraries and links them with the AnnotationPass.
+You will need to modify the location of these libraries in order to point to your local builds.
+
+/**********************
+// RUN:
+**********************/
+The follower command will run the AnnotationPass with an annotation file (foo.pal) and a dummy IR file (test.ll).
+  opt -load ../../../Debug/lib/AnnotationPass.so -annotation -pal test/foo.pal < ./test/test.ll

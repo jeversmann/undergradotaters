@@ -1,0 +1,90 @@
+SHELL=/bin/sh
+
+# Configuration
+
+CXX     = g++
+LD      = $(CXX)
+INCLUDES= -I. -I$(CBZHOME)/include
+#CFLAGS  = -g
+YACC    = bison
+LEX     = flex
+AR	= ar
+RANLIB	= ranlib
+LIBCBZ = $(CBZHOME)/lib/libc-breeze.a
+
+ifeq ($(OPT), 1)
+CFLAGS = -O4
+endif
+
+ifeq ($(OPT), 2)
+CFLAGS = -O4 -fomit-frame-pointer -funroll-loops
+endif
+
+ifeq ($(DEBUG), 1)
+CFLAGS = -g
+endif
+
+ifeq ($(PROF), 1)
+CFLAGS = -O0 -fno-default-inline -fno-inline -pg
+endif
+
+ifeq ($(PROF), 2)
+CFLAGS = -O4 -pg
+endif
+
+# Object code to build
+
+OBJ = 	c_breeze.o \
+	main.o \
+	output_context.o \
+	phase.o \
+	print_tree_visitor.o \
+	print_walker.o \
+	parser.tab.o \
+	lexer.cb.o
+
+# Make targets
+
+update: $(LIBCBZ)
+
+$(LIBCBZ): $(OBJ)
+	$(AR) r $@ $?
+	$(RANLIB) $@
+
+rebuild: $(OBJ)
+	$(AR) q $(LIBCBZ) $?
+
+objects: $(OBJ)
+
+parser.tab.cc: parser.y
+	$(YACC) -d -pcb parser.y -o parser.tab.cc
+	if [ -e parser.tab.cc.h ] ; then mv -f parser.tab.cc.h parser.tab.h ; fi # for production CS network bison
+	if [ -e parser.tab.hh   ] ; then mv -f parser.tab.hh   parser.tab.h ; fi # for other CS network bison
+
+lexer.cb.cc: lexer.l parser.tab.cc
+	$(LEX) -Pcb -olexer.cb.cc lexer.l
+
+clean:
+	rm -f *.o *.a *~ parser.tab.* lexer.cb.cc
+
+# Implicit rule for compiling all C++ code
+
+.cc.o:
+	$(CXX) $(INCLUDES) $(CFLAGS) -c $< -o $@
+
+# rebuild the dependencies.  Note: Ignores standard includes on
+# purpose, on the assumption that they won't change in between builds,
+# and we want to only record dependencies for our files, so that this
+# makefile will work on different platforms that store the standard
+# headers in different places.  
+depend:
+	makedepend -Y -- $(CFLAGS) -- $(OBJ:%.o=%.cc)
+# DO NOT DELETE
+
+c_breeze.o: c_breeze.h phase.h output_context.h
+main.o: c_breeze.h phase.h output_context.h print_walker.h
+output_context.o: c_breeze.h phase.h output_context.h
+phase.o: c_breeze.h phase.h output_context.h
+print_tree_visitor.o: c_breeze.h phase.h output_context.h
+print_tree_visitor.o: print_tree_visitor.h
+print_walker.o: c_breeze.h phase.h output_context.h print_walker.h

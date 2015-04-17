@@ -1,0 +1,58 @@
+\appendix
+\chapter{Building Instructions}
+
+\section{System and Built Requirements:}
+
+We built and tested this project in Ubuntu 11.10 x64.
+
+\begin{itemize}\itemsep.5pt
+\item LLVM Front-End version 3.0 Clang x64
+\item LLVM 3.0 source
+\item Flex 2.5.35 (optional)
+\item Bison 2.4.3 (optional)
+\end{itemize}
+
+\section{Compiling Commands}
+
+If you run the build.sh script, you should not need to follow the steps outline below.
+
+\paragraph{\bf  Building Flex and Bison (optional):}
+\begin{itemize}\itemsep.5pt
+\item Directory: AnnotationPass
+\item Files: language.l language.y
+\item Command: 
+\begin{enumerate}\itemsep.5pt
+\item \$ make -f langmake
+\end{enumerate}
+\end{itemize}
+
+Although we have corrected the token and grammar files for Flex and Bison, we do not require you to compile these files, because of the additional work of installing them. We have added compiled versions of them in the actual repository.
+
+\paragraph{\bf Building C-Breeze Dependencies:}
+\begin{itemize}\itemsep.5pt
+\item Directory: AnnotationPass/cbz
+\item Command: 
+\begin{enumerate}\itemsep.5pt
+\item \$ mkdir -p lib
+\item \$ make headers
+\item \$ make
+\end{enumerate}
+\end{itemize}
+
+Notice that particular directory need to be made prior to building the C-Breeze library.
+
+\paragraph{\bf Building Pointer Engine and Annotation:}
+\begin{itemize}\itemsep.5pt
+\item Directory: Broadway
+\item Commands: 
+\begin{enumerate}\itemsep.5pt
+\item \$ mkdir -p \textit{LLVM\_RELEASE\_TYPE}/AnnotationPass/bdwy
+\item \$ mkdir -p \textit{LLVM\_RELEASE\_TYPE}/model
+\item \$ make
+\end{enumerate}
+\end{itemize}
+
+\textit{LLVM\_RELEASE\_TYPE} can be \textit{Debug, Release, Debug+Asserts, ...}
+
+
+

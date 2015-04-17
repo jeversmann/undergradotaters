@@ -1,0 +1,1 @@
+llvm-gcc -emit-llvm -S -g -O0 ./examples/add.c -o ./examples/add.ll

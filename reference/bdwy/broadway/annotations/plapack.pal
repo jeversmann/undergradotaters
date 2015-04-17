@@ -1,0 +1,4235 @@
+%{
+
+#include "PLA.h"
+#include "protos.h"
+
+int PLA_Obj_set_to_identity( PLA_Obj obj);
+int PLA_Local_add(PLA_Obj a, PLA_Obj b);
+
+int PLA_Copy_from_matrix_to_msc( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_matrix_to_matrix( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_matrix_to_mv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_matrix_to_pmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_matrix_to_dpmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_msc_to_dpmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_msc_to_matrix( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_msc_to_msc( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_msc_to_mv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_msc_to_pmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_mv_to_dpmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_mv_to_matrix( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_mv_to_msc( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_mv_to_mv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_mv_to_pmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_pmv_to_dpmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_pmv_to_matrix( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_pmv_to_msc( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_pmv_to_mv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_pmv_to_pmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_dpmv_to_msc( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_dpmv_to_matrix( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_dpmv_to_mv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_dpmv_to_pmv( PLA_Obj source, PLA_Obj target );
+int PLA_Copy_from_dpmv_to_dpmv( PLA_Obj source, PLA_Obj target );
+
+void PLA_Obj_clone(PLA_Obj orig, PLA_Obj * clone);
+
+}%
+
+// RowDistribution : captures the distribution of the rows of PLAPACK object
+
+property RowDistribution : { Distributed { Local { Duplicated },
+					   Vector,
+					   Empty }
+			   }
+
+property ColDistribution : { Distributed { Local { Duplicated },
+					   Empty }
+			   }
+
+property ObjType : { Vector, Mvector, Pvector, Pmvector, Dpmvector,
+		       Matrix, Mscalar }
+
+property Value : { Zero, Diagonal { Identity }, Triangular { Upper, Lower } }
+
+property SplitSize : { SplitTop, SplitBottom, SplitLeft, SplitRight }
+
+property ViewUsed : @backward { Used { Unused }}
+
+property ViewChanged : { Changed { Unchanged }}
+
+property DontDelete : { DontDelete }
+
+// -- Row and column local
+
+property SameRowAs : {union-equivalence}
+property SameColAs : {union-equivalence}
+
+global {
+
+  // -- MPI "world" communicator
+
+  mpi_comm_world,
+
+  // -- Record the initialization state
+
+  plaInitialized,
+
+  // -- Store the communicator
+
+  mpiCommunicator,
+
+  // -- Prevent dead code
+
+  I/O SideEffect
+}
+
+procedure PLA_testresults(obj)
+{
+  on_entry {
+    obj --> view { length, width,
+		   data --> the_data
+		   template --> the_template }
+  }
+
+  access { the_data }
+  modify { SideEffect, view, the_data }
+}
+
+// ----------------------------------------------------------------------
+//  Initialize
+// ----------------------------------------------------------------------
+
+procedure MPI_Init(argc_ptr, argv_ptr)
+{
+  on_exit { mpi_comm_world --> new communicator { size } }
+}
+
+procedure MPI_Comm_rank( comm_handle, rank_out )
+{
+  on_entry { comm_handle --> communicator }
+}
+
+procedure PLA_Init( comm_handle )
+{
+  on_entry { comm_handle --> communicator { size } }
+
+  modify { plaInitialized,
+	   mpiCommunicator }
+
+  analyze constants {
+    plaInitialized = 1
+  }
+
+  on_exit {
+    mpiCommunicator --> communicator
+  }
+}
+
+procedure MPI_Finalize()
+{
+  modify { SideEffect }
+
+  on_exit { mpi_comm_world --> null }
+}
+
+procedure PLA_Finalize()
+{
+  analyze constants {
+    plaInitialized = 0
+  }
+
+  modify { SideEffect }
+}
+
+// ----------------------------------------------------------------------
+//  Object creation
+// ----------------------------------------------------------------------
+
+
+procedure PLA_Temp_create(nb, offset, template_out)
+{
+  on_entry { template_out --> templ_ptr }
+
+  on_exit { templ_ptr --> new template { blocking,
+                                         offset } }
+
+  analyze constants {
+    template.blocking = nb
+    template.offset = offset
+  }
+}
+
+procedure PLA_Matrix_create( datatype, length, width, template_ptr,
+                             v_align, h_align, matrix_out )
+{
+  on_entry { matrix_out --> the_matrix
+             template_ptr --> the_template }
+
+  access { the_template, the_matrix }
+
+  analyze constants {
+    the_view.length = length
+    the_view.width = width
+  }
+
+  analyze RowDistribution { the_view <- Distributed }
+
+  analyze ColDistribution { the_view <- Distributed }
+
+  analyze ObjType { the_view <- Matrix }
+
+  on_exit { the_matrix --> new the_view { length, width,
+                                          data --> new data
+                                          template --> the_template }
+	  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : the_view is-exactly Unused)
+    // replace-with %{ * (${matrix_out}) = 0; }%
+    replace-with %{ ${the_matrix} = 0; }%
+}
+
+procedure PLA_Matrix_create_conf_to( obj, matrix_out )
+{
+  on_entry { obj --> old_view { length, width,
+				data,
+				template --> the_template }
+             matrix_out --> the_matrix
+	   }
+
+  access { old_view, the_template, the_matrix }
+
+  analyze constants {
+    the_view.length = old_view.length
+    the_view.width = old_view.width
+  }
+
+  analyze RowDistribution { the_view <- old_view }
+
+  analyze ColDistribution { the_view <- old_view }
+
+  analyze ObjType { the_view <- Matrix }
+
+  analyze ViewUsed { old_view <- Used }
+
+  on_exit { the_matrix --> new the_view { length, width,
+                                          data --> new data
+                                          template --> the_template }
+	  }
+
+  report if ( ! ObjType : old_view is-exactly Matrix )
+    "Error at " ++ @context ++ ": Cannot create matrix conformal to " ++
+    [ obj ] ++ "; it is a " ++ ObjType : old_view ++ ".\n";
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : the_view is-exactly Unused)
+    // replace-with %{ * (${matrix_out}) = 0; }%
+    replace-with %{ ${the_matrix} = 0; }%
+
+  // -- This routine can't handle multi-scalars
+    /*
+  when (RowDistribution : old_view is-atleast Local &&
+	ColDistribution : old_view is-atleast Local &&
+	! ObjType : old_view is-exactly Matrix)
+    replace-with %{
+      {
+	PLA_Obj_objtype_cast(${obj}, PLA_MATRIX);
+	PLA_Matrix_create_conf_to(${obj}, ${matrix_out});
+      }
+    }%
+*/
+}
+
+procedure PLA_Vector_create( datatype, length, template_ptr,
+			     align, vector_out )
+{
+  on_entry { vector_out --> the_vector
+             template_ptr --> the_template }
+
+  access { the_template, the_vector }
+
+  analyze constants {
+    the_view.length = length
+    the_view.width = 1
+  }
+
+  analyze RowDistribution { the_view <- Vector }
+
+  analyze ColDistribution { the_view <- Local }
+
+  analyze ObjType { the_view <- Vector }
+
+  on_exit { the_vector --> new the_view { length, width,
+                                          data --> new data
+                                          template --> the_template }
+	  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : the_view is-exactly Unused)
+    // replace-with %{ * (${vector_out}) = 0; }%
+    replace-with %{${the_vector} = 0; }%
+}
+
+procedure PLA_Mvector_create( datatype, length, width, template_ptr,
+			      align, vector_out )
+{
+  on_entry { vector_out --> the_vector
+             template_ptr --> the_template }
+
+  access { the_template, the_vector }
+
+  analyze constants {
+    the_view.length = length
+    the_view.width = width
+  }
+
+  analyze RowDistribution { the_view <- Vector }
+
+  analyze ColDistribution { the_view <- Local }
+
+  analyze ObjType { the_view <- Mvector }
+
+  on_exit { the_vector --> new the_view { length, width,
+                                          data --> new data
+                                          template --> the_template }
+	  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : the_view is-exactly Unused)
+    // replace-with %{ * (${vector_out}) = 0; }%
+    replace-with %{ ${the_vector} = 0; }%
+}
+
+procedure PLA_Mvector_create_conf_to(obj, num_vectors, vector_out)
+{
+  on_entry { obj --> old_view { length, width,
+				data,
+				template --> the_template }
+
+	     vector_out --> the_vector
+	   }
+
+  access { old_view, the_template, the_vector }
+
+  analyze constants {
+    vector_view.length = old_view.length
+    vector_view.width = old_view.width
+  }
+
+  analyze RowDistribution { vector_view <- Vector }
+
+  analyze ColDistribution { vector_view <- Local }
+
+  analyze ObjType { vector_view <- Mvector }
+
+  analyze ViewUsed { old_view <- Used }
+
+  on_exit { the_vector --> new vector_view { length, width,
+                                             data --> new data
+                                             template --> the_template }
+	  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : vector_view is-exactly Unused)
+    // replace-with %{ * (${vector_out}) = 0; }%
+    replace-with %{ ${the_vector} = 0; }%
+}
+
+procedure PLA_Mscalar_create(datatype, owner_row, owner_col,
+			     length, width,
+			     template_ptr, mscalar_out )
+{
+  on_entry { mscalar_out --> the_mscalar
+             template_ptr --> the_template }
+
+  access { the_template, the_mscalar }
+
+  analyze constants {
+    the_view.length = length
+    the_view.width = width
+  }
+
+  analyze RowDistribution {
+    if (owner_row == PLA_ALL_ROWS)
+      the_view <- Duplicated
+
+    default
+      the_view <- Local
+  }
+
+  analyze ColDistribution {
+    if (owner_col == PLA_ALL_COLS)
+      the_view <- Duplicated
+
+    default
+      the_view <- Local
+  }
+
+  analyze ObjType { the_view <- Mscalar }
+
+  on_exit { the_mscalar --> new the_view { length, width,
+                                          data --> new data
+                                          template --> the_template }
+	  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : the_view is-exactly Unused)
+    // replace-with %{ * (${mscalar_out}) = 0; }%
+    replace-with %{ ${the_mscalar} = 0; }%
+}
+
+procedure PLA_Mscalar_create_conf_to(obj, owner_row, owner_col, mscalar_out )
+{
+  on_entry { obj --> old_view { length, width,
+				data,
+			        template --> the_template }
+	     mscalar_out --> the_mscalar
+	   }
+
+  access { the_template, old_view, the_mscalar }
+
+  analyze constants {
+    the_view.length = old_view.length
+    the_view.width = old_view.width
+  }
+
+  analyze RowDistribution {
+    if (owner_row == PLA_ALL_ROWS)
+      the_view <- Duplicated
+
+    default
+      the_view <- old_view
+  }
+
+  analyze ColDistribution {
+    if (owner_col == PLA_ALL_COLS)
+      the_view <- Duplicated
+
+    default
+      the_view <- old_view
+  }
+
+  analyze ObjType { the_view <- Mscalar }
+
+  analyze ViewUsed { old_view <- Used }
+
+  on_exit { the_mscalar --> new the_view { length, width,
+                                          data --> new data
+                                          template --> the_template }
+	  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : the_view is-exactly Unused)
+    // replace-with %{ * (${mscalar_out}) = 0; }%
+    replace-with %{ ${the_mscalar} = 0; }%
+}
+
+
+procedure PLA_Pvector_create(datatype, project_onto, owner,
+			     length, template_ptr, align, vector_out )
+{
+  on_entry { vector_out --> the_vector
+             template_ptr --> the_template }
+
+  access { the_template, the_vector }
+
+  analyze constants {
+    the_view.length = length
+    the_view.width = 1
+  }
+
+  analyze RowDistribution {
+    if (project_onto == PLA_PROJ_ONTO_ROW)
+      the_view <- Local
+
+    default
+      the_view <- Distributed
+  }
+
+  analyze ColDistribution {
+    if (project_onto == PLA_PROJ_ONTO_COL)
+      the_view <- Local
+
+    default
+      the_view <- Distributed
+  }
+
+  analyze ObjType { the_view <- Pvector }
+
+  on_exit { the_vector --> new the_view { length, width,
+                                          data --> new data
+                                          template --> the_template }
+	  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : the_view is-exactly Unused)
+    // replace-with %{ * (${vector_out}) = 0; }%
+    replace-with %{ ${the_vector} = 0; }%
+}
+
+procedure PLA_Pmvector_create(datatype, project_onto, 
+			      owner, length, width, template_ptr,
+			      align, vector_out )
+{
+  on_entry { vector_out --> the_vector
+             template_ptr --> the_template }
+
+  access { the_template, the_vector }
+
+  analyze constants {
+    the_view.length = length
+    the_view.width = width
+  }
+
+  analyze RowDistribution {
+    if (project_onto == PLA_PROJ_ONTO_ROW)
+      the_view <- Local
+
+    default
+      the_view <- Distributed
+  }
+
+  analyze ColDistribution {
+    if (project_onto == PLA_PROJ_ONTO_COL)
+      the_view <- Local
+
+    default
+      the_view <- Distributed
+  }
+
+  analyze ObjType {
+    if ((owner == PLA_ALL_ROWS) ||
+	(owner == PLA_ALL_COLS))
+      the_view <- Dpmvector
+
+    default
+      the_view <- Pmvector
+  }
+
+  on_exit { the_vector --> new the_view { length, width,
+                                          data --> new data
+                                          template --> the_template }
+	  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : the_view is-exactly Unused)
+    // replace-with %{ * (${vector_out}) = 0; }%
+    replace-with %{ ${the_vector} = 0; }%
+}
+
+procedure PLA_Pmvector_create_conf_to(obj, project_onto, owner, num_vectors, vector_out)
+{
+  on_entry { obj --> old_view { length, width,
+				data,
+				template --> the_template }
+	     vector_out --> the_vector
+	   }
+
+  access { the_template, the_vector }
+
+  analyze constants {
+    vector_view.length = old_view.length
+    vector_view.width = num_vectors
+  }
+
+  analyze RowDistribution {
+    if (project_onto == PLA_PROJ_ONTO_ROW)
+      vector_view <- Local
+
+    default
+      vector_view <- old_view
+  }
+
+  analyze ColDistribution {
+    if (project_onto == PLA_PROJ_ONTO_COL)
+      vector_view <- Local
+
+    default
+      vector_view <- old_view
+  }
+
+  analyze ObjType {
+    if ((owner == PLA_ALL_ROWS) ||
+	(owner == PLA_ALL_COLS))
+      vector_view <- Dpmvector
+
+    default
+      vector_view <- Pmvector
+  }
+
+  analyze ViewUsed { old_view <- Used }
+
+  on_exit { the_vector --> new vector_view { length, width,
+                                             data --> new data
+                                             template --> the_template }
+	  }
+
+  // -- Optimization
+
+  when (ColDistribution : old_view is-exactly Local &&
+	(project_onto == PLA_PROJ_ONTO_ROW))
+    replace-with %{
+      {
+	MPI_Datatype datatype;
+	PLA_Template template;
+	int width;
+
+	PLA_Obj_datatype(${obj}, &datatype );
+	PLA_Obj_template(${obj}, &template );
+	PLA_Obj_global_width(${obj}, &width );
+ 	PLA_Mscalar_create(datatype, PLA_ALL_ROWS, PLA_ALL_COLS, ${num_vectors},
+			   width, template, ${vector_out});
+      }
+    }%
+
+  when (RowDistribution : old_view is-exactly Local &&
+	(project_onto == PLA_PROJ_ONTO_COL))
+    replace-with %{
+      {
+	MPI_Datatype datatype;
+	PLA_Template template;
+	int length;
+
+	PLA_Obj_datatype(${obj}, &datatype );
+	PLA_Obj_template(${obj}, &template );
+	PLA_Obj_global_length(${obj}, &length );
+ 	PLA_Mscalar_create(datatype, PLA_ALL_ROWS, PLA_ALL_COLS, length,
+			   ${num_vectors}, template, ${vector_out});
+      }
+    }%
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : vector_view is-exactly Unused)
+    // replace-with %{ * (${vector_out}) = 0; }%
+    replace-with %{ ${the_vector} = 0; }%
+}
+
+procedure PLA_Create_constants_conf_to(obj, minus_one_out, zero_out, one_out)
+{
+  on_entry { obj --> view { length, width,
+			    data,
+			    template --> the_template }
+
+	     minus_one_out --> minus_one
+	     zero_out --> zero
+	     one_out --> one
+	   }
+
+  access { view, the_template, minus_one, zero, one }
+
+  analyze constants {
+    minus_one_view.width = 1
+    minus_one_view.length = 1
+
+    zero_view.width = 1
+    zero_view.length = 1
+
+    one_view.width = 1
+    one_view.length = 1
+
+    minus_one_data = -1.0
+    zero_data = 0.0
+    one_data = 1.0
+  }
+
+  analyze RowDistribution {
+    minus_one_view <- Duplicated
+    zero_view <- Duplicated
+    one_view <- Duplicated
+  }
+
+  analyze ColDistribution {
+    minus_one_view <- Duplicated
+    zero_view <- Duplicated
+    one_view <- Duplicated
+  }
+
+  analyze ObjType {
+    minus_one_view <- Mscalar
+    zero_view <- Mscalar
+    one_view <- Mscalar
+  }
+
+  analyze Value {
+    minus_one_data <- Diagonal
+    zero_data <- Zero
+    one_data <- Identity
+  }
+
+  analyze ViewUsed { view <- Used }
+
+  on_exit {
+    minus_one --> new minus_one_view { length, width,
+					 data --> new minus_one_data,
+					 template --> the_template }
+
+    zero --> new zero_view { length, width,
+			       data --> new zero_data,
+			       template --> the_template }
+
+    one --> new one_view { length, width,
+			     data --> new one_data,
+			     template --> the_template }
+  }
+
+  // -- Don't create objects that are never used
+
+  when (ViewUsed : minus_one_view is-exactly Unused ||
+	ViewUsed : zero_view is-exactly Unused ||
+	ViewUsed : one_view is-exactly Unused)
+    inline;
+      
+}       
+
+// -- This is an interesting phenomenon...
+
+procedure PLA_Obj_clone(obj, obj_clone_ptr)
+{
+  on_entry {
+    obj --> view
+    obj_clone_ptr --> obj_clone
+  }
+
+  on_exit {
+    obj_clone --> view
+  }
+
+  analyze DontDelete {
+    obj_clone <- DontDelete
+  }
+
+  when (1 == 1) replace-with %{ ${obj_clone} = ${obj}; }%
+}
+
+procedure PLA_Obj_free(obj_ptr)
+{
+  on_entry {
+    obj_ptr --> obj --> view { data --> the_data }
+  }
+
+  on_exit {
+    view.data --> null
+      // obj --> null
+    delete view
+  }
+
+  analyze ViewUsed { view <- Unused }
+
+  // analyze ViewChanged { view <- Unchanged }
+
+  when (DontDelete : obj @ever could-be DontDelete) replace-with %{ ; }%
+
+  when (obj == 0)
+    replace-with %{ ; }%
+    
+  when (the_data is-empty) replace-with %{ ; }%
+
+  report "AT PLA_Obj_free " ++ @callsite ++ ": DontDelete " ++ [ obj ] ++ " = " ++ DontDelete : obj @ever ++ "\n";
+}
+
+
+// ----------------------------------------------------------------------
+//  View routines
+// ----------------------------------------------------------------------
+
+procedure PLA_Obj_objtype_cast(obj, objtype)
+{
+  on_entry {
+    obj --> view { length, width,
+		   data --> the_data
+		   template --> the_template }
+  }
+
+  modify { view }
+
+  analyze ObjType {
+    if (objtype == PLA_MSCALAR) {
+      view <- Mscalar
+    }
+
+    if (objtype == PLA_VECTOR) {
+      view <- Vector
+    }
+
+    if (objtype == PLA_MVECTOR) {
+      view <- Mvector
+    }
+
+    if (objtype == PLA_PVECTOR) {
+      view <- Pvector
+    }
+
+    if (objtype == PLA_PMVECTOR) {
+      view <- Pmvector
+    }
+
+    if (objtype == PLA_MATRIX) {
+      view <- Matrix
+    }
+  }
+
+  analyze ViewChanged { view <- Changed }
+
+  report "At cast, objtype is " ++ ObjType : view ++ ", argument = " ++ objtype ++ "\n";
+}
+
+procedure PLA_Obj_view(view_in, length, width, align_row, align_col, view_out_ptr)
+{
+  on_entry {
+    view_in --> the_view { length, width,
+			     data --> the_data,
+			     template --> the_template }
+    view_out_ptr --> view_out --> old_view
+    delete old_view
+  }
+
+  modify { new_view.width, new_view.length, view_out }
+
+  analyze constants {
+    new_view.length = length
+    new_view.width = width
+  }
+
+  analyze RowDistribution {
+    if (length == PLA_DIM_ALL)
+      new_view <- the_view
+
+    default
+      new_view <- Distributed
+  }
+
+  analyze ColDistribution {
+    if (width == PLA_DIM_ALL)
+      new_view <- the_view
+
+    default
+      new_view <- Distributed
+  }
+
+  analyze ObjType { new_view <- the_view }
+
+  analyze ViewChanged { old_view <- Changed }
+
+  report "PLA_Obj_view at " ++ @callsite ++ "\n" ++
+    "    Object " ++ [ view_in ] ++ " is " ++
+    RowDistribution : the_view ++ " by " ++
+    ColDistribution : the_view  ++ "\n" ++
+    "        New view " ++ [ view_out ] ++ " is " ++
+    RowDistribution : new_view @after ++ " by " ++
+    ColDistribution : new_view @after ++ "\n\n";
+
+  on_exit {
+    view_out --> new new_view { length, width,
+				  data --> the_data,
+				  template --> the_template }
+  }
+}
+
+procedure PLA_Obj_view_all( view_in, view_out_ptr )
+{
+  on_entry {
+    view_in --> the_view { length, width,
+			     data --> the_data,
+			     template --> the_template }
+    view_out_ptr --> view_out --> old_view
+    delete old_view
+  }
+
+  access { the_view.width, the_view.length, view_out }
+  modify { new_view.width, new_view.length }
+
+  analyze constants {
+    new_view.width = the_view.width
+    new_view.length = the_view.length
+  }
+
+  analyze RowDistribution { new_view <- the_view }
+
+  analyze ColDistribution { new_view <- the_view }
+
+  analyze ObjType { new_view <- the_view }
+
+  analyze ViewUsed { the_view <- Used }
+
+  analyze ViewChanged { old_view <- Changed }
+
+  on_exit {
+    view_out --> new new_view { length, width,
+				  data --> the_data,
+				  template --> the_template }
+  }
+
+  report if (ViewUsed : new_view is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ view_out ] ++ " is unused.\n";
+
+  report "CHANGED at " ++ @callsite
+    ++ ": input view " ++ [ view_in ] ++ " is " ++ ViewChanged : the_view @ever
+    ++ ": output view " ++ [ view_out ] ++ " is " ++ ViewChanged : new_view @ever ++ "\n";
+
+  // -- Optimizations
+
+  // -- Clean up PLA_DUMMYs
+
+  when (view_out_ptr == PLA_DUMMY)
+    replace-with %{ ; }%
+
+  // -- Don't create unused views
+
+  when (ViewUsed : new_view is-exactly Unused)
+    replace-with %{ ; }%
+
+  // -- Get rid of self-copies
+
+  when (view_in is-sameas view_out)
+    replace-with %{ ; }%
+
+  // -- Simple copy propagation
+  /*
+  when ( ! ViewChanged : the_view @ever is-exactly Changed &&
+	 ! ViewChanged : new_view @ever is-exactly Changed)
+    // replace-with %{ *( ${view_out_ptr}) = ${view_in}; }%
+    replace-with %{ PLA_Obj_clone(${view_in}, ${view_out_ptr}); }%
+*/
+}
+
+procedure PLA_Obj_view_swap( obj1_ptr, obj2_ptr)
+{
+  on_entry {
+    obj1_ptr --> obj1 --> obj1_view
+    obj2_ptr --> obj2 --> obj2_view
+  }
+
+  on_exit {
+   obj1 --> obj2_view
+   obj2 --> obj1_view
+ }
+}
+
+procedure PLA_Obj_view_shift(view_in, top, left, right, bottom)
+{
+  on_entry {
+    view_in --> the_view { length, width,
+			   data --> the_data,
+			   template --> the_template }
+  }
+
+  access { the_view.width, the_view.length }
+  modify { the_view.width, the_view.length }
+
+  analyze constants {
+    the_view.length = the_view.length + top + bottom
+    the_view.width = the_view.width + left + right
+  }
+
+  analyze RowDistribution { the_view <- Distributed }
+
+  analyze ColDistribution { the_view <- Distributed }
+
+  analyze ViewChanged { the_view <- Changed }
+}
+
+
+procedure PLA_Obj_horz_split_2(A, length, upper_ptr, lower_ptr)
+{
+  on_entry {
+    A --> viewA { length, width,
+                  data --> dataA
+                  template --> the_template }
+    upper_ptr --> upper --> old_upper_view
+    lower_ptr --> lower --> old_lower_view
+    delete old_upper_view
+    delete old_lower_view
+  }
+
+  analyze constants {
+    if (SplitSize : length could-be SplitTop) {
+      view_upper.length = length
+      view_lower.length = viewA.length - length
+
+      view_upper.width = viewA.width
+      view_lower.width = viewA.width
+    }
+
+    if (SplitSize : length could-be SplitBottom) {
+      view_upper.length = viewA.length - length
+      view_lower.length = length
+
+      view_upper.width = viewA.width
+      view_lower.width = viewA.width
+    }
+  }
+
+  analyze RowDistribution {
+
+    if (viewA is-exactly Distributed && SplitSize : length could-be SplitTop)
+      { view_upper <- Local
+        view_lower <- Distributed
+      }
+
+    if (viewA is-atleast Local && SplitSize : length could-be SplitTop)
+      { view_upper <- Local
+        view_lower <- Empty
+      }
+
+    if (viewA is-exactly Vector && SplitSize : length could-be SplitTop)
+      { view_upper <- Local
+        view_lower <- Vector
+      }
+
+    if (viewA is-exactly Empty && SplitSize : length could-be SplitTop)
+      { view_upper <- Empty
+        view_lower <- Empty
+      }
+
+    if (viewA is-exactly Distributed && SplitSize : length could-be SplitBottom)
+      { view_upper <- Distributed
+	view_lower <- Local
+      }
+
+    if (viewA is-atleast Local && SplitSize : length could-be SplitBottom)
+      { view_upper <- Empty
+        view_lower <- Local
+      }
+
+    if (viewA is-exactly Vector && SplitSize : length could-be SplitBottom)
+      { view_upper <- Vector
+        view_lower <- Local
+      }
+
+    if (viewA is-exactly Empty && SplitSize : length could-be SplitBottom)
+      { view_upper <- Empty
+        view_lower <- Empty
+      }
+
+    if (length == 0) {
+      view_upper <- Empty
+      view_lower <- viewA
+    }
+  }
+
+  analyze ColDistribution {
+    view_upper <- viewA
+    view_lower <- viewA
+  }
+
+  analyze ObjType {
+    view_upper <- viewA
+    view_lower <- viewA
+  }
+
+  analyze ViewUsed {
+    if (view_upper is-exactly Used ||
+	view_lower is-exactly Used)
+      viewA <- Used
+  }   
+
+  analyze ViewChanged {
+    old_upper_view <- Changed
+    old_lower_view <- Changed
+  }
+
+  on_exit {
+      upper --> new view_upper { length, width,
+			         data --> dataA
+			         template --> the_template }
+
+      lower --> new view_lower { length, width,
+                                 data --> dataA
+                                 template --> the_template }
+  }
+
+  report "PLA_Obj_horz_split_2 at " ++ @callsite ++ "\n" ++
+    "    Object " ++ [ A ] ++ " is " ++
+      RowDistribution : viewA ++ " by " ++
+      ColDistribution : viewA  ++ "\n" ++
+      "        Upper object " ++ [ upper ] ++ " is " ++
+      RowDistribution : view_upper @after ++ " by " ++
+      ColDistribution : view_upper @after ++ "\n" ++
+      "        Lower object " ++ [ lower ] ++ " is " ++
+      RowDistribution : view_lower @after ++ " by " ++
+      ColDistribution : view_lower @after ++ "\n\n";
+
+  report // if (ViewUsed : view_upper is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ upper ] ++ " is "
+      ++ ViewUsed : view_upper ++ ".\n";
+
+  report // if (ViewUsed : view_lower is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ lower ] ++ " is "
+      ++ ViewUsed : view_lower ++ ".\n";
+
+  // -- Don't create empty views
+
+  when (RowDistribution : viewA is-atleast Local &&
+	SplitSize : length could-be SplitTop)
+    replace-with %{
+      PLA_Obj_view_all(${A}, ${upper_ptr});
+    }%
+
+  /*
+  when (RowDistribution : viewA is-atleast Local &&
+	SplitSize : length could-be SplitTop &&
+	(upper_ptr == PLA_DUMMY))
+    replace-with %{ ; }%
+  */
+
+  // -- Don't split an empty view
+
+  when (RowDistribution : viewA is-exactly Empty ||
+	ColDistribution : viewA is-exactly Empty)
+    replace-with %{ ; }%
+
+  // -- Don't create unused views
+
+  report if (dataA is-empty) "ERROR at " ++ @context ++ ": view with no data\n";
+
+  when (dataA is-empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Obj_vert_split_2(A, width, left_ptr, right_ptr)
+{
+  on_entry {
+    A --> viewA { length, width,
+                  data --> dataA
+                  template --> the_template }
+    left_ptr  --> left  --> old_left_view
+    right_ptr --> right --> old_right_view
+    delete old_left_view
+    delete old_right_view
+  }
+
+  analyze constants {
+    if (SplitSize : width could-be SplitLeft) {
+      view_left.width = width
+      view_right.width = viewA.width - width
+
+      view_left.length = viewA.length
+      view_right.length = viewA.length
+    }
+
+    if (SplitSize : width could-be SplitRight) {
+      view_left.width = viewA.width - width
+      view_right.width = width
+
+      view_left.length = viewA.length
+      view_right.length = viewA.length
+    }
+  }
+
+  analyze RowDistribution {
+    view_left <- viewA
+    view_right <- viewA
+  }
+
+  analyze ColDistribution {
+
+    if (viewA is-exactly Distributed && SplitSize : width could-be SplitLeft)
+      { view_left <- Local
+        view_right <- Distributed
+      }
+
+    if (viewA is-atleast Local && SplitSize : width could-be SplitLeft)
+      { view_left <- Local
+        view_right <- Empty
+      }
+
+    if (viewA is-exactly Empty && SplitSize : width could-be SplitLeft)
+      { view_left <- Empty
+        view_right <- Empty
+      }
+
+    if (viewA is-exactly Distributed && SplitSize : width could-be SplitRight)
+      { view_left <- Distributed
+	view_right <- Local
+      }
+
+    if (viewA is-atleast Local && SplitSize : width could-be SplitRight)
+      { view_left <- Empty
+        view_right <- Local
+      }
+
+    if (viewA is-exactly Empty && SplitSize : width could-be SplitRight)
+      { view_left <- Empty
+        view_right <- Empty
+      }
+
+    if (width == 0) {
+      view_left <- Empty
+      view_right <- viewA
+    }
+  }
+
+  analyze ObjType {
+    view_left <- viewA
+    view_right <- viewA
+  }
+
+  analyze ViewUsed {
+    if (view_left is-exactly Used ||
+	view_right is-exactly Used)
+      viewA <- Used
+  }   
+
+  analyze ViewChanged {
+    old_left_view  <- Changed
+    old_right_view <- Changed
+  }
+
+  on_exit {
+      left --> new view_left { length, width,
+			       data --> dataA
+			       template --> the_template }
+
+      right --> new view_right { length, width,
+                                 data --> dataA
+                                 template --> the_template }
+  }
+
+  report "PLA_Obj_vert_split_2 at " ++ @callsite ++ "\n" ++
+    "    Object " ++ [ A ] ++ " is " ++
+      RowDistribution : viewA ++ " by " ++
+      ColDistribution : viewA  ++ "\n" ++
+      "        Left object " ++ [ left ] ++ " is " ++
+      RowDistribution : view_left @after ++ " by " ++
+      ColDistribution : view_left @after ++ "\n" ++
+      "        Right object " ++ [ right ] ++ " is " ++
+      RowDistribution : view_right @after ++ " by " ++
+      ColDistribution : view_right @after ++ "\n\n";
+
+  report if (ViewUsed : view_right is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ right ] ++ " is unused.\n";
+
+  report if (ViewUsed : view_left is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ left ] ++ " is unused.\n";
+
+  // -- Don't create empty views
+
+  when (ColDistribution : viewA is-atleast Local &&
+	SplitSize : width could-be SplitLeft)
+    replace-with %{
+      PLA_Obj_view_all(${A}, ${left_ptr});
+    }%
+
+  /*
+  when (ColDistribution : viewA is-atleast Local &&
+	SplitSize : width could-be SplitLeft &&
+	(left_ptr == PLA_DUMMY))
+    replace-with %{ ; }%
+  */
+
+  // -- Don't split an empty view
+
+  when (RowDistribution : viewA is-exactly Empty ||
+	ColDistribution : viewA is-exactly Empty)
+    replace-with %{ ; }%
+
+  // -- Don't create unused views
+
+  when (dataA is-empty)
+    replace-with %{ ; }%
+}
+
+
+procedure PLA_Obj_split_4( A, length, width,
+                           A11_ptr, A12_ptr, A21_ptr, A22_ptr)
+{
+  on_entry {
+    A --> view_A { length, width,
+                  data --> dataA
+                  template --> the_template }
+    A11_ptr --> A11 --> old_A11_view
+    A12_ptr --> A12 --> old_A12_view
+    A21_ptr --> A21 --> old_A21_view
+    A22_ptr --> A22 --> old_A22_view
+
+    delete old_A11_view
+    delete old_A12_view
+    delete old_A21_view
+    delete old_A22_view
+  }
+
+  analyze constants {
+    if ((SplitSize : length could-be SplitTop) &&
+	(SplitSize : width could-be SplitLeft)) {
+      view_A11.length = length
+      view_A11.width = width
+    }
+
+    if ((SplitSize : length could-be SplitTop) &&
+	(SplitSize : width could-be SplitRight)) {
+      view_A12.length = length
+      view_A12.width = width
+    }
+
+    if ((SplitSize : length could-be SplitBottom) &&
+	(SplitSize : width could-be SplitLeft)) {
+      view_A21.length = length
+      view_A21.width = width
+    }
+
+    if ((SplitSize : length could-be SplitBottom) &&
+	(SplitSize : width could-be SplitRight)) {
+      view_A22.length = length
+      view_A22.width = width
+    }
+  }
+
+  analyze RowDistribution {
+
+    if (view_A is-exactly Distributed && SplitSize : length could-be SplitTop)
+      { view_A11 <- Local
+        view_A12 <- Local
+        view_A21 <- Distributed
+        view_A22 <- Distributed }
+
+    if (view_A is-atleast Local && SplitSize : length could-be SplitTop)
+      { view_A11 <- Local
+        view_A12 <- Local
+        view_A21 <- Empty
+        view_A22 <- Empty }
+
+    if (view_A is-exactly Vector && SplitSize : length could-be SplitTop)
+      { view_A11 <- Local
+        view_A12 <- Local
+        view_A21 <- Vector
+        view_A22 <- Vector }
+
+    if (view_A is-exactly Empty && SplitSize : length could-be SplitTop)
+      { view_A11 <- Empty
+        view_A12 <- Empty
+        view_A21 <- Empty
+        view_A22 <- Empty }
+
+    if (view_A is-exactly Distributed && SplitSize : length could-be SplitBottom)
+      { view_A11 <- Distributed
+        view_A12 <- Distributed
+        view_A21 <- Local
+        view_A22 <- Local }
+
+    if (view_A is-atleast Local && SplitSize : length could-be SplitBottom)
+      { view_A11 <- Empty
+        view_A12 <- Empty
+        view_A21 <- Local
+        view_A22 <- Local }
+
+    if (view_A is-exactly Vector && SplitSize : length could-be SplitBottom)
+      { view_A11 <- Vector
+        view_A12 <- Vector
+        view_A21 <- Local
+        view_A22 <- Local }
+
+    if (view_A is-exactly Empty && SplitSize : length could-be SplitBottom)
+      { view_A11 <- Empty
+        view_A12 <- Empty
+        view_A21 <- Empty
+        view_A22 <- Empty }
+
+    if (length == 0)
+      { view_A11 <- Empty
+        view_A12 <- Empty
+        view_A21 <- view_A
+        view_A22 <- view_A }
+  }
+
+  analyze ColDistribution {
+
+    if (view_A is-exactly Distributed && SplitSize : width could-be SplitLeft)
+      { view_A11 <- Local
+        view_A12 <- Distributed
+        view_A21 <- Local
+        view_A22 <- Distributed }
+
+    if (view_A is-atleast Local && SplitSize : width could-be SplitLeft)
+      { view_A11 <- Local
+        view_A12 <- Empty
+        view_A21 <- Local
+        view_A22 <- Empty }
+
+    if (view_A is-exactly Empty && SplitSize : width could-be SplitLeft)
+      { view_A11 <- Empty
+        view_A12 <- Empty
+        view_A21 <- Empty
+        view_A22 <- Empty }
+
+    if (view_A is-exactly Distributed && SplitSize : width could-be SplitRight)
+      { view_A11 <- Distributed
+        view_A12 <- Local
+        view_A21 <- Distributed
+        view_A22 <- Local }
+
+    if (view_A is-atleast Local && SplitSize : width could-be SplitRight)
+      { view_A11 <- Empty
+        view_A12 <- Local
+        view_A21 <- Empty
+        view_A22 <- Local }
+
+    if (view_A is-exactly Empty && SplitSize : width could-be SplitRight)
+      { view_A11 <- Empty
+        view_A12 <- Empty
+        view_A21 <- Empty
+        view_A22 <- Empty }
+
+    if (width == 0)
+      { view_A11 <- Empty
+        view_A12 <- view_A
+        view_A21 <- Empty
+        view_A22 <- view_A }
+  }
+
+  analyze ObjType {
+    view_A11 <- view_A
+    view_A12 <- view_A
+    view_A21 <- view_A
+    view_A22 <- view_A
+  }
+
+  analyze ViewUsed {
+    if (view_A11 is-exactly Used ||
+	view_A12 is-exactly Used ||
+	view_A21 is-exactly Used ||
+	view_A22 is-exactly Used)
+      view_A <- Used
+  }   
+
+  analyze ViewChanged {
+    old_A11_view <- Changed
+    old_A12_view <- Changed
+    old_A21_view <- Changed
+    old_A22_view <- Changed
+  }
+
+  on_exit {
+      A11 --> new view_A11 { length, width,
+			     data --> dataA
+			     template --> the_template }
+
+      A12 --> new view_A12 { length, width,
+                             data --> dataA
+                             template --> the_template }
+
+      A21 --> new view_A21 { length, width,
+                             data --> dataA
+                             template --> the_template }
+
+      A22 --> new view_A22 { length, width,
+                             data --> dataA
+                             template --> the_template }
+  }
+
+  report "PLA_Obj_split_4 at " ++ @callsite ++ "\n" ++
+    "    Object " ++ [ A ] ++ " is " ++
+      RowDistribution : view_A ++ " by " ++
+      ColDistribution : view_A  ++ "\n" ++
+      "        A11 object " ++ [ A11 ] ++ " is " ++
+      RowDistribution : view_A11 @after ++ " by " ++
+      ColDistribution : view_A11 @after ++ "\n" ++
+      "        A12 object " ++ [ A12 ] ++ " is " ++
+      RowDistribution : view_A12 @after ++ " by " ++
+      ColDistribution : view_A12 @after ++ "\n" ++
+      "        A21 object " ++ [ A21 ] ++ " is " ++
+      RowDistribution : view_A21 @after ++ " by " ++
+      ColDistribution : view_A21 @after ++ "\n" ++
+      "        A22 object " ++ [ A22 ] ++ " is " ++
+      RowDistribution : view_A22 @after ++ " by " ++
+      ColDistribution : view_A22 @after ++ "\n\n";
+
+  report if (ViewUsed : view_A11 is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ A11 ] ++ " is unused.\n";
+
+  report if (ViewUsed : view_A12 is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ A12 ] ++ " is unused.\n";
+
+  report if (ViewUsed : view_A21 is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ A21 ] ++ " is unused.\n";
+
+  report if (ViewUsed : view_A22 is-exactly Unused)
+    "At " ++ @context ++ ": View " ++ [ A22 ] ++ " is unused.\n";
+
+  // -- Optimizations
+
+  // -- Don't create empty views
+
+  when (RowDistribution : view_A is-atleast Local &&
+	SplitSize : length could-be SplitTop &&
+	ColDistribution : view_A is-atleast Local &&
+	SplitSize : length could-be SplitLeft)
+    replace-with %{
+      PLA_Obj_view_all(${A}, ${A11_ptr});
+    }%
+
+  // -- Don't split an empty view
+
+  when (RowDistribution : view_A is-exactly Empty ||
+	ColDistribution : view_A is-exactly Empty)
+    replace-with %{ ; }%
+
+  when (dataA is-empty)
+    replace-with %{ ; }%
+}
+
+// ----------------------------------------------------------------------
+//  Queries
+// ----------------------------------------------------------------------
+
+procedure PLA_Obj_global_length(obj, length_ptr)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    length_ptr --> length
+  }
+
+  modify { length }
+
+  analyze constants {
+    if (RowDistribution : view is-exactly Empty)
+      length = 0
+  }
+
+  analyze SplitSize {
+    if (RowDistribution : view is-exactly Local) {
+      length <- SplitTop
+      length <- SplitLeft
+    }
+  }
+
+  analyze ViewUsed { view <- Used }
+
+  report if (RowDistribution : view is-exactly Empty)
+    "PLA_Obj_global_length of " ++ [ obj ] ++ " is zero.\n";
+
+  // -- Empty views have zero length
+
+  when (RowDistribution : view is-exactly Empty)
+    // replace-with %{ *(${length_ptr}) = 0; }%
+    replace-with %{ ${length} = 0; }%
+}
+
+
+procedure PLA_Obj_global_width(obj, width_ptr)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    width_ptr --> width
+  }
+
+  modify { width }
+
+  analyze constants {
+    if (ColDistribution : view is-exactly Empty)
+      width = 0
+  }
+
+  analyze SplitSize {
+    if (ColDistribution : view is-exactly Local) {
+      width <- SplitLeft
+      width <- SplitTop
+    }
+  }
+
+  analyze ViewUsed { view <- Used }
+
+  // -- Empty views have zero width
+
+  when (ColDistribution : view is-exactly Empty)
+    // replace-with %{ *(${width_ptr}) = 0; }%
+    replace-with %{ ${width} = 0; }%
+}
+
+
+procedure PLA_Obj_local_length(obj, length_ptr)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    length_ptr --> length
+  }
+
+  modify { length }
+
+  analyze constants {
+    if (RowDistribution : view is-exactly Empty)
+      length = 0
+  }
+
+  analyze SplitSize {
+    if (RowDistribution : view is-exactly Local) {
+      length <- SplitTop
+      length <- SplitLeft
+    }
+  }
+
+  analyze ViewUsed { view <- Used }
+}
+
+
+procedure PLA_Obj_local_width(obj, width_ptr)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    width_ptr --> width
+  }
+
+  modify { width }
+
+  analyze constants {
+    if (ColDistribution : view is-exactly Empty)
+      width = 0
+  }
+
+  analyze SplitSize {
+    if (ColDistribution : view is-exactly Local) {
+      width <- SplitLeft
+      width <- SplitTop
+    }
+  }
+
+  analyze ViewUsed { view <- Used }
+}
+
+
+procedure PLA_Obj_set_orientation(obj, project_onto)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+  }
+
+  modify { view }
+}
+
+
+procedure PLA_Obj_split_size(obj, side, size_ptr, owner_ptr)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    size_ptr --> size
+    owner_ptr --> owner
+  } 
+
+  access { view.length, view.width, the_template }
+  modify { size, owner }
+
+  analyze constants {
+    if ((RowDistribution : view is-exactly Empty) &&
+	((side == PLA_SIDE_TOP) ||
+	 (side == PLA_SIDE_BOTTOM)))
+      {
+	size = 0
+      }
+
+    if ((ColDistribution : view is-exactly Empty) &&
+	((side == PLA_SIDE_LEFT) ||
+	 (side == PLA_SIDE_RIGHT)))
+      {
+	size = 0
+      }
+  }
+
+  analyze SplitSize {
+
+    if (side == PLA_SIDE_TOP) { size <- SplitTop }
+
+    if (side == PLA_SIDE_LEFT) { size <- SplitLeft }
+
+    if (side == PLA_SIDE_BOTTOM) { size <- SplitBottom }
+
+    if (side == PLA_SIDE_RIGHT) { size <- SplitRight }
+  }
+
+  analyze ViewUsed { view <- Used }
+
+  report "PLA_Obj_split_size at " ++ @callsite ++ "\n" ++
+    "    Object " ++ [ obj ] ++ " is " ++ RowDistribution : view ++
+      " " ++ ColDistribution : view  ++ "\n";
+}
+
+
+procedure PLA_Obj_template(obj, template_ptr_ptr)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    template_ptr_ptr --> template_ptr
+  } 
+
+  analyze ViewUsed { view <- Used }
+
+  on_exit { template_ptr --> the_template }
+}
+
+procedure PLA_Environ_nb_alg(operation, template_ptr, nb_ptr)
+{
+  on_entry {
+    template_ptr --> template { blocking, offset }
+    nb_ptr --> nb
+  }
+
+  access { template }
+
+  analyze constants {
+    nb = template.blocking
+  }
+
+  analyze SplitSize {
+    nb <- SplitTop
+    nb <- SplitBottom
+    nb <- SplitLeft
+    nb <- SplitRight
+  }
+}
+
+procedure PLA_Temp_comm_row_rank(template_ptr, rank_ptr)
+{
+  on_entry {
+    template_ptr --> the_template
+    rank_ptr --> rank
+  }
+
+  access { the_template }
+  modify { rank }
+}
+
+procedure PLA_Temp_comm_col_rank(template_ptr, rank_ptr)
+{
+  on_entry {
+    template_ptr --> the_template
+    rank_ptr --> rank
+  }
+
+  access { the_template }
+  modify { rank }
+}
+
+procedure PLA_Temp_comm_row_size(template_ptr, size_ptr)
+{
+  on_entry {
+    template_ptr --> the_template
+    size_ptr --> size
+  }
+
+  access { the_template }
+  modify { size }
+}
+
+procedure PLA_Temp_comm_col_size(template_ptr, size_ptr)
+{
+  on_entry {
+    template_ptr --> the_template
+    size_ptr --> size
+  }
+
+  access { the_template }
+  modify { size }
+}
+
+
+procedure PLA_Temp_nb(template_ptr, nb_ptr)
+{
+  on_entry {
+    template_ptr --> the_template { blocking, offset }
+    nb_ptr --> nb
+  }
+
+  analyze constants {
+    nb = the_template.blocking
+  }
+}
+
+procedure PLA_Obj_datatype(obj, datatype_out)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+
+    datatype_out --> datatype
+  }
+
+  analyze ViewUsed { view <- Used }
+
+  modify { datatype }
+}
+
+// ----------------------------------------------------------------------
+//  Copy
+// ----------------------------------------------------------------------
+
+procedure PLA_Copy( source, target )
+{
+  on_entry {
+    source --> source_view { length, width,
+			     data --> source_data,
+			     template --> the_template
+			   }
+
+    target --> target_view { length, width,
+			     data --> target_data,
+			     template --> the_template
+			   }
+  } 
+
+  access { source_data, source_view.length, source_view.width,
+	     // target_view.length, target_view.width,
+	   the_template
+	 }
+
+  modify { target_data }
+
+  analyze ViewUsed {
+    source_view <- Used
+    target_view <- Used
+  }
+
+  // -- Opt: Remove copies on empty views
+
+  when (RowDistribution : source_view is-exactly Empty ||
+	ColDistribution : source_view is-exactly Empty ||
+	RowDistribution : target_view is-exactly Empty ||
+	ColDistribution : target_view is-exactly Empty)
+    replace-with %{ ; }%
+
+  when ((source == 0) ||
+	(target == 0))
+    replace-with %{ ; }%
+
+  // -- Opt: Add a cast when the source is a multi-scalar
+
+  when (RowDistribution : source_view is-atleast Local &&
+	ColDistribution : source_view is-atleast Local &&
+	! ObjType : source_view is-exactly Mscalar)
+    replace-with %{
+      {
+	PLA_Obj_objtype_cast(${source}, PLA_MSCALAR);
+	PLA_Copy(${source}, ${target});
+      }
+    }%
+
+  /*
+  when (RowDistribution : source_view is-atleast Local &&
+	ColDistribution : source_view is-atleast Local &&
+	! ObjType : source_view is-exactly Mscalar)
+    replace-with %{
+      {
+	PLA_Obj temp;
+	PLA_Obj_view_all(${source}, &temp);
+	PLA_Obj_objtype_cast(temp, PLA_MSCALAR);
+	PLA_Copy(temp, ${target});
+	PLA_Obj_free(&temp);
+      }
+    }%
+  */
+
+  // -- Copy cases
+
+
+  when ((ObjType : source_view is-exactly Mscalar ||
+	 (ObjType : source_view is-exactly Matrix &&
+	  RowDistribution : source_view is-atleast Local &&
+	  ColDistribution : source_view is-atleast Local)) &&
+	ObjType : target_view is-exactly Dpmvector)
+    replace-with %{
+      PLA_Copy_from_msc_to_dpmv(${source}, ${target});
+    }%
+
+  when ((ObjType : source_view is-exactly Mscalar ||
+	 (ObjType : source_view is-exactly Matrix &&
+	  RowDistribution : source_view is-atleast Local &&
+	  ColDistribution : source_view is-atleast Local)) &&
+	ObjType : target_view is-exactly Matrix)
+    replace-with %{
+      PLA_Copy_from_msc_to_matrix(${source}, ${target});
+    }%
+
+  when ((ObjType : source_view is-exactly Mscalar ||
+	 (ObjType : source_view is-exactly Matrix &&
+	  RowDistribution : source_view is-atleast Local &&
+	  ColDistribution : source_view is-atleast Local)) &&
+	ObjType : target_view is-exactly Mscalar)
+    replace-with %{
+      PLA_Copy_from_msc_to_msc(${source}, ${target});
+    }%
+
+  when ((ObjType : source_view is-exactly Mscalar ||
+	 (ObjType : source_view is-exactly Matrix &&
+	  RowDistribution : source_view is-atleast Local &&
+	  ColDistribution : source_view is-atleast Local)) &&
+	ObjType : target_view is-exactly Mvector)
+    replace-with %{
+      PLA_Copy_from_msc_to_mv(${source}, ${target});
+    }%
+
+  when ((ObjType : source_view is-exactly Mscalar ||
+	 (ObjType : source_view is-exactly Matrix &&
+	  RowDistribution : source_view is-atleast Local &&
+	  ColDistribution : source_view is-atleast Local)) &&
+	ObjType : target_view is-exactly Pmvector)
+    replace-with %{
+      PLA_Copy_from_msc_to_pmv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Matrix &&
+	ObjType : target_view is-exactly Mscalar)
+    replace-with %{
+      PLA_Copy_from_matrix_to_msc(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Matrix &&
+	ObjType : target_view is-exactly Matrix)
+    replace-with %{
+      PLA_Copy_from_matrix_to_matrix(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Matrix &&
+	ObjType : target_view is-exactly Mvector)
+    replace-with %{
+      PLA_Copy_from_matrix_to_mv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Matrix &&
+	ObjType : target_view is-exactly Pmvector)
+    replace-with %{
+      PLA_Copy_from_matrix_to_pmv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Matrix &&
+	ObjType : target_view is-exactly Dpmvector)
+    replace-with %{
+      PLA_Copy_from_matrix_to_dpmv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Mvector &&
+	ObjType : target_view is-exactly Dpmvector)
+    replace-with %{
+      PLA_Copy_from_mv_to_dpmv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Mvector &&
+	ObjType : target_view is-exactly Matrix)
+    replace-with %{
+      PLA_Copy_from_mv_to_matrix(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Mvector &&
+	ObjType : target_view is-exactly Mscalar)
+    replace-with %{
+      PLA_Copy_from_mv_to_msc(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Mvector &&
+	ObjType : target_view is-exactly Mvector)
+    replace-with %{
+      PLA_Copy_from_mv_to_mv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Mvector &&
+	ObjType : target_view is-exactly Pmvector)
+    replace-with %{
+      PLA_Copy_from_mv_to_pmv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Pmvector &&
+	ObjType : target_view is-exactly Dpmvector)
+    replace-with %{
+      PLA_Copy_from_pmv_to_dpmv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Pmvector &&
+	ObjType : target_view is-exactly Matrix)
+    replace-with %{
+      PLA_Copy_from_pmv_to_matrix(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Pmvector &&
+	ObjType : target_view is-exactly Mscalar)
+    replace-with %{
+      PLA_Copy_from_pmv_to_msc(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Pmvector &&
+	ObjType : target_view is-exactly Mvector)
+    replace-with %{
+      PLA_Copy_from_pmv_to_mv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Pmvector &&
+	ObjType : target_view is-exactly Pmvector)
+    replace-with %{
+      PLA_Copy_from_pmv_to_pmv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Dpmvector &&
+	ObjType : target_view is-exactly Mscalar)
+    replace-with %{
+      PLA_Copy_from_dpmv_to_msc(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Dpmvector &&
+	ObjType : target_view is-exactly Matrix)
+    replace-with %{
+      PLA_Copy_from_dpmv_to_matrix(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Dpmvector &&
+	ObjType : target_view is-exactly Mvector)
+    replace-with %{
+      PLA_Copy_from_dpmv_to_mv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Dpmvector &&
+	ObjType : target_view is-exactly Pmvector)
+    replace-with %{
+      PLA_Copy_from_dpmv_to_pmv(${source}, ${target});
+    }%
+
+  when (ObjType : source_view is-exactly Dpmvector &&
+	ObjType : target_view is-exactly Dpmvector)
+    replace-with %{
+      PLA_Copy_from_dpmv_to_dpmv(${source}, ${target});
+    }%
+
+  // report "PLA_Copy at " ++ @context ++ ": source view is 
+
+  report "PLA_Copy at " ++ @context ++ ": Source view is " ++ RowDistribution : source_view ++ " by "
+    ++ ColDistribution : source_view ++ ", objtype is " ++ ObjType : source_view ++ "\n";
+}
+
+procedure PLA_Local_copy( source, target )
+{
+  on_entry {
+    source --> source_view { length, width,
+			       data --> source_data,
+			       template --> the_template }
+
+    target --> target_view { length, width,
+			       data --> target_data,
+			       template --> the_template }
+  } 
+
+  access { source_data, source_view.length, source_view.width,
+	   target_view.length, target_view.width,
+	   the_template
+	 }
+
+  modify { target_data }
+
+  analyze ViewUsed {
+    source_view <- Used
+    target_view <- Used
+  }
+}
+
+// ----------------------------------------------------------------------
+//  Contents
+// ----------------------------------------------------------------------
+
+procedure PLA_Obj_set_to_zero(obj)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+  }
+
+  modify { data }
+
+  analyze constants {
+    data = 0.0
+  }
+}
+
+procedure PLA_Obj_set_to_one(obj)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+  }
+
+  modify { data }
+
+  analyze constants {
+    data = 1.0
+  }
+}
+
+procedure PLA_Obj_set_to_minus_one(obj)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+  }
+
+  modify { data }
+
+  analyze constants {
+    data = -1.0
+  }
+}
+
+procedure PLA_Obj_set_to_identity(id)
+{
+  on_entry {
+    id --> view { length, width,
+                   data --> data
+                   template --> the_template }
+  }
+
+  modify { data }
+
+  analyze Value { data <- Identity }
+}
+    
+
+procedure PLA_Obj_set(obj, datatype, value_ptr)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    value_ptr --> value
+  }
+
+  access { value }
+  modify { data }
+
+  analyze constants {
+    data = value
+  }
+}
+
+procedure PLA_Obj_local_buffer(obj, buffer_ptr_ptr)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    buffer_ptr_ptr --> buffer_ptr
+  }
+
+  on_exit {
+    buffer_ptr --> data
+  }
+}
+
+procedure PLA_Obj_get_local_contents(obj, trans, rows_ptr, cols_ptr,
+				     buf_ptr, ldim_buf, stride_buf)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    rows_ptr --> rows
+    cols_ptr --> cols
+    buf_ptr --> buffer
+  }
+
+  access { view.length, view.width }
+  modify { rows, cols }
+
+  analyze constants {
+    buffer = data
+  }
+}
+
+procedure PLA_Obj_set_local_contents(trans, rows, cols,
+				     buf_ptr, ldim_buf, stride_buf, obj)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+    buf_ptr --> buffer
+  }
+
+  analyze constants {
+    data = buffer
+  }
+}
+
+// ----------------------------------------------------------------------
+//  Computations
+// ----------------------------------------------------------------------
+
+procedure PLA_Local_chol(uplo, obj)
+{
+  on_entry {
+    obj --> view { length, width,
+                   data --> data
+                   template --> the_template }
+  } 
+
+  access { view.length, view.width, data }
+  modify { data }
+
+  report "At PLA_Local_chol: " ++ [ obj ] ++ " is " ++ 
+    RowDistribution : view ++ " " ++ ColDistribution : view  ++ "\n";
+
+  report if ( ! (RowDistribution : view is-exactly Local &&
+		 ColDistribution : view is-exactly Local))
+    "ERROR at " ++ @callsite ++ ": input object " ++ [ obj ] ++ " must be local.\n";
+}
+
+// ----------------------------------------------------------------------
+//  Level 1: Vector Operations
+// ----------------------------------------------------------------------
+
+procedure PLA_Scal(alpha, a)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a }
+
+  modify { data_a }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! ObjType : view_alpha is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty)
+    replace-with %{ ; }%
+
+  when (data_alpha == 1)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_scal(alpha, a)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a }
+
+  modify { data_a }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! ObjType : view_alpha is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty)
+    replace-with %{ ; }%
+
+  when ((data_alpha == 1.0) ||
+	Value : data_alpha is-exactly Identity)
+    replace-with %{ ; }%
+}
+
+
+// ----------------------------------------------------------------------
+//  Level 2: Matrix-Vector Operations
+// ----------------------------------------------------------------------
+
+procedure PLA_gemv(transa, transb, a, b, beta, c)
+{
+  on_entry {
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! ObjType : view_beta  is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": beta argument " ++ [ beta ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty )
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_gemv(transa, transb, a, b, beta, c)
+{
+  on_entry {
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! ObjType : view_beta  is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": beta argument " ++ [ beta ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty )
+    replace-with %{ ; }%
+}
+
+procedure PLA_Symv(uplo, alpha, a, b, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty )
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_symv(uplo, alpha, a, b, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Trmv(uplo, transa, diag, a, b)
+{
+  on_entry {
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+  }
+
+  access { view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_trmv(uplo, transa, diag, a, b)
+{
+  on_entry {
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+  }
+
+  access { view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Trsv(uplo, transa, diag, a, b)
+{
+  on_entry {
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+  }
+
+  access { view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_trsv(uplo, transa, diag, a, b)
+{
+  on_entry {
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+  }
+
+  access { view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Ger(alpha, x, y, a)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+		           data --> data_alpha
+                           template --> the_template }
+
+    x --> view_x { length, width,
+		   data --> data_x
+                   template --> the_template }
+
+    y --> view_y { length, width,
+		   data --> data_y
+                   template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+  }
+
+  access { view_x.length, view_x.width, data_x,
+	   view_y.length, view_y.width, data_y,
+	   view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a }
+
+  modify { data_a }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_x <- Used
+    view_y <- Used
+    view_a <- Used
+  }
+
+  // -- Make sure alpha and alpha are multi-scalars
+
+  report if ( ! ObjType : view_alpha  is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_x is-exactly Empty ||
+	ColDistribution : view_x is-exactly Empty ||
+	RowDistribution : view_y is-exactly Empty ||
+	ColDistribution : view_y is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_ger(alpha, x, y, a)
+{
+  on_entry {
+    alpha --> view_alpha { length, width,
+		           data --> data_alpha
+                           template --> the_template }
+
+    x --> view_x { length, width,
+		   data --> data_x
+                   template --> the_template }
+
+    y --> view_y { length, width,
+		   data --> data_y
+                   template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+  }
+
+  access { view_x.length, view_x.width, data_x,
+	   view_y.length, view_y.width, data_y,
+	   view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a }
+
+  modify { data_a }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_x <- Used
+    view_y <- Used
+    view_a <- Used
+  }
+
+  // -- Make sure alpha and alpha are multi-scalars
+
+  report if ( ! ObjType : view_alpha  is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_x is-exactly Empty ||
+	ColDistribution : view_x is-exactly Empty ||
+	RowDistribution : view_y is-exactly Empty ||
+	ColDistribution : view_y is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Syr(uplo, alpha, x, a)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+		           data --> data_alpha
+                           template --> the_template }
+
+    x --> view_x { length, width,
+		   data --> data_x
+                   template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+  }
+
+  access { view_x.length, view_x.width, data_x,
+	   view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a }
+
+  modify { data_a }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_x <- Used
+    view_a <- Used
+  }
+
+  // -- Make sure alpha and alpha are multi-scalars
+
+  report if ( ! ObjType : view_alpha  is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_x is-exactly Empty ||
+	ColDistribution : view_x is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_syr(uplo, alpha, x, a)
+{
+  on_entry {
+    alpha --> view_alpha { length, width,
+		           data --> data_alpha
+                           template --> the_template }
+
+    x --> view_x { length, width,
+		   data --> data_x
+                   template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+  }
+
+  access { view_x.length, view_x.width, data_x,
+	   view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a }
+
+  modify { data_a }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_x <- Used
+    view_a <- Used
+  }
+
+  // -- Make sure alpha and alpha are multi-scalars
+
+  report if ( ! ObjType : view_alpha  is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_x is-exactly Empty ||
+	ColDistribution : view_x is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Syr2(uplo, alpha, x, y, a)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+		           data --> data_alpha
+                           template --> the_template }
+
+    x --> view_x { length, width,
+		   data --> data_x
+                   template --> the_template }
+
+    y --> view_y { length, width,
+		   data --> data_y
+                   template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+  }
+
+  access { view_x.length, view_x.width, data_x,
+	   view_y.length, view_y.width, data_y,
+	   view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a }
+
+  modify { data_a }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_x <- Used
+    view_y <- Used
+    view_a <- Used
+  }
+
+  // -- Make sure alpha and alpha are multi-scalars
+
+  report if ( ! ObjType : view_alpha  is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_x is-exactly Empty ||
+	ColDistribution : view_x is-exactly Empty ||
+	RowDistribution : view_y is-exactly Empty ||
+	ColDistribution : view_y is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_syr2(uplo, alpha, x, y, a)
+{
+  on_entry {
+    alpha --> view_alpha { length, width,
+		           data --> data_alpha
+                           template --> the_template }
+
+    x --> view_x { length, width,
+		   data --> data_x
+                   template --> the_template }
+
+    y --> view_y { length, width,
+		   data --> data_y
+                   template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+  }
+
+  access { view_x.length, view_x.width, data_x,
+	   view_y.length, view_y.width, data_y,
+	   view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a }
+
+  modify { data_a }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_x <- Used
+    view_y <- Used
+    view_a <- Used
+  }
+
+  // -- Make sure alpha and alpha are multi-scalars
+
+  report if ( ! ObjType : view_alpha  is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_x is-exactly Empty ||
+	ColDistribution : view_x is-exactly Empty ||
+	RowDistribution : view_y is-exactly Empty ||
+	ColDistribution : view_y is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+
+
+// ----------------------------------------------------------------------
+//  Level 3: Matrix-Matrix Operations
+// ----------------------------------------------------------------------
+
+procedure PLA_Gemm(transa, transb, alpha, a, b, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  report "PLA_Gemm at " ++ @callsite ++ "\n"
+    ++ "  Matrix A " ++ [a] ++ " is " ++ RowDistribution : view_a ++ " by " ++ ColDistribution : view_a ++ "\n"
+    ++ "  Matrix B " ++ [b] ++ " is " ++ RowDistribution : view_b ++ " by " ++ ColDistribution : view_b ++ "\n"
+    ++ "  Matrix C " ++ [c] ++ " is " ++ RowDistribution : view_c ++ " by " ++ ColDistribution : view_c ++ "\n";
+
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+
+  // -- Try to determine case:
+
+  // -- A or B is a local chunk
+
+  when (RowDistribution : view_c is-exactly Distributed &&
+	ColDistribution : view_c is-exactly Distributed &&
+	(RowDistribution : view_a is-exactly Local &&
+	 ColDistribution : view_a is-exactly Local) ||
+	(RowDistribution : view_b is-exactly Local &&
+	 ColDistribution : view_b is-exactly Local))
+    replace-with %{
+      {
+	int nb_alg;
+	PLA_Template templ;
+
+	PLA_Obj_template( ${a}, &templ );
+	PLA_Environ_nb_alg( PLA_OP_MAT_PAN, templ, &nb_alg );
+	PLA_Gemm_C(nb_alg, ${transa}, ${transb},
+		   ${alpha}, ${a}, ${b}, ${beta}, ${c});
+      }
+    }%
+
+  // -- A is the biggest matrix (probably)
+
+  when (RowDistribution : view_a is-exactly Distributed &&
+	ColDistribution : view_a is-exactly Distributed &&
+	(RowDistribution : view_b is-exactly Local ||
+	 ColDistribution : view_b is-exactly Local) &&
+	(RowDistribution : view_c is-exactly Local ||
+	 ColDistribution : view_c is-exactly Local))
+    replace-with %{
+      {
+	int nb_alg;
+	PLA_Template templ;
+
+	PLA_Obj_template( ${a}, &templ );
+	PLA_Environ_nb_alg( PLA_OP_MAT_PAN, templ, &nb_alg );
+	PLA_Gemm_A(nb_alg, ${transa}, ${transb},
+		   ${alpha}, ${a}, ${b}, ${beta}, ${c});
+      }
+    }%
+
+  // -- B is the biggest matrix (probably)
+
+  when (RowDistribution : view_b is-exactly Distributed &&
+	ColDistribution : view_b is-exactly Distributed &&
+	(RowDistribution : view_a is-exactly Local ||
+	 ColDistribution : view_a is-exactly Local) &&
+	(RowDistribution : view_c is-exactly Local ||
+	 ColDistribution : view_c is-exactly Local))
+    replace-with %{
+      {
+	int nb_alg;
+	PLA_Template templ;
+
+	PLA_Obj_template( ${a}, &templ );
+	PLA_Environ_nb_alg( PLA_OP_MAT_PAN, templ, &nb_alg );
+	PLA_Gemm_B(nb_alg, ${transa}, ${transb},
+		   ${alpha}, ${a}, ${b}, ${beta}, ${c});
+      }
+    }%
+
+  // -- C is the biggest matrix (probably)
+
+  when (RowDistribution : view_c is-exactly Distributed &&
+	ColDistribution : view_c is-exactly Distributed &&
+	(RowDistribution : view_a is-exactly Local ||
+	 ColDistribution : view_a is-exactly Local) &&
+	(RowDistribution : view_b is-exactly Local ||
+	 ColDistribution : view_b is-exactly Local))
+    replace-with %{
+      {
+	int nb_alg;
+	PLA_Template templ;
+
+	PLA_Obj_template( ${a}, &templ );
+	PLA_Environ_nb_alg( PLA_OP_MAT_PAN, templ, &nb_alg );
+	PLA_Gemm_C(nb_alg, ${transa}, ${transb},
+		   ${alpha}, ${a}, ${b}, ${beta}, ${c});
+      }
+    }%
+
+  // -- Inline special cases
+    /*
+  when (RowDistribution : view_a is-exactly Local ||
+	ColDistribution : view_a is-exactly Local ||
+	RowDistribution : view_b is-exactly Local ||
+	ColDistribution : view_b is-exactly Local)
+    inline;
+    */
+  // -- Matrix add
+
+}
+
+procedure PLA_Local_gemm(transa, transb, alpha, a, b, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Symm(side, uplo, alpha, a, b, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_symm(side, uplo, alpha, a, b, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Syrk(side, uplo, alpha, a, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_syrk(side, uplo, alpha, a, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Syr2k(uplo, trans, alpha, a, b, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_syr2k(uplo, trans, alpha, a, b, beta, c)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! (ObjType : view_alpha is-exactly Mscalar &&
+		 ObjType : view_beta  is-exactly Mscalar))
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " and beta argument " ++ [ beta ] ++ " must be 1x1 multi-scalars.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty ||
+	RowDistribution : view_c is-exactly Empty ||
+	ColDistribution : view_c is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Trmm(side, uplo, transa, diag, alpha, a, b)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+    report if ( ! ObjType : view_alpha is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_trmm(side, uplo, transa, diag, alpha, a, b)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template
+		 }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! ObjType : view_alpha is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+
+procedure PLA_Trsm(side, uplo, transa, diag, alpha, a, b)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template
+		 }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! ObjType : view_alpha is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  report "PLA_Trsm at " ++ @callsite ++ ":\n" ++
+    "    Object " ++ [ a ] ++ " is " ++
+    RowDistribution : view_a ++ " by " ++
+    ColDistribution : view_a ++ "\n" ++
+    "    Object " ++ [ b ] ++ " is " ++
+    RowDistribution : view_b ++ " by " ++
+    ColDistribution : view_b ++ "\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+
+  // -- Special: solving a row panel or column panel against a local chunk
+    /*
+  when (RowDistribution : view_a is-exactly Local &&
+	ColDistribution : view_a is-exactly Local &&
+	ColDistribution : view_b is-exactly Local &&
+	(side == PLA_SIDE_RIGHT) &&
+	(uplo == PLA_LOWER_TRIANGULAR) &&
+	(transa == PLA_TRANS))
+    replace-with %{
+      {
+	PLA_Obj a_dup = 0;
+	PLA_Mscalar_create_conf_to(${a}, PLA_ALL_ROWS, PLA_INHERIT, & a_dup );
+	PLA_Obj_objtype_cast(${a}, PLA_MSCALAR);
+	PLA_Copy(${a}, a_dup );
+	PLA_Local_trsm(PLA_SIDE_RIGHT, PLA_LOWER_TRIANGULAR,
+		       PLA_TRANS, ${diag},
+		       ${alpha}, a_dup, ${b});
+      }
+    }%
+
+  when (RowDistribution : view_a is-exactly Local &&
+	ColDistribution : view_a is-exactly Local &&
+        RowDistribution : view_b is-exactly Local &&
+	(transa == PLA_NO_TRANSPOSE))
+    replace-with %{
+      {
+	PLA_Obj a_dup = 0;
+	PLA_Mscalar_create_conf_to (${a}, PLA_ALL_ROWS, PLA_INHERIT, & a_dup );
+	PLA_Obj_objtype_cast(${a}, PLA_MSCALAR);
+	PLA_Copy(${a}, a_dup );
+	PLA_Local_trsm(PLA_SIDE_LEFT, PLA_LOWER_TRIANGULAR, 
+		       PLA_NO_TRANSPOSE, ${diag},
+		       ${alpha}, a_dup, ${b});
+      }
+    }%
+    */
+  // -- Specialization
+
+  when (RowDistribution : view_a is-atleast Local ||
+	ColDistribution : view_a is-atleast Local ||
+	RowDistribution : view_b is-atleast Local ||
+	ColDistribution : view_b is-atleast Local)
+    inline;
+
+}
+
+
+procedure PLA_Local_trsm(side, uplo, transa, diag, alpha, a, b)
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template
+		 }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Make sure alpha and beta are multi-scalars
+
+  report if ( ! ObjType : view_alpha is-exactly Mscalar)
+    "Error  at " ++ @callsite ++ ": alpha argument " ++ [ alpha ] ++
+      " must be a 1x1 multi-scalar.\n";
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+procedure PLA_Local_add(a, b)
+{
+  on_entry {
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template
+		 }
+  }
+
+  access { view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b }
+
+  modify { data_b }
+
+  analyze ViewUsed {
+    view_a <- Used
+    view_b <- Used
+  }
+
+  // -- Actions
+
+  when (RowDistribution : view_a is-exactly Empty ||
+	ColDistribution : view_a is-exactly Empty ||
+	RowDistribution : view_b is-exactly Empty ||
+	ColDistribution : view_b is-exactly Empty)
+    replace-with %{ ; }%
+}
+
+
+// ----------------------------------------------------------------------
+//  Internal functions
+// ----------------------------------------------------------------------
+
+procedure PLA_Gemm_A(nb_alg, transa, transb, 
+		     alpha, a, b,
+		     beta,  c )
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  when (1==1) inline;
+}
+
+procedure PLA_Gemm_B(nb_alg, transa, transb, 
+		     alpha, a, b,
+		     beta,  c )
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  when (1==1) inline;
+}
+
+procedure PLA_Gemm_C(nb_alg, transa, transb, 
+		     alpha, a, b,
+		     beta,  c )
+{
+  on_entry {
+
+    alpha --> view_alpha { length, width,
+			   data --> data_alpha
+                           template --> the_template }
+
+    a --> view_a { length, width,
+		   data --> data_a
+                   template --> the_template }
+
+    b --> view_b { length, width,
+		   data --> data_b
+                   template --> the_template }
+
+    beta --> view_beta { length, width,
+		         data --> data_beta
+                         template --> the_template }
+
+    c --> view_c { length, width,
+		   data --> data_c
+                   template --> the_template }
+  }
+
+  access { view_alpha.length, view_alpha.width, data_alpha,
+	   view_a.length, view_a.width, data_a,
+	   view_b.length, view_b.width, data_b,
+	   view_beta.length, view_beta.width, data_beta,
+	   view_c.length, view_c.width, data_c }
+
+  modify { data_c }
+
+  analyze ViewUsed {
+    view_alpha <- Used
+    view_a <- Used
+    view_b <- Used
+    view_beta <- Used
+    view_c <- Used
+  }
+
+  when (1==1) inline;
+}
+
+procedure PLA_Gemm_enter(transa, transb, 
+			 alpha, A, B, 
+			 beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Gemm_exit(transa, transb, 
+			alpha, A, B, 
+			beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Gemm_matpan(nb_alg, transa, transb, 
+			  alpha, A, B,
+			  beta,  C )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Gemm_panmat(nb_alg, transa, transb, 
+			  alpha, A, B,
+			  beta,  C )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Gemm_panpan(nb_alg, transa, transb, 
+			  alpha, A, B,
+			  beta,  C )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Gemm_x(version, transa, transb, 
+		     alpha, A, B, 
+		     beta,  C )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Gemm_x_enter(version, transa, transb, 
+			   alpha, A, B, 
+			   beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Gemm_x_exit(version, transa, transb, 
+			  alpha, A, B, 
+			  beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+
+procedure PLA_Herk_perform_local_part(uplo, 
+				      alpha, Xdpmv, 
+				      Xdpmv_conj_trans,
+				      beta,  A )
+{
+  modify { SideEffect }
+}
+
+procedure PLA_Herk_perform_local_part_by_panels(uplo, 
+						alpha, Xdpmv, 
+						Xdpmv_conj_trans,
+						beta,  A )
+{
+  modify { SideEffect }
+}
+
+procedure PLA_Symm_enter(side, uplo,
+			 alpha, A, B, 
+			 beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Symm_exit(side, uplo,
+			alpha, A, B, 
+			beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Syrk_enter (uplo, transa, alpha, A,
+			  beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Syrk_exit (uplo, transa, alpha, A,
+			 beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Syrk_panpan(nb_alg, uplo, transa,
+			  alpha, A, 
+			  beta,  C )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Syrk_perform_local_part(uplo, 
+				      alpha, Xdpmv, 
+				      Xdpmv_trans,
+				      beta,  A )
+{
+  modify { SideEffect }
+}
+
+procedure PLA_Syrk_perform_local_part_by_panels(uplo, 
+						alpha, Xdpmv, 
+						Xdpmv_trans,
+						beta,  A )
+{
+  modify { SideEffect }
+}
+
+procedure PLA_Trmm_enter(side, uplo, transa, transb, 
+			 alpha, A, B, 
+			 beta,  C )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Trmm_exit(side, uplo, transa, diag,
+			alpha, A, B )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Trmm_left_lower(transa, diag,
+			      alpha, A, B )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Trmm_left_upper(transa, diag,
+			      alpha, A, B )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Trmm_right_lower(transa, diag,
+			       alpha, A, B )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Trmm_right_upper(transa, diag,
+			       alpha, A, B )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Trsm_enter(side, uplo, transa, diag,
+			 alpha, A, B )
+{
+  when (1==1) replace-with %{ ; }%
+}
+ 
+procedure PLA_Trsm_exit(side, uplo, transa, diag,
+			alpha, A, B )
+{
+  when (1==1) replace-with %{ ; }%
+}
+
+procedure PLA_Trsm_left_lower(transa, diag,
+			      alpha, A, B )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Trsm_left_upper(transa, diag,
+			      alpha, A, B )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+procedure PLA_Trsm_right_lower(transa, diag,
+			       alpha, A, B )
+{
+  when (1==1) inline;
+  modify { SideEffect }
+}
+
+// ----------------------------------------------------------------------
+//  Copy routines
+// ----------------------------------------------------------------------
+
+#define COPY_BEHAVIOR(source, target) \
+  on_entry { source --> source_view { length, width, \
+                                      data --> source_data, \
+			              template --> the_template } \
+	     target --> target_view { data --> target_data, \
+			              template --> the_template } } \
+  access { source_data, source_view.length, source_view.width, the_template } \
+  modify { target_data } \
+  analyze ViewUsed { source_view <- Used \
+                     target_view <- Used }
+
+procedure PLA_Copy_from_matrix_to_msc(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_matrix_to_matrix(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_matrix_to_mv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_matrix_to_pmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_matrix_to_dpmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_msc_to_dpmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_msc_to_matrix(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_msc_to_msc(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_msc_to_mv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_msc_to_pmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_mv_to_dpmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_mv_to_matrix(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_mv_to_msc(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_mv_to_mv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_mv_to_pmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_pmv_to_dpmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_pmv_to_matrix(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_pmv_to_msc(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_pmv_to_mv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_pmv_to_pmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_dpmv_to_msc(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_dpmv_to_matrix(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_dpmv_to_mv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_dpmv_to_pmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+
+procedure PLA_Copy_from_dpmv_to_dpmv(source, target )
+{
+  COPY_BEHAVIOR(source, target)
+}
+

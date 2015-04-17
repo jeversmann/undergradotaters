@@ -1,0 +1,778 @@
+// ----------------------------------------------------------------------
+//
+//  C-Breeze
+//  C Compiler Framework
+// 
+//  Copyright (c) 2000 University of Texas at Austin
+// 
+//  Samuel Z. Guyer
+//  Daniel A. Jimenez
+//  Calvin Lin
+// 
+//  Permission is hereby granted, free of charge, to any person
+//  obtaining a copy of this software and associated documentation
+//  files (the "Software"), to deal in the Software without
+//  restriction, including without limitation the rights to use, copy,
+//  modify, merge, publish, distribute, sublicense, and/or sell copies
+//  of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//  
+//  The above copyright notice and this permission notice shall be
+//  included in all copies or substantial portions of the Software.
+//  
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+//  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+//  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+//  NONINFRINGEMENT.  IN NO EVENT SHALL THE UNIVERSITY OF TEXAS AT
+//  AUSTIN BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+//  OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE SOFTWARE.
+//
+//  We acknowledge the C-to-C Translator from MIT Laboratory for
+//  Computer Science for inspiring parts of the C-Breeze design.
+//
+// ----------------------------------------------------------------------
+//
+// dismantle-loop.cc
+//
+// Dismantles loops, breaking them down into if's and goto's.
+// Handles break's and continue's inside loops.
+// Also dismantles return stmts; probably should call this
+// "dismantle-control.cc" or something.
+//
+
+#include <stdio.h>
+#include "c_breeze.h"
+#include "ref_clone_changer.h"
+#include "semcheck.h"
+
+#include "dismantle.h"
+//
+// change
+// 	while (cond) body;
+// into
+//	T temp;
+//	L1: temp = !cond
+//	if ( temp ) goto L2;
+//	body;
+//	goto L1;
+//	L2: ;
+// if (dismantle_flags & LOOP_INVERSION)
+// we do two tests of the condition; first to see if the loop should ever
+// be executed, second to continue the loop.  the motivation here is to have 
+// the loop body itself be as small as possible in terms of number of basic 
+// blocks.  it could have as few as one basic block.  we expect that
+// many of the initial tests will be elided during constant propagation,
+// (e.g. for (i=0; i<100; i++) { body; }; we know that i < 100 during the
+// first iteration) followed by dead code elimination.  this could be bad 
+// when the condition is a complicated expression, since code size will be 
+// increased.
+// 
+// change
+// 	while (cond) body;
+// into
+//	T temp;
+//	temp = ! cond;
+// 	if (temp) goto L2;
+// 	L1: ;
+//	body;
+//	T = cond;
+//	if (T) goto L1;
+// 	L2: ;
+// if the condition is too complicated, then we do this instead:
+//	T temp;
+//	goto test;
+//	L1: ;
+//	body;
+//	test: ;
+//	T = cond;
+//	if (T) goto L1;
+//	L2: ;
+// examples of things that are too complicated:
+// anything with a procedure call
+// anything with its own control flow issues (e.g. &&, ||, ?:)
+// anything with more than 4 binary or unary operators
+//
+
+// Walker to tell whether an expression is too complicated
+// to be tested twice as a loop condition
+
+class ComplicatedWalker : public Walker {
+private:
+	int num_ops;
+	bool has_pc;
+	bool has_control_flow;
+
+public:
+	ComplicatedWalker (void) : 
+		Walker (Preorder, Subtree),
+		has_pc (false),
+		has_control_flow (false),
+		num_ops (0) { }
+
+	bool is_complicated (void) {
+		//return true;//### delete me to do the 'complicated' heuristic
+		return has_pc || has_control_flow || (num_ops > 4);
+	}
+
+	void at_ternary (ternaryNode *, Order) {
+		has_control_flow = true;
+		num_ops++;
+	}
+
+	void at_binary (binaryNode *b, Order) {
+		num_ops++;
+		switch (b->op()->id()) {
+		case Operator::ANDAND:
+		case Operator::OROR:
+			has_control_flow = true;
+			break;
+		default: ;
+		}
+	}
+
+	void at_unary (unaryNode *, Order) { num_ops++; }
+
+	void at_cast (castNode *, Order) { num_ops++; }
+
+	void at_call (callNode *, Order) { has_pc = true; }
+
+	void at_comma (commaNode *, Order) { num_ops++; }
+
+};
+	
+Node * LoopDismantleChanger::dismantle_while_for_loop_with_inversion
+	(whileNode *p, labelNode *On_continue) {
+
+	// see whether the loop condition is complicated
+
+	ComplicatedWalker cw;
+	p->cond()->walk (cw);
+
+	// make sure the type of the condition is set
+
+	semcheck_expr_visitor::check(p->cond());
+
+	// this will be the new block of statements that will
+	// replace the loop
+
+	blockNode *newblock = new blockNode (NULL, NULL, p->coord());
+
+	// l1 is the identifier for the label L1 (see comments above)
+
+	idNode *l1 = new_id(prefix);
+
+	// l2 is the id for L2
+
+	idNode *l2 = new_id (prefix);
+
+	// first_test is the id for the label of the first test
+
+	idNode *first_test;
+	labelNode *First_test;
+	if (!cw.is_complicated()) {
+		 first_test = new_id (prefix);
+		 first_test->coord(p->coord());
+		 First_test = new labelNode((idNode *) ref_clone_changer::clone(first_test, false), clone_empty_stmt());
+	}
+
+	// test is the id for the test label
+
+	idNode *test;
+	labelNode *Test;
+	test = new_id (prefix);
+	test->coord(p->coord());
+	Test = new labelNode ((idNode *) ref_clone_changer::clone(test, false), clone_empty_stmt());
+
+	// change all break's in the loop into goto's to L2,
+	// and all continue's in the loop into goto's to L1
+	// (or the supplied parameter for 'for' loops)
+ 	
+ 	// make the label L2
+ 
+	l2->coord(p->coord());
+ 	labelNode *L2 = new labelNode (l2, clone_empty_stmt());
+
+	if (cw.is_complicated()) {
+		p->body((blockNode *) fix_break_continue 
+		(p->body(), L2, On_continue ? On_continue : Test, false));
+	} else {
+		p->body((blockNode *) fix_break_continue 
+		(p->body(), L2, On_continue ? On_continue : First_test, false));
+	}
+
+	exprNode *notcond = Not (p->cond());
+	semcheck_expr_visitor::check(notcond);
+	notcond->type ((typeNode *) ref_clone_changer::clone(notcond->type(), false));
+
+	// first_goto is a goto stmt jumping out of the loop when it's done
+
+	gotoNode *first_goto;
+	stmtNode *first_stmt;
+
+	// if the conditional expression is too complicated,
+	// we'll only emit it once, so jump into the test at
+	// the end of the loop
+
+	if (cw.is_complicated()) {
+	  first_goto = new gotoNode(Test, p->coord());
+	  first_stmt = first_goto;
+	} else {
+	  first_goto = new gotoNode(L2, p->coord());
+
+		// newif basically says "if (!cond) goto L2;"
+
+		ifNode *newif = new ifNode (notcond, first_goto, 0, p->coord());
+
+		// annotation telling where this if came from
+
+		newif->annotations().push_back 
+			(new fromAnnote (On_continue ? FROM_FOR_TEST1
+						     : FROM_WHILE_TEST1));
+		first_stmt = newif;
+	}
+
+	l1->coord(p->coord());
+	labelNode *L1 = new labelNode (l1, clone_empty_stmt());
+
+	// second_goto is the goto that continues the loop, testing
+	// first, then going to L1
+
+	exprNode *newcond = (exprNode *) ref_clone_changer::clone(p->cond(), false);
+	gotoNode *second_goto = new gotoNode (L1, p->coord());
+	ifNode *second_test = new ifNode (newcond, second_goto, 0, p->coord());
+
+	// annotation telling where this if came from 
+
+	second_test->annotations().push_back 
+	  (new fromAnnote (On_continue ? FROM_FOR_TEST1
+			               : FROM_WHILE_TEST1));
+
+	// insert all the statements in their proper order
+
+	if (!cw.is_complicated())
+		newblock->stmts().push_back (First_test);
+	newblock->stmts().push_back (first_stmt);// if ( ! cond ) goto L2;
+						// OR goto test;
+	newblock->stmts().push_back (L1);	// L1:;
+	newblock->stmts().push_back (p->body());// body;
+	newblock->stmts().push_back (Test); // test: ;
+	newblock->stmts().push_back (second_test);// if (cond) goto L1;
+	newblock->stmts().push_back (L2);	// L2: ;
+
+	// the block is finished
+
+	return newblock;
+}
+
+// deprecated; probably will be removed pretty soon
+
+Node * LoopDismantleChanger::dismantle_while_for_loop 
+	(whileNode *p, labelNode *On_continue) {
+	if (dismantle_flags & LOOP_INVERSION)
+	return dismantle_while_for_loop_with_inversion (p, On_continue);
+
+	// make sure the type of the condition is set
+
+	semcheck_expr_visitor::check(p->cond());
+
+	// this will be the new block of statements that will
+	// replace the loop
+
+	blockNode *newblock = new blockNode (NULL, NULL, p->coord());
+
+	// l1 is the identifier for the label L1 (see comments above)
+
+	idNode *l1 = new_id(prefix);
+
+	// l2 is the id for L2
+
+	idNode *l2 = new_id (prefix);
+
+	// change all break's in the loop into goto's to L2,
+	// and all continue's in the loop into goto's to L1
+
+	// make the label L2
+
+	l1->coord(p->coord());
+ 	labelNode *L1 = new labelNode (l1, clone_empty_stmt());
+
+	l2->coord(p->coord());
+	labelNode *L2 = new labelNode (l2, clone_empty_stmt());
+
+	p->body((blockNode *) fix_break_continue 
+		(p->body(), L2, On_continue ? On_continue : L1, false));
+
+	exprNode *notcond = Not (p->cond());
+	semcheck_expr_visitor::check(notcond);
+	notcond->type((typeNode *) ref_clone_changer::clone(notcond->type(), false));
+
+	// first_goto is a goto stmt jumping out of the loop when it's done
+
+	gotoNode * first_goto = new gotoNode(L2, p->coord());
+
+	// newif basically says "if (!cond) goto L2;"
+
+	ifNode *newif = new ifNode (notcond, first_goto, 0, p->coord());
+
+	// second_goto is the goto that continues the loop, going back
+	// up to L1
+
+	gotoNode * second_goto = new gotoNode (L1, p->coord());
+
+	// insert all the statements in their proper order
+
+	newblock->stmts().push_back (L1);	// L1:;
+	newblock->stmts().push_back (newif);	// if ( ! cond ) goto L2;
+	newblock->stmts().push_back (p->body());// body;
+	newblock->stmts().push_back (second_goto);// goto L1;
+	newblock->stmts().push_back (L2);	// L2: ;
+
+	// the block is finished
+
+	return newblock;
+}
+
+Node * LoopDismantleChanger::dismantle_while_loop (whileNode *p) {
+	return dismantle_while_for_loop (p, NULL);
+}
+
+// change
+// 	do {
+//		body;
+//	} while (cond);
+// into
+//	L1: body;
+//      L3: ;
+//	if (!cond) goto L2;
+//	goto L1;
+//	L2: ;
+
+Node * LoopDismantleChanger::dismantle_do_loop (doNode *p) {
+	// newblock will replace the loop
+
+	blockNode *newblock = new blockNode (NULL, NULL, p->coord());
+
+	// make some ids for the labels that are goto targets
+
+	idNode *l1 = new_id(prefix);
+	idNode *l2 = new_id(prefix);
+
+	// l3 is the target of a continue
+
+	idNode *l3 = new_id(prefix);
+
+	// make the labels that are the goto targets
+
+	l1->coord(p->coord());
+	labelNode *L1 = new labelNode (l1, clone_empty_stmt());
+
+	l2->coord(p->coord());
+	labelNode *L2 = new labelNode (l2, clone_empty_stmt());
+
+	l3->coord(p->coord());
+	labelNode *L3 = new labelNode (l3, clone_empty_stmt());
+
+	// p->body((blockNode *) fix_break_continue (p->body(), l2, l3, false));
+ 	p->body((blockNode *) fix_break_continue(p->body(), L2, L3, false));
+
+	// first_goto is the goto to leave the loop
+
+	// make all the break's and continue's into goto's
+
+	gotoNode * first_goto = new gotoNode (L2, p->coord());
+
+	// basically, "if (! cond) goto L2;"
+
+	ifNode *newif = new ifNode (new unaryNode ('!', p->cond()), first_goto, 0, p->coord());
+
+	// annotation telling where this if came from
+
+	newif->annotations().push_back (new fromAnnote (FROM_DO));
+
+	// this goto continues the loop
+
+	gotoNode *newgoto = new gotoNode (L1, p->coord());
+
+	// insert them in order
+
+	newblock->stmts().push_back (L1);
+	newblock->stmts().push_back (p->body());
+	newblock->stmts().push_back (L3);
+	newblock->stmts().push_back (newif);
+	newblock->stmts().push_back (newgoto);
+	newblock->stmts().push_back (L2);
+
+	// done
+
+	return newblock;
+}
+
+// we cheat; we make the For into a While, then dismantle the While
+// the transformation is a little tricky because of break stmts:
+// 	for (a; b; c) { stmt; break; stmt; }
+// becomes
+//	a;
+//	while (b) {
+//		stmt;
+//		goto L;
+//		stmt;
+//		L: c;
+//	}
+
+Node * LoopDismantleChanger::dismantle_for_loop (forNode *p) {
+
+	// Transform the For loop into a While loop,
+	// then dismantle the while loop
+
+	// Everything goes in a new block:
+	//	{ }
+
+	blockNode *newblock = new blockNode (NULL, NULL, p->coord());
+
+	// First, insert the initialization of the For:
+	//	{ init; }
+
+	if (p->init()) {
+	  newblock->stmts().push_back (new exprstmtNode((exprNode *) ref_clone_changer::clone(p->init(), false)));
+	}
+
+	// Now build the body of a new While loop...
+
+	blockNode *whilebody = new blockNode (NULL, NULL);
+
+	// ...from the body of the For:
+	//	{ stmt; }
+
+	whilebody->stmts().push_back (p->body());
+
+	// ...and the next from the For:
+	//	{ stmt; L: next; }
+
+	idNode *l = new_id ("FC");
+
+	// make a label for next
+
+	stmtNode *next;
+
+	if (p->next()) 
+		next = new exprstmtNode (p->next());
+	else
+		next = clone_empty_stmt();
+
+
+	l->coord(p->coord());
+	labelNode *L = new labelNode 
+ 	  ((idNode *) ref_clone_changer::clone(l, false), clone_empty_stmt());
+	whilebody->stmts().push_back (L);
+	whilebody->stmts().push_back (next);
+
+	// Now we wrap this body up in a While using the For condition:
+	//	while (expr) { stmt; next; }
+
+	exprNode *cond2;
+
+	if (p->cond())
+		cond2 = (exprNode *) ref_clone_changer::clone(p->cond(), false);
+	else
+		cond2 = new constNode (constant(1), "", p->coord());
+	whileNode *newwhile = new whileNode (cond2, whilebody, p->coord());
+
+	// Dismantle the while loop, inserting the
+	// result after the init in the block we made before.
+
+	newblock->stmts().push_back (
+		(stmtNode *) dismantle_while_for_loop (newwhile, L));
+	return newblock;
+}
+
+// switch on the typ() of the loop: For, While or Do
+
+Node * LoopDismantleChanger::dismantle_loop (loopNode *p) {
+	if (p->typ() == While) {
+		prefix = "W";
+		return dismantle_while_loop ((whileNode *) p);
+	} else if (p->typ() == For) {
+		prefix = "F";
+		return dismantle_for_loop ((forNode *) p);
+	} else if (p->typ() == Do) {
+		prefix = "D";
+		return dismantle_do_loop ((doNode *) p);
+	}
+	else return p;
+}
+
+Node * LoopDismantleChanger::at_loop (loopNode *p, Order) {
+	return dismantle_loop (p);
+}
+Node * LoopDismantleChanger::handle_return(blockNode * bl){
+	stmt_list_p i = bl->stmts().end();
+	i --;
+	if ( i == NULL)
+		return NULL;
+	if ((*i) -> typ() == Block ){
+		return handle_return((blockNode *)*i);
+	}
+	jumpNode *jmp = ((jumpNode *) *i);
+
+	if (jmp == NULL)
+		return NULL;
+	if (jmp -> typ() != Return)
+		return bl;
+
+	returnNode * ret = (returnNode*) *i;
+	exprNode * ex = ret -> expr ();
+
+	if (ex == NULL)
+		return NULL;
+
+	if ( ex -> typ() != Id)
+		return bl;
+
+	idNode * id = (idNode *) ex;
+	if ( id->decl()->is_return_value() )
+		return NULL;
+
+	return bl;
+}
+
+Node * LoopDismantleChanger::at_proc (procNode *p, Order) {
+        typeNode *return_type = p->decl()->type();
+        assert (return_type->typ() == Func);
+        blockNode * bl = p -> body();
+        Node * flag  = NULL;
+        stmt_list_p i = bl->stmts().end();
+        i --;
+        
+
+        if (*i != NULL){
+                
+                flag = handle_return(bl);
+                if (flag == NULL)
+                        return p;
+        }
+                                
+      
+        // NEED to check if a return value has already been inserted
+        // get the last statement of the block;
+	return_type = ((funcNode *) return_type)->type();
+	// make a label to jump to on return
+	idNode * return_label = new_id ("JR");
+	// make a variable name for the variable to return
+	if (return_type->is_void()) 
+		return_val = NULL;
+	else {
+		return_val = new_id ("RV");
+		return_val->coord(p->coord());
+		declNode *return_decl = new declNode 
+			((idNode *) ref_clone_changer::clone(return_val, false),
+			declNode::NONE, (typeNode *) ref_clone_changer::clone(return_type, false),
+			NULL, NULL);
+		return_decl->is_return_value(true);
+		return_decl->decl_location(declNode::BLOCK);
+		return_val->decl (return_decl);
+		p->body()->decls().push_back (return_decl);
+	}
+	return_label->coord(p->coord());
+	cout << "Make return label for " << p->decl()->name() << endl;
+	labelNode *rl = new labelNode (return_label, clone_empty_stmt());
+	Return_label = rl;
+	p->body()->stmts().push_back (rl);
+	return_node = new returnNode (return_val, p, p->coord());
+	p->body()->stmts().push_back (return_node);
+	return p;
+}
+
+Node * LoopDismantleChanger::at_return (returnNode *p, Order) {
+	// don't change the sink return node
+        exprNode * ex = p -> expr();
+        if (ex && 
+	    ex -> typ() == Id){
+                idNode * id = (idNode *)ex ;
+				if ( id->decl()->is_return_value() )
+					return p;
+        }
+	if (p == return_node) return p;
+
+	// -- Simple return: just goto the exit basic block
+
+        if (ex == NULL) {
+	  cout << "Need return label = 0x" << Return_label << endl;
+	  return new gotoNode(Return_label, p->coord());
+	}
+
+/*
+	if (p->expr() && p->expr()->typ() == Id) {
+		idNode *i = (idNode *) p->expr();
+		// if this is the single return at the end of the
+		// function, identified by the __RV at the beginning
+		// of the identifier, then just return it.
+		// otherwise, we have to change it into a goto.
+
+		if (i->name()[0] == '_') 
+		if (i->name()[1] == '_') 
+		if (i->name()[2] == 'R') 
+		if (i->name()[3] == 'V') return p;
+	}
+*/
+
+	blockNode *newblock = new blockNode (NULL, NULL, p->coord());
+
+	// temp = return value expression
+
+	if (p->expr()) {
+		binaryNode *assg = new binaryNode 
+			('=', 
+			 (idNode *)(return_val ? ref_clone_changer::clone(return_val, false) : NULL),
+			p->expr(), p->coord());
+		newblock->stmts().push_back (new exprstmtNode (assg));
+	}
+	gotoNode *newgoto = new gotoNode(Return_label, p->coord());
+	newblock->stmts().push_back (newgoto);
+	return newblock;
+}
+
+// look for instances of break and continue in any sub-statement
+// of this blockNode, replacing them with goto's to the appropriate
+// labels.  We examine all statements except loops, since any loops
+// will have different break and continue targets.
+
+stmtNode * LoopDismantleChanger::fix_break_continue (stmtNode *s, 
+	labelNode *Goto_on_break, labelNode *Goto_on_continue, bool r) {
+	gotoNode *b = NULL;
+
+	// sometimes a statment is NULL
+
+	if (!s) return NULL;
+
+	// break's and continue's may appear in certain kinds
+	// of stmts 
+
+	switch (s->typ()) {
+	case Break: {
+		if (!Goto_on_break) break;
+		b = new gotoNode (Goto_on_break, s->coord());
+		break;
+	}
+	case Continue: {
+		if (!Goto_on_continue) break;
+		b = new gotoNode (Goto_on_continue, s->coord());
+		break;
+	}
+	case Block: {
+		blockNode *ss = (blockNode *) s;
+		for (stmt_list_p p=ss->stmts().begin(); p!=ss->stmts().end();
+			p++) {
+			*p = fix_break_continue 
+				(*p, Goto_on_break, Goto_on_continue, true);
+		}
+		break;
+	}
+	case Label:
+	case Case: {
+		((targetNode *) s)->stmt 
+			((blockNode *) fix_break_continue 
+				(((targetNode *) s)->stmt(), 
+			Goto_on_break, Goto_on_continue, true));
+		break;
+	}
+	// a switch may contain a continue.
+	// if it contains a break, though, that's for the
+	// switch to do something with, so we pass it NULL for
+	// what to do, so we won't do anything.
+	// note that, if we are called from within a switch stmt,
+	// this still works, since there could be an outer continue
+	// and we want the inner switch to know how to break out of
+	// itself, e.g. for (;;) switch (a) { ... switch (b) { ... break; } }
+
+	case Switch: {
+		((selectionNode *) s)->stmt 
+			((blockNode *) fix_break_continue 
+				(((selectionNode *) s)->stmt(), 
+			NULL, Goto_on_continue, true));
+		break;
+	}
+	case If: {
+
+	  // Fix the true branch
+	  ((ifNode *) s)->true_br
+		((blockNode *) 
+	     fix_break_continue (((ifNode *) s)->true_br(), 
+				 Goto_on_break, Goto_on_continue, true));
+
+	  // Fix the false branch, if there is one
+	  if (((ifNode *) s)->false_br()) {
+	    ((ifNode *) s)->false_br
+	      ((blockNode *) fix_break_continue 
+	       (((ifNode *) s)->false_br(), 
+		Goto_on_break, Goto_on_continue, true));
+	  }
+	  break;
+	}
+	default: ;
+	}
+	if (b) {
+		// if we are the first invokation (i.e., not recursive)
+		// then we must(?) wrap a new result in a blockNode
+		// hmm, may not be necessary, if we are only ever
+		// called on a blockNode*...(doesn't hurt though).
+		if (!r) {
+			blockNode *c = new blockNode (NULL, NULL, s->coord());
+			c->stmts().push_back (b);
+			return c;
+		} else
+			s = b;
+	}
+	return s;
+}
+
+// return an expression that will evaluate to the complement
+// of the parameter expression, but not necessarily 1;
+// only sufficient for control-flow conditionals.
+exprNode * LoopDismantleChanger::Not (exprNode *p) {
+
+  if (dismantle_flags & INVERT_CONDITIONALS) {
+    if (p->typ() == Unary) {
+		unaryNode *u = (unaryNode *) p;
+		if (u->op()->id() == '!')
+			return (exprNode *) ref_clone_changer::clone(u, false);
+		else {
+			exprNode *c = (exprNode *) ref_clone_changer::clone(p, false);
+			return new unaryNode ('!', c, p->coord());
+		}
+	} else if (p->typ() == Binary) {
+		binaryNode *b = (binaryNode *) p;
+		exprNode *r, *l;
+#define CLONE_LR() { 	r = (exprNode *) ref_clone_changer::clone(b->right(), false);\
+			l = (exprNode *) ref_clone_changer::clone(b->left(), false); }
+		switch (b->op()->id()) {
+		case '<':
+			CLONE_LR();
+			return new binaryNode (Operator::GE, l, r, p->coord());
+		case '>':
+			CLONE_LR();
+			return new binaryNode (Operator::LE, l, r, p->coord());
+		case Operator::LE:
+			CLONE_LR();
+			return new binaryNode ('>', l, r, p->coord());
+		case Operator::GE:
+			CLONE_LR();
+			return new binaryNode ('<', l, r, p->coord());
+		case Operator::EQ:
+			CLONE_LR();
+			return new binaryNode (Operator::NE, l, r, p->coord());
+		case Operator::NE:
+			CLONE_LR();
+			return new binaryNode (Operator::EQ, l, r, p->coord());
+		default: ;
+		}
+	}
+	exprNode *c = (exprNode *) ref_clone_changer::clone(p, false);
+	return new unaryNode ('!', c, p->coord());
+  }
+  else {
+	exprNode *c = (exprNode *) ref_clone_changer::clone(p, false);
+	return new unaryNode ('!', c, p->coord());
+  }
+}

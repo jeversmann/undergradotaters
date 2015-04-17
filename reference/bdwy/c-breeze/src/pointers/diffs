@@ -1,0 +1,865 @@
+881,883c908
+< 				  stmtLocation * callsite,
+< 				  bool is_recursive_call,
+< 				  bool multiple_target_call)
+---
+> 				  stmtLocation * callsite)
+885,971d909
+<   // -- Find out about existing calling contexts
+< 
+<   stmtLocation * first_callsite = 0;
+<   bool multiple_callsites = false;
+< 
+<   if (_callsites.size() > 1)
+<     multiple_callsites = true;
+<   else {
+<     if (_callsites.size() == 1) {
+< 
+<       // -- Get the one context seen so far
+< 
+<       stmtLocation * first_callsite = (* _callsites.begin()).first;
+<     }
+<   }
+< 
+<   // -- Decide if we want to make this call context-insensitive.
+<   // Three cases:
+< 
+<   //    1. The call is recursive: we must make the procedure
+<   //    context-sensitive (and there should be exactly one existing
+<   //    callsite).
+< 
+<   //    2. The callsite has multiple targets: make the procedure
+<   //    context-insensitive. However, if there are multiple callsites
+<   //    already, then we're in trouble.
+< 
+<   //    3. The analyzer is being run in CI mode and the given procedure
+<   //    doesn't prefer to be context sensitive (i.e., been marked CS by the
+<   //    adaptive algorithm). DON'T DO THIS: In addition, for this case we
+<   //    wait until the second calling context to do this. It turns out to
+<   //    make analysis many times slower.
+< 
+<   bool make_context_insensitive = false;
+< 
+<   if (is_recursive_call ||
+<       multiple_target_call ||
+<       (pointerOptions::Context_insensitive &&
+<        ! prefer_context_sensitive()))
+<     make_context_insensitive = true;
+< 
+<   // -- When context-insensitive
+< 
+<   if (make_context_insensitive &&
+<       ! is_context_insensitive())
+<     {
+< 
+<       if (multiple_callsites) {
+< 
+< 	// -- Multiple callsites: we are in trouble here...
+< 
+< 	cout << "ERROR: Need to make " << qualified_name() << " context insensitive at " 
+< 	     << * callsite << ", but there are already multiple calling contexts." << endl;
+<       
+<       }
+<       else {
+< 
+< 	if ( ! first_callsite) {
+< 
+< 	  // -- If there is no existing context, then set it up.
+<       
+< 	  callsite->setup_call(proc(), false);
+< 	  
+< 	  first_callsite = callsite;
+< 	}
+< 
+< 	if (pointerOptions::Verbose)
+< 	  cout << ">>> Make procedure " << qualified_name() << " context insensitive..." << endl << endl;
+< 
+< 	_context_insensitive = true;
+< 
+< 	// -- Set up the only context by removing the procLocation subtree
+< 	// that we built.
+< 
+< 	_only_context = first_callsite->remove_call();
+< 
+< 	// -- Create the dummy procLocation at the call site
+< 
+< 	// first_callsite->setup_call(proc(), true);
+<       }
+<     }
+< 
+<   // -- Context-sensitive procedure:
+< 
+<   if (! is_context_insensitive())
+<     callsite->setup_call(proc(), false);
+< 
+978c916
+<   // callsite->setup_call(proc(), is_context_insensitive());
+---
+>   callsite->setup_call(proc(), is_context_insensitive());
+1017c955
+<   sprintf(temp, "[%d,%d,%d,%6.2f/%6.2f]", _callsites.size(),
+---
+>   sprintf(temp, "[%d,%d,%d]", _callsites.size(),
+1019,1020c957
+< 	  _external_outputs.size(),
+< 	  self_timer(), total_timer());
+---
+> 	  _external_outputs.size());
+1145a1083,1114
+> void procedureInfo::make_context_insensitive()
+> {
+>   // -- Already context insensitive, nothing to do
+> 
+>   if (is_context_insensitive())
+>     return;
+> 
+>   // -- We can only make a procedure context insensitive when there is
+>   // exactly one call site. It becomes the only context.
+> 
+>   if (_callsites.size() == 1) {
+> 
+>     // -- Get the one context seen so far
+> 
+>     stmtLocation * first_callsite = (* _callsites.begin()).first;
+> 
+>     if (pointerOptions::Verbose)
+>       cout << ">>> Make procedure " << name() << " context insensitive..." << endl << endl;
+> 
+>     _context_insensitive = true;
+> 
+>     // -- Set up the only context by removing the procLocation subtree that
+>     // we built.
+> 
+>     _only_context = first_callsite->remove_call();
+> 
+>     // -- Create the dummy procLocation at the call site
+> 
+>     first_callsite->setup_call(proc(), true);
+>   }
+> }
+> 
+1262,1267d1230
+< 	if ( ! def ) {
+< 	  cout << "ERROR at " << * cur << endl;
+< 	  block_to_merge->print_def_use(cout);
+< 	  cout << endl;
+< 	}
+< 
+---
+>     // -- Inherit flow sensitivity
+921c932,955
+<   // ------- Special-case procedure calls ---------------------------
+---
+>   if (call_target.blocks.size() > 1) {
+>     if (pointerOptions::Verbose) {
+>       cout << "WARNING: Cannot handle indirect calls with multiple targets." << endl;
+> 
+>       for (memoryblock_set_p p = call_target.blocks.begin();
+> 	   p != call_target.blocks.end();
+> 	   ++p)
+> 	cout << "  CALLS: " << (*p)->name() << endl;
+>     }
+>   }
+>   else {
+> 
+>     // -- Find the target procedure
+> 
+>     memoryBlock * target_mb;
+> 
+>     if (call_target.blocks.size() == 0) {
+>       target_mb = 0;
+>       if (pointerOptions::Verbose)
+> 	cout << "ERROR: Call target corrupted: " << *callsite << endl;
+>     }
+>     else {
+>       
+>       // ------- Special-case procedure calls ---------------------------
+1027c1061
+<   // target_mb = * (call_target.blocks.begin());
+---
+>       target_mb = * (call_target.blocks.begin());
+1029,1030c1063,1064
+<   callee = linker.lookup_procedure(target_mb->decl());
+<   if (callee == 0) {
+---
+>       callee = linker.lookup_procedure(target_mb->decl());
+>       if (callee == 0) {
+
+1091c1128,1137
+<   // -- Check for multiple targets
+---
+>   if (recursive_call) {
+> 
+>     // -- All recursive procedures are context-insensitive
+> 
+>     Procedures.make_cycle_context_insensitive(info);
+> 
+>     // -- Set up the call site. We need to do this *after* setting the
+>     // whole cycle context-insensitive.
+>     
+>     info->setup_call_at(caller, callsite);
+1093,1095c1139,1145
+<   bool multiple_call_targets = false;
+<   if (call_target.blocks.size() > 1)
+<     multiple_call_targets = true;
+---
+>     // -- Set up the extern inputs
+>     /* WHY?
+>     memoryblock_set rec_changes;
+>     pass_external_inputs(info, callsite, external_uses, rec_changes);
+>     */
+>   }
+>   else {
+1097c1147
+<   // -- Set up the call, including managing context sensitivity
+---
+>     // -- Not recursive: just set up the call site normally
+1099c1149,1150
+<   info->setup_call_at(caller, callsite, recursive_call, multiple_call_targets);
+---
+>     info->setup_call_at(caller, callsite);
+>   }
+1159c1210
+<  
+---
+> 
+1162a1214,1229
+>   // -- Decide whether to make it context insensitive
+> 
+>   if (pointerOptions::Context_insensitive &&
+>       ! info->prefer_context_sensitive()) {
+>  
+>     // -- Set the flag
+>  
+>     info->make_context_insensitive();
+>  
+>     // -- Set up the extern inputs, but only for recursive calls.
+>     /*
+>     if (recursive_call)
+>       pass_external_inputs(info, callsite, external_uses, changed_inputs);
+>     */
+>   }
+> 
+1268a1336,1337
+> #ifdef DOMINATOR_TREE
+> 
+1273a1343,1344
+> #endif
+> 
+1276a1348,1376
+>     /*
+>     if (computePointers &&
+>  	( ! info->is_context_insensitive()))
+>       {
+>  	int progress_diff = (end_progress - start_progress);
+>  	int times_called = Procedures.times_called(info);
+>  	int def_diff = (end_def_count - start_def_count);
+>  	int num_ancestors = info->ancestors().size();
+>  
+>  	cout << "STATS: " << info->name() <<
+>  	  " -- progress = " << progress_diff <<
+>  	  " -- called = " << times_called <<
+>  	  " -- defs = " << def_diff << endl;
+>  
+>  	if (pointerOptions::Context_insensitive &&
+> 	    ! info->prefer_context_sensitive()) {
+>  
+>  	  // -- Set the flag
+>  
+>  	  info->make_context_insensitive();
+>  
+>  	  // -- Set up the extern inputs, but only for recursive calls.
+> 
+>  	  if (recursive_call)
+> 	    pass_external_inputs(info, callsite, external_uses, changed_inputs);
+>  	}
+>       }
+>     */
+> 
+1750a1851,1858
+>   // -- Get the external inputs
+> 
+>   const memoryblock_set & external_inputs = info->external_inputs();
+> 
+>   // -- Get the list of callsites
+> 
+>   const procedureInfo::callsite_map & callsites = info->callsites();
+> 
+1755c1863
+<   // -- Get the external inputs
+---
+>   // -- Attach the merge to basic block zero.
+1757c1865
+<   const memoryblock_set & external_inputs = info->external_inputs();
+---
+>   Location * input_location = info->procedure_location(current_callsite);
+1767,1788c1875
+<       pass_one_external_input(info, caller, current_callsite, block_to_pass, changed_inputs);
+<     }
+< }
+< 
+< /** @brief Pass one external input
+<  *
+<  * This method is used right before entering a procedure to make sure
+<  * that external inputs are fresh, and also during analysis when we
+<  * discover a new external input during the Pointers::nearest_def_at()
+<  * method. */
+< 
+< void Pointers::pass_one_external_input(procedureInfo * callee,
+< 				       procedureInfo * caller,
+< 				       stmtLocation * current_callsite,
+< 				       memoryBlock * block_to_pass,
+< 				       memoryblock_set & changed_inputs)
+< {
+<   // -- Attach the merge to basic block zero.
+< 
+<   Location * input_location = callee->procedure_location(current_callsite);
+< 
+<   // -- Skip write-protected objects
+---
+>       if (block_to_pass->write_protected()) {
+1790c1877,1878
+<   if (block_to_pass->write_protected()) {
+---
+> 	// -- Write protected inputs: nothing to do because they always
+> 	// return the only definition.
+1792,1799c1880,1884
+<     // -- Write protected inputs: nothing to do because they always
+<     // return the only definition.
+< 
+<     if (pointerOptions::Verbose)
+<       cout << endl << "Pass write-protected input " << block_to_pass->name() << endl;
+<   }
+<   else
+<     if ( ! block_to_pass->is_flow_sensitive()) {
+---
+> 	if (pointerOptions::Verbose)
+> 	  cout << endl << "Pass write-protected input " << block_to_pass->name() << endl;
+>       }
+>       else
+> 	if ( ! block_to_pass->is_flow_sensitive()) {
+1801c1886
+<       // -- No need to pass flow-insensitive objects
+---
+> 	  // -- No need to pass flow-insensitive objects
+1803,1806c1888,1891
+<       if (pointerOptions::Verbose)
+< 	cout << endl << "Skip flow-insensitive input " << block_to_pass->name() << endl;
+<     }
+<     else {
+---
+> 	  if (pointerOptions::Verbose)
+> 	    cout << endl << "Skip flow-insensitive input " << block_to_pass->name() << endl;
+> 	}
+> 	else {
+1808c1893
+<       // -- Only pass inputs that could be visible in the caller
+---
+> 	  // -- Only pass inputs that could be visible in the caller
+1810c1895
+<       if (Procedures.is_visible_to_caller(callee, block_to_pass)) {
+---
+> 	  if (Procedures.is_visible_to_caller(info, block_to_pass)) {
+1816c1901
+< 	    // Procedures.is_visible_to_caller(callee, block_to_pass)) {
+---
+> 	    // Procedures.is_visible_to_caller(info, block_to_pass)) {
+1818,1819c1903,1904
+< 	// -- Regular inputs: use additive assignment to meet together
+< 	// the reaching defs in the different contexts.
+---
+> 	    // -- Regular inputs: use additive assignment to meet together
+> 	    // the reaching defs in the different contexts.
+1821,1822c1906,1907
+< 	if (pointerOptions::Verbose)
+< 	  cout << endl << "Pass external input " << block_to_pass->name() << endl;
+---
+> 	    if (pointerOptions::Verbose)
+> 	      cout << endl << "Pass external input " << block_to_pass->name() << endl;
+1824,1826c1909,1911
+< 	// -- Set up the use in the calling context, and set it's
+< 	// reaching def properly. Attach the use to the procLocation
+< 	// that represents the callsite
+---
+> 	    // -- Set up the use in the calling context, and set it's
+> 	    // reaching def properly. Attach the use to the procLocation
+> 	    // that represents the callsite
+1828,1829c1913,1914
+< 	// procLocation * attach_to = current_callsite->calls();
+< 	Location * attach_to = current_callsite;
+---
+> 	    // procLocation * attach_to = current_callsite->calls();
+> 	    Location * attach_to = current_callsite;
+1831,1832c1916,1917
+< 	// -- Look up the use. By calling use_at() here, we set the
+< 	// current_use so that the assignment operator will find it.
+---
+> 	    // -- Look up the use. By calling use_at() here, we set the
+> 	    // current_use so that the assignment operator will find it.
+1834c1919
+< 	memoryUse * use = block_to_pass->use_at(attach_to);
+---
+> 	    memoryUse * use = block_to_pass->use_at(attach_to);
+1836c1921
+< 	// -- When computing pointers, actually find the reaching def
+---
+> 	    // -- When computing pointers, actually find the reaching def
+1838c1923
+< 	memoryDef * def = 0;
+---
+> 	    memoryDef * def = 0;
+1840,1843c1925,1928
+< 	if (computePointers) {
+< 	  def = nearest_def_at(caller, block_to_pass, current_callsite);
+< 	  use->reaching_def(def);
+< 	}
+---
+> 	    if (computePointers) {
+> 	      def = nearest_def_at(info, block_to_pass, current_callsite);
+> 	      use->reaching_def(def);
+> 	    }
+1845,1853c1930,1938
+< 	if (pointerOptions::Verbose) {
+< 	  def = use->reaching_def();
+< 	  cout << "  At callsite " << * current_callsite
+< 	       << " use at " << * attach_to << " reaching def is ";
+< 	  if (def)
+< 	    cout << * (def->where()) << endl;
+< 	  else
+< 	    cout << "(no reaching def)" << endl;
+< 	}
+---
+> 	    if (pointerOptions::Verbose) {
+> 	      def = use->reaching_def();
+> 	      cout << "  At callsite " << * current_callsite
+> 		   << " use at " << * attach_to << " reaching def is ";
+> 	      if (def)
+> 		cout << * (def->where()) << endl;
+> 	      else
+> 		cout << "(no reaching def)" << endl;
+> 	    }
+1855c1940
+< 	// if (use->reaching_def()) {
+---
+> 	    // if (use->reaching_def()) {
+1857,1860c1942,1943
+< 	// -- Use the assignment operator with the additive flag to merge
+< 	// this actual into the formal.
+< 	
+< 	self_assignment(attach_to, input_location, block_to_pass, changed_inputs);
+---
+> 	      // -- Use the assignment operator with the additive flag to merge
+> 	      // this actual into the formal.
+1862c1945
+< 	// -- Constant propagation
+---
+> 	      self_assignment(attach_to, input_location, block_to_pass, changed_inputs);
+1864c1947
+< 	_constants.at_self_assignment(attach_to, input_location, block_to_pass, changed_inputs);
+---
+> 	      // -- Constant propagation
+1866c1949,1951
+< 	// -- User-defined analysis
+---
+> 	      _constants.at_self_assignment(attach_to, input_location, block_to_pass, changed_inputs);
+> 
+> 	      // -- User-defined analysis
+1868,1871c1953,1957
+< 	if (Problem)
+< 	  Problem->at_self_assignment(attach_to, input_location, block_to_pass, changed_inputs);
+< 	// }
+<       }
+---
+> 	      if (Problem)
+> 		Problem->at_self_assignment(attach_to, input_location, block_to_pass, changed_inputs);
+> 	      // }
+> 	  }
+> 	}
+1884c1970
+< void Pointers::pass_external_outputs(procedureInfo * callee,
+---
+> void Pointers::pass_external_outputs(procedureInfo * info,
+1890c1976
+<   if ( ! callee->is_context_insensitive())
+---
+>   if ( ! info->is_context_insensitive())
+1895c1981
+<   if (callee->never_returns())
+---
+>   if (info->never_returns())
+1900c1986
+<   const memoryblock_set & external_outputs = callee->external_outputs();
+---
+>   const memoryblock_set & external_outputs = info->external_outputs();
+1929c2015
+< 	cout << "At " << callee->qualified_name() << " nochange-skip " << cur->name() << endl;
+---
+> 	cout << "At " << info->qualified_name() << " nochange-skip " << cur->name() << endl;
+1950c2036
+<       pass_one_external_output(callee, current_callsite,
+---
+>       pass_one_external_output(info, current_callsite,
+1955c2041
+< void Pointers::pass_one_external_output(procedureInfo * callee,
+---
+> void Pointers::pass_one_external_output(procedureInfo * info,
+1963c2049
+<   stmtLocation * last_stmt_of_proc = callee->get_context()->last();
+---
+>   stmtLocation * last_stmt_of_proc = info->get_context()->last();
+2001c2087
+<   const procedureInfo::callsite_map & callsites = callee->callsites();
+---
+>   const procedureInfo::callsite_map & callsites = info->callsites();
+2085c2171
+< void Pointers::record_external_inputs_and_outputs(procedureInfo * callee,
+---
+> void Pointers::record_external_inputs_and_outputs(procedureInfo * info,
+2094c2180
+<   procNode * procedure = callee->proc();
+---
+>   procNode * procedure = info->proc();
+2128c2214
+< 	    block->input_to().insert(callee);
+---
+> 	    block->input_to().insert(info);
+2157c2243
+< 	      if (callee->add_external_input(block))
+---
+> 	      if (info->add_external_input(block))
+2186c2272
+<     input_location = callee->procedure_location(current_callsite);
+---
+>     input_location = info->procedure_location(current_callsite);
+2201c2287
+< 	  // && Procedures.is_visible_to_caller(callee, block)) {
+---
+> 	  // && Procedures.is_visible_to_caller(info, block)) {
+2225c2311
+< 	    Multiplicity multiplicity = current_multiplicity(callee, last_stmt_of_proc, block, ignore);
+---
+> 	    Multiplicity multiplicity = current_multiplicity(info, last_stmt_of_proc, block, ignore);
+2242c2328
+< 	      if (callee->add_external_output(block))
+---
+> 	      if (info->add_external_output(block))
+2278c2364
+<   // const memoryblock_set & external_outputs = callee->external_outputs();
+---
+>   // const memoryblock_set & external_outputs = info->external_outputs();
+2284,2285c2370,2371
+<       callee->is_context_insensitive())
+<     Procedures.mark_for_reanalysis(callee, current_callsite);
+---
+>       info->is_context_insensitive())
+>     Procedures.mark_for_reanalysis(info, current_callsite);
+2572c2658
+< 	    typeNode * btype = b->right()->type()->follow_tdefs();
+---
+> 	    typeNode * btype = b->type()->follow_tdefs();
+3318c3404,3405
+< 		    // object.
+---
+> 		    // object. Otherwise, just record it as a destructive
+> 		    // assignment.
+4000,4034c4087,4088
+<   if (call_targets.blocks.size() == 0) {
+< 
+<     cout << "ERROR: Corrupted call target at " << call->coord() << " -- " << * current << endl;
+<   }
+<   else {
+< 
+<     // -- NEW: call the analyzer for each target:
+< 
+<     if (call_targets.blocks.size() > 1) {
+<       cout << "NOTE: Multiple target call at " << * current << "(" << call->coord() << ")" << endl;
+<       for (memoryblock_set_p p = call_targets.blocks.begin();
+< 	   p != call_targets.blocks.end();
+< 	   ++p)
+< 	{
+< 	  memoryBlock * current_target = *p;
+< 	  cout << "     + " << current_target->name() << endl;
+< 	}
+<       return; // ROLLBACK
+<     }
+< 
+<     for (memoryblock_set_p p = call_targets.blocks.begin();
+< 	 p != call_targets.blocks.end();
+< 	 ++p)
+<       {
+< 	memoryBlock * current_target = *p;
+< 	bool local_never_returns = false;
+< 
+< 	procedure_call(caller, current,
+< 		       call, call_targets, current_target, actuals,
+< 		       defs, uses, changes, result, local_never_returns);
+< 
+< 	if (local_never_returns)
+< 	  never_returns = true;
+<       }
+<   }
+---
+>   procedure_call(caller, current, call, call_targets, actuals,
+> 		 defs, uses, changes, result, never_returns);
+4123,4132d4176
+<   if (pointerOptions::Verbose) {
+<     cout << " + Look for reaching def of " << block->name() << " at " << * where << endl;
+<     if (info)
+<       cout << "   (procedure is " << info->name() << ")" << endl;
+<     else
+<       cout << "   (no procedure)" << endl;
+<   }
+< 
+<   // ROLLBACK
+< 
+4171,4211c4215,4219
+<   return def;
+< 
+<   // ---- New version ----------------------------------------------
+< 
+<   if (0) {
+< 
+<   // -- Simple case: look for a local def
+< 
+<   memoryDef * def = block->nearest_def_at(where);
+< 
+<   if (def)
+<     return def;
+< 
+<   // -- Already at the top of the callstack:
+< 
+<   if ( ! info)
+<     return 0;
+< 
+<   // -- We didn't find a local def: start moving up the call stack
+< 
+<   procedureInfo * current_callee = 0;
+<   stmtLocation * current_callsite = 0;
+< 
+<   // -- Move up the call stack to find the given procedure (could be
+<   // different from the bottom of the stack when called from
+<   // pass_one_external_input).
+< 
+<   const procedurecall_stack & callstack = Procedures.callstack();
+< 
+<   procedurecall_stack_crp stack_p = callstack.rbegin();
+< 
+<   while (stack_p != callstack.rend()) {
+<     current_callee = (*stack_p).second;
+< 
+<     if (current_callee == info)
+<       break;
+< 
+<     stack_p++;
+<   }
+< 
+<   // -- Now find the next context-insensitive procedure
+---
+>   /*
+>   if (computePointers) {
+>   
+>     // -- If we do find a reaching def, add it to the external inputs for all
+>     // the procedures in between.
+4213c4221
+<   bool found = false;
+---
+>     if (def) {
+4215c4223
+<   while (stack_p != callstack.rend()) {
+---
+>       procedureInfo * current_info_2 = info;
+4217,4218c4225
+<     current_callsite = (*stack_p).first;
+<     current_callee = (*stack_p).second;
+---
+>       while (current_info_2 != current_info) {
+4220,4222c4227
+<     // -- Short-circuit: if the block is local to a procedure and there is
+<     // no reaching def in that procedures, then there's no point looking
+<     // higher in the call stack.
+---
+> 	// -- Add the new input
+4224,4225c4229
+<     if (block->local_to() == current_callee->proc())
+<       return 0;
+---
+> 	current_info_2->add_external_input(block);
+4227,4228c4231
+<     // -- See if we are at the next CI-CS boundary. Checking the
+<     // current_callsite ensures that we won't try to go above main().
+---
+> 	// -- Move up the call stack
+4230,4233c4233,4234
+<     if (current_callsite &&
+< 	info->is_context_insensitive()) {
+<       found = true;
+<       break;
+---
+> 	current_info_2 = current_info_2->current_caller();
+>       }
+4235,4238d4235
+< 
+<     // -- Move up the call stack
+< 
+<     stack_p++;
+4239a4237
+>   */
+4241,4269c4239,4243
+<   if (found) {
+< 
+<     if (pointerOptions::Verbose)
+<       cout << "   -> No local def: try passing as external input to " << current_callee->name() 
+< 	   << " at " << * current_callsite << endl;
+< 
+<     // -- Found a CI-CS boundary: automatically add this block as an
+<     // external input
+< 
+<     if (computePointers)
+<       bool found_new_inputs = current_callee->add_external_input(block);
+< 
+<     // -- Get the parent
+< 
+<     stack_p++;
+<     procedureInfo * caller = (*stack_p).second;
+< 
+<     // -- Pass it as an external input right away. This will prevent us
+<     // from having to search up the tree the next time we encounter this
+<     // block.
+< 
+<     memoryblock_set ignore_changes;
+<     pass_one_external_input(current_callee, caller, current_callsite, block, ignore_changes);
+< 
+<     // -- The previous call should leave the current def (which is the
+<     // input def at the "input_location"), which is now the reaching def.
+< 
+<     def = block->current_def();
+<   }
+---
+>   /*
+>   if (pointerOptions::Verbose && def && (current_info != info)) {
+>     cout << "   Pointers::nearest_def_at: Found non-local def of " << block->name() << endl; 
+>     cout << "       Def at " << * (def->where()) << endl;
+>     cout << "       Reaches " << * where << endl;
+4270a4245
+>   */
+4426d4400
+<   string fullname = name;
+4446c4420
+<       fullname = name + buf;
+---
+>       string fullname = name + buf;
+4475c4449
+<   memoryBlock * block = Memory.lookup_heap_object(fullname, current, allocation_stmt,
+---
+>   memoryBlock * block = Memory.lookup_heap_object(the_decl->name(), current, allocation_stmt,
+4478,4480d4451
+<   if (pointerOptions::Verbose)
+<     cout << "  - At allocation: " << fullname << endl;
+< 
+4484c4455,4456
+<   if (computePointers) {  // && block->is_flow_sensitive()) {
+---
+>   if (computePointers &&
+>       block->is_flow_sensitive()) {
+4490,4492d4461
+<     if (alloc_object->is_flow_sensitive()) {
+<     
+<       // -- Looking up its nearest reaching definition of the alloc object
+4494c4463
+<       memoryDef * previous_alloc_def = nearest_def_at(info, alloc_object, current);
+---
+>     // -- Looking up its nearest reaching definition of the alloc object
+4496c4465
+<       // -- Compute the new multiplicity
+---
+>     memoryDef * previous_alloc_def = nearest_def_at(info, alloc_object, current);
+4498c4467
+<       Multiplicity new_multiplicity;
+---
+>     // -- Compute the new multiplicity
+4500,4503c4469,4473
+<       new_multiplicity = alloc_object->at_allocation(current,
+< 						     previous_alloc_def,
+< 						     defs, uses, changes);
+<     }
+---
+>     Multiplicity new_multiplicity;
+> 
+>     new_multiplicity = alloc_object->at_allocation(current,
+> 						   previous_alloc_def,
+> 						   defs, uses, changes);
+4542c4512,4513
+< 	if (computePointers) {  // && block->is_flow_sensitive()) {
+---
+> 	if (computePointers &&
+> 	    block->is_flow_sensitive()) {
+4548d4518
+< 	  if (alloc_object->is_flow_sensitive()) {
+4550c4520
+< 	    // -- Looking up its nearest reaching definition of the alloc object
+---
+> 	  // -- Looking up its nearest reaching definition of the alloc object
+4552c4522
+< 	    memoryDef * previous_alloc_def = nearest_def_at(info, alloc_object, current);
+---
+> 	  memoryDef * previous_alloc_def = nearest_def_at(info, alloc_object, current);
+4554c4524
+< 	    // -- Compute the new multiplicity
+---
+> 	  // -- Compute the new multiplicity
+4556,4561c4526,4530
+< 	    Multiplicity new_multiplicity;
+< 	    
+< 	    new_multiplicity = alloc_object->at_deallocation(current,
+< 							     previous_alloc_def,
+< 							     defs, uses, changes);
+< 	  }
+---
+> 	  Multiplicity new_multiplicity;
+> 
+> 	  new_multiplicity = alloc_object->at_deallocation(current,
+> 							   previous_alloc_def,
+> 							   defs, uses, changes);
+4590c4559
+<       if (// block->is_flow_sensitive() &&
+---
+>       if (block->is_flow_sensitive() &&
+4596d4564
+< 	  if (alloc_object->is_flow_sensitive()) {
+4598c4566
+< 	    // -- Find it's reaching def
+---
+> 	  // -- Find it's reaching def
+4600c4568
+< 	    memoryDef * alloc_def = nearest_def_at(info, alloc_object, current);
+---
+> 	  memoryDef * alloc_def = nearest_def_at(info, alloc_object, current);
+4602c4570
+< 	    // -- Reading the multiplicity is a use of the alloc object
+---
+> 	  // -- Reading the multiplicity is a use of the alloc object
+4604,4606c4572,4574
+< 	    memoryUse * use = alloc_object->use_at(current);
+< 	    use->reaching_def(alloc_def);
+< 	    uses.insert(use);
+---
+> 	  memoryUse * use = alloc_object->use_at(current);
+> 	  use->reaching_def(alloc_def);
+> 	  uses.insert(use);
+4608c4576
+< 	    // -- Get the current multiplicity value
+---
+> 	  // -- Get the current multiplicity value
+4610,4618c4578,4579
+< 	    if (alloc_def)
+< 	      multiplicity = alloc_def->multiplicity();
+< 	  }
+< 	  else {
+< 
+< 	    // -- Multiplicity not flow sensitive
+< 
+< 	    multiplicity = Unbounded;
+< 	  }
+---
+> 	  if (alloc_def)
+> 	    multiplicity = alloc_def->multiplicity();

@@ -1,0 +1,55 @@
+// LLVM ANNOTATIONS PASS
+// Andy Luong
+// Tim Malone
+
+/**********************
+// COMPILING
+**********************/
+
+Currently, everything is a little messy. The commands to build are as follows:
+
+cd cbz
+make headers
+make
+cd ..
+make -f langmake
+make
+
+Alternatively, instead of rebuilding the C-breeze library from cbz/, you can change $(LIBS) Makefile to point to your own C-breeze library. We're currently still trying to decouple the Broadway annotation code from C-breeze, but it's not looking good. 
+
+
+/**********************
+// AnnotationPass
+**********************/
+
+Currently the pass requires one argument passed to the "-pal" flag indicating where the annotation file will be. It will then construct an Annotations object, along with a ProcedureAnnotationInfo object in its class. You can either call the function directly or attempt to require it in another LLVM pass. We'll figure out which to do later.
+
+Check out taintedness.pal for an example annotation file that would probably be nice to use.
+
+
+/**************************
+// ProcedureAnnotationInfo
+***************************/
+
+This class is intended to serve as a wrapper for the on_entry, on_exit, defs, and uses found in the broadway Annotations class.
+
+structure_list getEntryRules(const std::string& procName);
+structure_list getExitRules(const std::string& procName);
+var_set getUses(const std::string& procName);
+var_set getDefs(const std::string& procName);
+
+The structures returned in each of these functions are std::lists and std::sets of Broadway types.
+
+var_set is a set of annVariables (bdwy/annvariable.cc) -- you can get their name by called annVariable::name().
+
+structure_list is a list of structureAnns (bdwy/structure.cc) -- each has a source and target which can be gotten using the source() and target() methods respectively. These return annVariables who's names can be gotten as above. Fields are also included, but I'm not sure if we need to bother handling those.
+
+
+/**********************
+// RUN:
+**********************/
+The follower command will run the AnnotationPass with an annotation file (foo.pal) and a dummy IR file (test.ll).
+  opt -load ../../../Debug/lib/AnnotationPass.so -annotation -pal test/taintedness.pal < ./test/test1.ll
+  
+  
+

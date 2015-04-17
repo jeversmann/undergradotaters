@@ -1,0 +1,122 @@
+%{
+
+void createZeroMatrix(int * data, int w, int h);
+
+void createIdentityMatrix(int * data, int w, int h);
+
+void createDenseMatrix(int * data, int w, int h);
+
+void copyMatrix(int * srcData, int * destData);
+
+void multMatrices(int * m1, int * m2, int * result);
+
+void invertMatrix(int * m);
+
+}%
+
+property MatrixForm : { Dense, Triangular { Diagonal { Identity, Zero } } }
+
+procedure createZeroMatrix(data, w, h)
+{
+  on_entry { data --> matrix1 }
+  
+  modify { matrix1 }
+
+  analyze MatrixForm {
+    matrix1 <- Zero
+  }
+}
+
+procedure createIdentityMatrix(data, w, h)
+{
+  on_entry { data --> matrix1 }
+  
+  modify { matrix1 }
+
+  analyze MatrixForm {
+    matrix1 <- Identity
+  }
+}
+
+procedure createDenseMatrix(data, w, h)
+{
+  on_entry { data --> matrix1 }
+  
+  modify { matrix1 }
+
+  analyze MatrixForm {
+    matrix1 <- Dense
+  }
+}
+
+procedure copyMatrix(srcData, destData)
+{
+  on_entry { srcData --> matrix1
+	     destData --> matrix2 }
+
+  access { matrix1 }
+  modify { matrix2 }
+
+  analyze MatrixForm {
+    matrix2 <- matrix1
+  }
+}
+
+procedure multMatrices(m1, m2, result)
+{
+  on_entry { m1 --> matrix1
+	     m2 --> matrix2
+	     result --> matrix3 }
+
+  access { matrix1, 
+	   matrix2 }
+  modify { matrix3 }
+  
+  analyze MatrixForm {
+    
+    if (matrix1 is-exactly Identity) {
+      matrix3 <- matrix2
+    }
+
+    if (matrix2 is-exactly Identity) {
+      matrix3 <- matrix1
+    }
+
+    if (matrix1 is-exactly Zero) {
+      matrix3 <- Zero
+    }
+
+    if (matrix2 is-exactly Zero) {
+      matrix3 <- Zero
+    }
+  }
+
+  report if (MatrixForm : matrix1 could-be Dense)
+    "Possible multiplication by a dense matrix";
+
+  report if (MatrixForm : matrix2 could-be Dense)
+    "Possible multiplication by a dense matrix";
+}
+
+procedure invertMatrix(m)
+{
+  on_entry { m --> matrix1 }
+
+  modify { matrix1 }
+
+  analyze MatrixForm {
+
+    if (matrix1 is-exactly Identity) {
+      matrix1 <- Identity
+    }
+
+    if (matrix1 is-exactly Triangular) {
+      matrix1 <- Triangular
+    }
+  }
+
+  error if (MatrixForm : matrix1 is-exactly Zero)
+    "Inversion of Zero matrix!";
+}
+
+  

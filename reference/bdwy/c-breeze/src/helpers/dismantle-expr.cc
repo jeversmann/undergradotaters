@@ -1,0 +1,1052 @@
+// ----------------------------------------------------------------------
+//
+//  C-Breeze
+//  C Compiler Framework
+// 
+//  Copyright (c) 2000 University of Texas at Austin
+// 
+//  Samuel Z. Guyer
+//  Daniel A. Jimenez
+//  Calvin Lin
+// 
+//  Permission is hereby granted, free of charge, to any person
+//  obtaining a copy of this software and associated documentation
+//  files (the "Software"), to deal in the Software without
+//  restriction, including without limitation the rights to use, copy,
+//  modify, merge, publish, distribute, sublicense, and/or sell copies
+//  of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//  
+//  The above copyright notice and this permission notice shall be
+//  included in all copies or substantial portions of the Software.
+//  
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+//  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+//  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+//  NONINFRINGEMENT.  IN NO EVENT SHALL THE UNIVERSITY OF TEXAS AT
+//  AUSTIN BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+//  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+//  OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE SOFTWARE.
+//
+//  We acknowledge the C-to-C Translator from MIT Laboratory for
+//  Computer Science for inspiring parts of the C-Breeze design.
+//
+// ----------------------------------------------------------------------
+//
+// dismantle expressions
+//
+// You may notice there's a lot of cloning going on.  This is to
+// ensure that the AST remains a tree; if a pointer pops up in
+// more than one place in the tree, that's a Bad Thing.
+//
+
+#include <stdio.h>
+#include "c_breeze.h"
+#include "ref_clone_changer.h"
+#include "semcheck.h"
+
+#include "dismantle.h"
+
+Node * ExpressionDismantleChanger::at_block (blockNode *p, Order) {
+	exprNode *expr;
+	for (stmt_list_p i=p->stmts().begin(); i!=p->stmts().end(); i++) {
+                if ((*i)->typ() == Expr) {
+			expr = ((exprstmtNode *)*i)->expr();
+			// could be an emtpy exptstmtNode
+			if (expr) {
+				code = new blockNode (NULL, NULL, p->coord());
+				recursion_level = 0;
+				(void) dismantle_expr (expr);
+				*i = code;
+			}
+		}
+	}
+	return p;
+}
+
+// will return either an idNode or a pointer dereference.
+// should have a flag somewhere saying "read" or "write" access
+
+exprNode * ExpressionDismantleChanger::dismantle_expr (exprNode *p) {
+	exprNode *r;
+	recursion_level++;
+	switch (p->typ()) {
+	case Id: 
+	case Const:
+		r = p; 
+		break;
+	case Binary: 
+		r = dismantle_binary ((binaryNode *) p);
+		break;
+	case Unary:
+		r = dismantle_unary ((unaryNode *) p);
+		break;
+	case Cast:
+		r = dismantle_cast ((castNode *) p);
+		break;
+	case Comma:
+		r = dismantle_comma ((commaNode *) p);
+		break;
+	case Ternary:
+		r = dismantle_ternary ((ternaryNode *) p);
+		break;
+	case Call:
+		r = dismantle_call ((callNode *) p);
+		break;
+	default:
+		emit_expr (p);
+		r = p;
+	}
+	recursion_level--;
+	return r;
+}
+
+// dismantle a procedure call
+
+exprNode * ExpressionDismantleChanger::dismantle_call (callNode *p) {
+  output_context oc(cout);
+	expr_list *arglist = new expr_list;
+	typeNode *ty;
+
+	semcheck_expr_visitor::check(p);
+	ty = (typeNode *) ref_clone_changer::clone(p->type(), false);
+
+	// we evaluate arguments in reverse order.
+	// ANSI 6.3.2.2 says the order is unspecified,
+	// but gcc does it this way, so to remain consistent
+	// we'll do this, too.
+
+	for (expr_list::reverse_iterator i=p->args().rbegin(); 
+		i!=p->args().rend(); i++) {
+                exprNode *arg = dismantle_expr (*i);
+                arglist->push_front (arg);
+	}
+	exprNode *name = dismantle_expr (p->name());
+	callNode *call = new callNode (name, arglist, p->coord());
+	call->type (ty);
+	if (call->type() && !(call->type()->is_void())) {
+		idNode *temp = make_var (call);
+                binaryNode *assg = new binaryNode ('=', 
+						   (idNode *) ref_clone_changer::clone(temp, false),
+						   call, p->coord());
+		emit_temp_assign (assg);
+		return temp;
+	} else {
+		emit_expr (call);
+		return call;
+	}
+}
+
+// dismantle the ternary operator
+
+exprNode * ExpressionDismantleChanger::dismantle_ternary (ternaryNode *p) {
+	// tmp = a ? b : c;
+	// =>
+	// if (a) goto dob;
+	// tmp = c;
+	// goto out;
+	// dob: tmp = b;
+	// out: ;
+
+	exprNode *cond = dismantle_expr (p->cond());
+	// may be pointer dereference or -> or .
+	if (cond->typ() != Id && cond->typ() != Const) {
+		idNode *tmp = make_var (cond);
+		cond = new binaryNode ('=', 
+				       (idNode *) ref_clone_changer::clone(tmp, false),
+				       cond, p->coord());
+		emit_temp_assign (cond);
+		cond = tmp;
+	}
+	idNode *dob = new_id("TR");
+	dob->coord(p->coord());
+	labelNode *Dob = new labelNode (dob, clone_empty_stmt());
+	gotoNode * goto_dob = new gotoNode(Dob, p->coord());
+	ifNode *newif = new ifNode (cond, goto_dob, 0, p->coord());
+
+	// annotation to tell where this if came from
+
+	newif->annotations().push_back (new fromAnnote (FROM_TERNARY));
+	emit_stmt (newif);
+	idNode *temp = make_var (p->false_br());
+	exprNode *c = dismantle_expr (p->false_br());
+	emit_temp_assign (new binaryNode ('=',
+					  (idNode *) ref_clone_changer::clone(temp, false),
+					  c, p->coord()));
+	idNode *out = new_id ("TR");
+	out->coord(p->coord());
+	labelNode *Out = new labelNode (out, clone_empty_stmt());
+	gotoNode * goto_out = new gotoNode(Out, p->coord());
+	emit_stmt (goto_out);
+	emit_stmt (Dob);
+	exprNode *b = dismantle_expr (p->true_br());
+	binaryNode *assg = new binaryNode ('=', 
+					   (idNode *) ref_clone_changer::clone(temp, false),
+					   b, p->coord());
+	emit_temp_assign (assg);
+	emit_stmt (Out);
+	return temp;
+}
+
+// dismantle the comma operator (maybe ought to be a binary operator)
+
+exprNode * ExpressionDismantleChanger::dismantle_comma (commaNode *p) {
+	exprNode *result;
+
+	for (expr_list_p i = p->exprs().begin(); i != p->exprs().end(); i++)
+		result = dismantle_expr (*i);
+	return result;
+}
+
+// dismantle a cast
+
+exprNode * ExpressionDismantleChanger::dismantle_cast (castNode *p) {
+	exprNode *s, *temp, *assg, *tempcalc;
+
+	// pesky semantic checker sticks these in; we take them out
+	if (p->is_implicit())
+	  return dismantle_expr(p->expr());
+
+	s = dismantle_expr (p->expr());
+	// some jokers (like me and any anyone else who's used lint)
+	// will do stuff like (void) printf (...);
+	// if that's the case, we won't make a temporary variable
+	// of type void
+	if (p->type()->is_void()) return s;
+	// some weirdos will needlessly cast 0 to (foo *) .
+	// we'll get rid of this cast because the standard doesn't
+	// require it and it gums up constant propagation.
+	if (p->type()->is_pointer())
+		if (s->typ() == Const)
+			if (s->value().is_zero()) return s;
+        temp = make_var (p);
+   	tempcalc = new castNode (p->type(), s, false, p->coord());
+        assg = new binaryNode ('=', 
+			       (idNode *) ref_clone_changer::clone(temp, false),
+			       tempcalc, p->coord());
+	emit_temp_assign (assg);
+        return temp;
+}
+
+/* debug code */
+
+void print_type (exprNode *ex) {
+	output_context foo(cout);
+	ex->no_tdef_type()->output (foo, ex);
+	foo << '\n';
+}
+
+/* dismantle a unary operator */
+
+exprNode * ExpressionDismantleChanger::dismantle_unary (unaryNode *p) {
+	unsigned int op = p->op()->id();
+	exprNode *s, *t, *temp, *tempcalc, *assg;
+
+        switch (op) {
+	case Operator::INDIR:
+		// pointer dereference; return an lvalue ( *temp )
+		s = p->expr();
+		semcheck_expr_visitor::check(s);
+		t = dismantle_expr (s);
+		if (dismantle_flags & NO_MULTIPLE_INDIRECTION) {
+			if (t->typ() != Id) {
+				temp = make_var (s);
+				assg = new binaryNode 
+					('=', 
+					 (idNode *) ref_clone_changer::clone(temp, false),
+					 t, p->coord());
+				emit_temp_assign (assg);
+				return new unaryNode (Operator::INDIR, temp, p->coord());
+			}
+		}
+		p->expr (t);
+		// bug fix
+		if (t->no_tdef_type() == NULL) {
+			// what is t's type?
+			// ### should this be no_tdef_type?
+		        t->type ((typeNode *)ref_clone_changer::clone(s->no_tdef_type(),false));
+			if (t->type() == NULL) {
+				cout << "dismantle_expr::dismantle_unary():still don't know the type!\n";
+			}
+		} 
+		//assert (t->no_tdef_type()->no_tdef_type());
+		p->type ((typeNode *)ref_clone_changer::clone(t->no_tdef_type()->type(),false));
+		return p;
+	case Operator::SIZEOF:
+		// can't do anything about this case
+		if (p->sizeof_type()) {
+			temp = make_var (p);
+			assg = new binaryNode ('=', 
+					       (idNode *) ref_clone_changer::clone(temp, false),
+					       p, p->coord());
+			emit_temp_assign (assg);
+			return temp;
+		}
+		// fall through; a normal expression is OK to treat
+		// like the following with sizeof
+
+		// SZG: This doesn't seem to be true. Apparently, the
+		// following code is legal: struct Foo * f = malloc(sizeof *f)
+		// The parser creates a sizeof node with "*f" as the
+		// sub-expression, and no sizeof_type().
+
+		return p;
+
+	case Operator::UMINUS:
+	case Operator::UPLUS:
+	case Operator::ADDRESS:
+	case '!':
+	case '~':
+		// check to see if it already looks dismantled;
+		// the only way this is possible is if we have (op id)
+		//if (p->expr()->typ() != Id) {
+			temp = make_var (p);
+			s = dismantle_expr (p->expr());
+			// temp = - s
+			tempcalc = new unaryNode (op, (exprNode *) ref_clone_changer::clone(s, false), p->coord());
+			assg = new binaryNode ('=', (idNode *) ref_clone_changer::clone(temp, false), tempcalc, p->coord());
+			emit_temp_assign (assg);
+			return temp;
+		//} else {
+		//	return p;
+		//}
+	case Operator::POSTINC:
+	case Operator::POSTDEC:
+		// if we're not at the top of the stmt, we need to
+		// save the old value in a temp because someone else
+		// might want to use it as per ISO C semantics
+
+		temp = make_var (p);
+		s = dismantle_expr (p->expr());
+		if (recursion_level > 1) {
+			assg = new binaryNode ('=', 
+					       (idNode *) ref_clone_changer::clone(temp, false),
+					       (exprNode *) ref_clone_changer::clone(s, false), p->coord());
+			emit_temp_assign (assg);
+		}
+		tempcalc = new binaryNode ((op == Operator::POSTINC) ? '+' : '-', 
+			(exprNode *)(recursion_level > 1 ? ref_clone_changer::clone(temp, false)
+				     : ref_clone_changer::clone(s, false)), 
+					   new constNode (constant(1)), p->coord());
+		assg = new binaryNode ('=', s, (exprNode *) ref_clone_changer::clone(tempcalc, false), p->coord());
+		emit_expr (assg);
+		return temp;
+	case Operator::PREINC:
+	case Operator::PREDEC:
+		s = dismantle_expr (p->expr());
+		tempcalc = new binaryNode ((op == Operator::PREINC) ? '+' : '-', 
+					   (exprNode *) ref_clone_changer::clone(s, false),
+					   new constNode (constant(1)), p->coord());
+		assg = new binaryNode ('=', (exprNode *) ref_clone_changer::clone(s, false), tempcalc, p->coord());
+		emit_expr (assg);
+		return s;
+	default: 
+		cout << "dismantle_expr::dismantle_unary():unimplemented operator" << op << '\n';
+		return NULL;
+	}
+}
+/*
+  This function checks if an expression node is a simple expression which is one of
+  the foll:
+
+  1) id or *id
+  2) (cast) id or (cast) *id
+  3) id -> id
+  4) id -> id
+  5) (cast) id -> id
+
+ */
+bool ExpressionDismantleChanger:: is_simple_expression(exprNode *lhsrhs){
+
+        /*
+          the expression is either an Id or a Const
+         */
+        if (lhsrhs->typ() == Id || lhsrhs->typ() == Const )
+                return true;
+        /*
+          the expression is * followed by an Id . For eg: *x
+        */
+        
+        if(
+                ((lhsrhs->typ() == Unary && 
+                  ((unaryNode *)lhsrhs)->op()->id() == Operator::INDIR) &&
+                 ((unaryNode *)lhsrhs)->expr()->typ() == Id)) {
+                
+                return true;
+        }
+
+        /*
+          If the expression is x -> y then we donot want to dismantle it
+          
+         */
+        
+        if ( lhsrhs -> typ() == Binary)
+        {
+                binaryNode * arr = (binaryNode *) lhsrhs;
+
+                if (arr  -> left() -> typ() == Id &&
+                    arr ->right() ->typ() == Id &&
+                    arr -> op() -> id () == Operator::ARROW
+                        )
+
+                {
+                        return true; 
+                       
+                }
+                
+        }
+        /*
+          if the expression is cast
+         */
+                
+        if (lhsrhs ->typ() == Cast){
+                /*
+                  cast followed by an id or const
+                  (int)x ;
+                  (float) 1000;
+                */
+                if(
+                        ((castNode*)lhsrhs)->expr()->typ() == Id ||
+                        ((castNode*)lhsrhs)->expr()->typ() == Const
+                        ){    
+                        return true;
+                }
+
+                if( /* cast followed by a pointer and an id
+                       
+                       for expressions like  (int) *x
+                    */
+                             
+                        (((castNode*)lhsrhs)->expr()->typ() == Unary))
+                        
+                {
+                        unaryNode * u = ((unaryNode *)((castNode*)lhsrhs)->expr());
+                        if ((u ->op()->id() == Operator::INDIR) &&
+                            (u->expr()->typ() == Id)){
+                                return true;
+                         }
+                }
+                
+                if (((castNode*)lhsrhs)->expr()->typ() == Binary){
+                        binaryNode * arr = ((binaryNode *) ((castNode *)lhsrhs)->expr());
+                        
+                        if (arr  -> left() -> typ() == Id &&
+                            arr ->right() ->typ() == Id &&
+                            arr -> op() -> id () == Operator::ARROW
+                                )
+                                
+                        {
+                                 return true;
+                                 
+                        }
+                }
+        }
+        return false;
+}
+
+
+exprNode * ExpressionDismantleChanger::dismantle_binary (binaryNode *p) {
+	unsigned int op = p->op()->id();
+	exprNode *lhs, *rhs, *temp, *tempcalc, *assg;
+	ifNode *newif;
+	gotoNode *goto_checkc, *goto_out, *goto_b4out;
+	idNode *checkc, *b4out, *out;
+	labelNode *Checkc, *B4out, *Out;
+
+	switch (op) {
+	case Operator::PLUSassign:
+		return dismantle_opeq (p, '+');
+	case Operator::MINUSassign:
+		return dismantle_opeq (p, '-');
+	case Operator::MULTassign:
+		return dismantle_opeq (p, '*');
+	case Operator::DIVassign:
+		return dismantle_opeq (p, '/');
+	case Operator::MODassign:
+		return dismantle_opeq (p, '%');
+	case Operator::ANDassign:
+		return dismantle_opeq (p, '&');
+	case Operator::ORassign:
+		return dismantle_opeq (p, '|');
+	case Operator::LSassign:
+		return dismantle_opeq (p, Operator::LS);
+	case Operator::RSassign:
+		return dismantle_opeq (p, Operator::RS);
+	case Operator::ERassign:
+		return dismantle_opeq (p, '^');
+	case Operator::ANDAND:
+	  // this used to be an #ifdef, hence the crappy indentation
+	  if (dismantle_flags & DISMANTLE_LOGICAL_TO_GOTOS) {
+	    // ifdef'ed only for debugging purposes; we have to
+	    // dismantle && and || because short circuit evaluation
+	    // is mandated by the Standard
+		// a = b && c
+		// =>
+		// if (b) goto checkc;
+		// a = 0;
+		// goto out;
+		// checkc: if (c) goto b4out;
+		// a = 0;
+		// goto out;
+		// b4out: a = 1;
+		// out: ;
+		temp = make_int ();
+		lhs = dismantle_expr (p->left());
+		out = new_id ("AA");
+		checkc = new_id ("AA");
+		b4out = new_id ("AA");
+
+		checkc->coord(p->coord());
+		Checkc = new labelNode((idNode *) ref_clone_changer::clone(checkc, false),
+				       clone_empty_stmt());
+		goto_checkc = new gotoNode(Checkc, p->coord());
+
+		out->coord(p->coord());
+		Out = new labelNode((idNode *) ref_clone_changer::clone(out, false), 
+				    clone_empty_stmt());
+		goto_out = new gotoNode(Out, p->coord());
+
+		b4out->coord(p->coord());
+		B4out = new labelNode((idNode *) ref_clone_changer::clone(b4out, false), 
+				      clone_empty_stmt());
+		goto_b4out = new gotoNode(B4out, p->coord());
+
+		// may need to check for pointer dereference here
+		// also -> or .
+		if (lhs->typ() != Id && lhs->typ() != Const) {
+			idNode *tmp = make_var (lhs);
+			lhs = new binaryNode('=',
+					     (idNode *) ref_clone_changer::clone(tmp, false),
+					     (exprNode *) ref_clone_changer::clone(lhs, false), 
+					     p->coord());
+			emit_temp_assign (lhs);
+			lhs = tmp;
+		}
+		newif = new ifNode (lhs, goto_checkc, 0, p->coord());
+
+		// add an annotation so we can tell where this if came from
+		newif->annotations().push_back (new fromAnnote (FROM_AND1));
+
+		emit_stmt (newif);
+		assg = new binaryNode('=',
+				      (exprNode *) ref_clone_changer::clone(temp, false),
+				      new constNode(constant(0)), p->coord());
+		emit_temp_assign (assg);
+		emit_stmt ((stmtNode *) ref_clone_changer::clone(goto_out, false)); 
+		emit_stmt (Checkc);
+		rhs = dismantle_expr (p->right());
+		newif = new ifNode (rhs, goto_b4out, 0, p->coord());
+
+		// add an annotation so we can tell where this if came from
+
+		newif->annotations().push_back (new fromAnnote (FROM_AND2));
+		emit_stmt (newif);
+		assg = new binaryNode('=',
+				      (exprNode *) ref_clone_changer::clone(temp, false),
+				      new constNode(constant(0)), p->coord());
+		emit_temp_assign (assg);
+		emit_stmt ((stmtNode *) ref_clone_changer::clone(goto_out, false)); 
+		assg = new binaryNode ('=',
+				       (exprNode *) ref_clone_changer::clone(temp, false), 
+				       new constNode (constant(1)), p->coord());
+		emit_stmt (B4out);
+		emit_temp_assign (assg);
+		emit_stmt (Out);
+		return temp;
+	  }
+	  else
+	    return p;
+
+	case Operator::OROR:
+	  if (dismantle_flags & DISMANTLE_LOGICAL_TO_GOTOS) {
+		// a = b || c
+		// =>
+		// if (b) goto b4out;
+		// if (c) goto b4out;
+		// a = 0;
+		// goto out;
+		// b4out: a = 1;
+		// out: ;
+		lhs = dismantle_expr (p->left());
+		// might be pointer dereference
+		if (lhs->typ() != Id && lhs->typ() != Const) {
+			idNode *tmp = make_var (lhs);
+			lhs = new binaryNode('=',
+					     (idNode *) ref_clone_changer::clone(tmp, false),
+					     (exprNode *) ref_clone_changer::clone(lhs, false),
+					     p->coord());
+			emit_temp_assign (lhs);
+			lhs = tmp;
+		}
+		out = new_id ("OO");
+		b4out = new_id ("OO");
+
+		out->coord(p->coord());
+		Out = new labelNode((idNode *) ref_clone_changer::clone(out, false), 
+				    clone_empty_stmt());
+		goto_out = new gotoNode(Out, p->coord());
+
+		b4out->coord(p->coord());
+		B4out = new labelNode((idNode *) ref_clone_changer::clone(b4out, false), 
+				      clone_empty_stmt());
+		goto_b4out = new gotoNode(B4out, p->coord());
+
+		newif = new ifNode((exprNode *) ref_clone_changer::clone(lhs, false),
+				   goto_b4out, 0, p->coord());
+
+		// add an annotation so we can tell where this if came from
+		newif->annotations().push_back (new fromAnnote (FROM_OR1));
+		emit_stmt (newif);
+		rhs = dismantle_expr (p->right());
+		newif = new ifNode((exprNode *) ref_clone_changer::clone(rhs, false),
+				   goto_b4out, 0, p->coord());
+
+		// add an annotation so we can tell where this if came from
+
+		newif->annotations().push_back (new fromAnnote (FROM_OR2));
+		emit_stmt (newif);
+		temp = make_int ();
+		assg = new binaryNode('=',
+				      (exprNode *) ref_clone_changer::clone(temp, false),
+				      new constNode(constant(0)),
+				      p->coord());
+		emit_temp_assign (assg);
+		emit_stmt (goto_out);
+		assg = new binaryNode ('=',
+				       (exprNode *) ref_clone_changer::clone(temp, false), 
+				       new constNode (constant(1)),
+				       p->coord());
+		emit_stmt (B4out);
+		emit_temp_assign (assg);
+		emit_stmt (Out);
+		return temp;
+		} /* if DISMANTLE_LOGICAL_TO_GOTOS */
+	  else
+	    return p;
+
+	case '=':
+		// see if it already looks dismantled
+		lhs = p->left();
+                // if the lhs is of the type x -> y
+                // then that is as good as a normal id;
+
+                if ( lhs ->typ() == Binary){
+                        binaryNode * b = (binaryNode *) lhs;
+
+                        if (b  -> left() -> typ() == Id &&
+                            b ->right() ->typ() == Id &&
+                            b  -> op() -> id () == Operator::ARROW
+                                    ){
+                                
+                                goto BINARY_LABEL;
+                        }
+                                
+                }
+
+		// either id = 
+		// or * id =
+		if (lhs->typ() == Id || 
+			((lhs->typ() == Unary && 
+			((unaryNode *)lhs)->op()->id() == Operator::INDIR) &&
+                         ((unaryNode *)lhs)->expr()->typ() == Id)) {
+                BINARY_LABEL:
+                        rhs = p->right();
+                        
+                        /*
+                          x = 10; x = y;
+                          x -> m = 12; are to be preserved as they are
+                          
+                         */
+                        if (rhs -> typ() == Id || rhs -> typ() == Const){
+			  lhs = (exprNode *) ref_clone_changer::clone(lhs, false);
+			  emit_expr(p);
+			  return lhs;
+                        }
+                         if( /* for expressions like x = (*z);
+                                x -> y = (*z); Don't dismantle them. Emit them.
+                                     */
+                                        ((rhs ->typ() == Unary && 
+                                          ((unaryNode *)rhs)->op()->id() == Operator::INDIR) &&
+                                         ((unaryNode *)rhs)->expr()->typ() == Id))
+                                {
+                                         lhs = (exprNode *) ref_clone_changer::clone(lhs, false);
+                                         emit_expr(p);
+                                         return lhs;
+                       
+                                }
+                        
+
+                         // RHS of  could be any simple expression
+                         // if it is then we just emit the expression
+                         
+                         if (is_simple_expression( rhs)){
+                                 emit_expr(p);
+                                 return lhs;
+                         }
+                         
+                         
+			if (rhs->typ() == Binary) {
+                                char lhsflag = 0;
+                                char rhsflag = 0;
+                                
+				binaryNode *b = (binaryNode *) rhs;
+
+                                /*
+                                  Check if the Lhs or Rhs is a simple expression and if it is
+                                  then we set the lhs rhs flag approriately
+                                 */
+                                if ( is_simple_expression (b ->right()))
+                                        rhsflag = 1;
+                                if ( is_simple_expression(b ->left()))
+                                        lhsflag = 1;
+                                
+                                 // I am doing a bitwise and just for being safe
+                                 
+                                 if (lhsflag & rhsflag){
+                                        switch (b->op()->id()) {
+                                        case '*': case '/': case '%': case '+': case Operator::ARROW:
+                                        case '-': case Operator::LS: case Operator::RS: case Operator::LE: 
+                                        case Operator::GE: case '<': case '>': case Operator::EQ: 
+                                        case Operator::NE: case '&': case '|': case '^':
+                                                lhs = (exprNode *) ref_clone_changer::clone(lhs, false);
+                                                emit_expr (p);
+                                                return lhs;
+                                        default: ;
+                                        }
+                                        
+                                 }
+                                 
+                                 else{ /* At thie point the Lhs is still an Id or Id -> Id
+                                          and the RHS needs to be dismantled further.
+                                          
+                                        */
+                                         
+                                   rhs = dismantle_expr (rhs);
+                                   assg = new binaryNode ('=', 
+                                                          (exprNode *)ref_clone_changer::clone(lhs, false),
+							  (exprNode *)ref_clone_changer::clone(rhs,false),
+							  p->coord());
+                                   emit_temp_assign(assg);
+                                   return lhs;
+                                         
+                                         
+                                 }
+			} else if (rhs->typ() == Unary) {
+				unaryNode *u = (unaryNode *) rhs;
+				switch (u->op()->id()) {
+				case Operator::INDIR: case Operator::UMINUS: 
+				case Operator::UPLUS: case Operator::ADDRESS: 
+				case '!': case '~': 
+				// we want to dismantle post/pre incs/decs!
+				//case Operator::POSTINC: 
+				//case Operator::POSTDEC: case Operator::PREINC: 
+				//caseOperator::PREDEC:
+                                        if (is_simple_expression ( u -> expr())){
+                                                lhs = (exprNode *) ref_clone_changer::clone(lhs, false);
+                                                emit_expr (p);
+                                                return lhs;
+                                        }
+                                                
+                                break;
+                                
+                                case Operator::SIZEOF:
+                                        lhs = (exprNode *) ref_clone_changer::clone(lhs, false);
+                                        emit_expr (p);
+                                        return lhs;
+				default: ;
+				}
+			}
+
+                        /*  we need to handle calls differently because the dismantle-call
+                            will generate temp. vars all the time
+                            the code below does exactly the same thing as what function
+                            dismantle-call does
+                            but does not generate the temp variable if there has been no dismantling
+                            of the arguments in the call.
+                            for eg: foo (x+1, y+1) becomes:
+
+                            __TE1 = x + 1;
+                            __ TE2 = y+ 1;
+                            __TE01 = foo ( __TE1, __TE2);
+                             which is the most dismantled form
+                             
+                         */
+                        else if(rhs->typ() == Call) {
+
+                                
+                                expr_list *arglist = new expr_list;
+                                typeNode *ty;
+                                callNode *c = (callNode *) ref_clone_changer::clone(rhs, false);
+                                bool flag = true;
+                                semcheck_expr_visitor::check(c);
+                                ty = (typeNode *)ref_clone_changer::clone(c->type(), false);
+                                
+                                // we evaluate arguments in reverse order.
+                                // ANSI 6.3.2.2 says the order is unspecified,
+                                // but gcc does it this way, so to remain consistent
+                                // we'll do this, too.
+                                
+                                stmt_list_p iter = code ->stmts().end(); 
+                                --iter;
+                                stmtNode * flag_stmt = (*iter); // get the pointer to the last stmt of block
+                                stmtNode * temp;// flag is for checking if any more stmts have been inserted inside the code
+                                /*
+                                // if no more stmts have been added to the code then that means that no dismantling
+                                // has been done and we can just emit the expression
+                                // else the flag is set to false and we need to dismantle the expr
+                                */
+                                for (expr_list::reverse_iterator i=c->args().rbegin(); 
+                                      i!=c->args().rend(); i++) {
+                                        exprNode *arg = dismantle_expr (*i);
+                                        
+                                         iter = code ->stmts().end();
+                                         --iter;
+                                         temp = (*iter);
+                                         if( temp != flag_stmt) // new stmt has been inserted
+                                         {
+                                                 flag = false;
+                                                 
+                                         }
+                                         
+                                         arglist->push_front (arg);
+                                }
+
+                                         exprNode *name = dismantle_expr (c ->name());
+                                         callNode *call = new callNode (name, arglist, c->coord());
+                                         call->type (ty);
+                                         if (call->type() && !(call->type()->is_void())) {
+                                                 
+                                                 binaryNode *assg = new binaryNode ('=', (idNode *) lhs, call, c->coord());
+                                                 emit_expr (assg);
+                                                 
+                                         }
+                                         
+                                         return lhs;
+
+                                         
+                        }
+                        else{
+
+                          // lhs is still an id or id -> id
+                          // we only need to dismantle the rhs
+                          temp = make_var(rhs);
+                          rhs = dismantle_expr (p->right());
+                          assg = new binaryNode ('=', 
+                                                 (exprNode *)ref_clone_changer::clone(lhs, false),
+						 (exprNode *)ref_clone_changer::clone(rhs, false),
+						 p->coord());
+                          emit_expr (assg);
+                          return lhs;
+                          
+                        }
+
+
+		}
+                /*If none of this works and the LHS is a ID
+                  and indeed a temp generated by C-breeze donot
+                  dismantle that*/
+                
+#ifdef USE_THIS_IN_CASE_OF_EMERGENCY
+                /*
+                  If nothing works check if the Id name on the lhs has the following sequence
+                  __TE followed by a number
+                 */
+                if (lhs -> typ() == Id){
+                        bool numflag = true;
+                        idNode * l = (idNode *)lhs;
+                                const char *k=  (l ->name()).c_str();
+                                if ( !strncmp ( k, "__TE", 4)){
+                                         int i = 4;
+                                         while (k[i] != '\0'){
+                                                 if ((int)k[i] >= 48 && (int)k[i] <= 57)
+                                                         i++;
+                                                 else
+                                                         numflag = false;
+                                         }
+                                         if (numflag){
+                                                 emit_expr (p);
+                                                 return lhs;
+                                         }
+                                }
+                                
+                        }
+                        else if(((lhs->typ() == Unary && 
+			((unaryNode *)lhs)->op()->id() == Operator::INDIR) &&
+                                 ((unaryNode *)lhs)->expr()->typ() == Id)) {
+                                bool numflag = true;
+                                exprNode * ex = ((unaryNode *)lhs)->expr();
+                                idNode *l =  (idNode *)ex;
+                                 const char *k=  (l ->name()).c_str();
+                                 if ( !strncmp ( k, "__TE", 4)){
+                                           int i = 4;
+                                           while (k[i] != '\0'){
+                                                   if ((int)k[i] >= 48 && (int)k[i] <= 57)
+                                                           i++;
+                                                   else
+                                                           numflag = false;
+                                           }
+                                           if (numflag){
+                                                   emit_expr (p);
+                                                   return lhs;
+                                           }
+                                 }
+                        }
+
+#endif      
+		rhs = dismantle_expr (p->right());
+		lhs = dismantle_expr (p->left());
+		assg = new binaryNode ('=', lhs, rhs, p->coord());
+		emit_expr (assg);
+		return (exprNode *) ref_clone_changer::clone(lhs, false);
+	// treat these as primitives
+	case '.':
+		// make a.b into (&a)->b,
+		// so that all struct field references are
+		// from ->.  This way, we don't have to worry
+		// about making temps that are copied structs
+		// and not lvalues for the structs they refer to.
+          
+		lhs = p->left();
+		rhs = p->right();
+                // x.y is  first converted to
+                // __TE1 = &x; 
+		lhs = new unaryNode (Operator::ADDRESS, (exprNode *) ref_clone_changer::clone(lhs, false), p->coord());
+		temp = new binaryNode (Operator::ARROW, 
+				       (exprNode *) ref_clone_changer::clone(lhs, false),
+				       (exprNode *) ref_clone_changer::clone(rhs, false),
+				       p->coord());
+                return dismantle_expr (temp);
+
+        case Operator::ARROW:
+                lhs = dismantle_expr (p->left());
+		rhs = p->get_right();
+                
+                if (lhs->typ() == Binary) {
+			if ( ((binaryNode *)lhs)->op()->id() == Operator::ARROW) {
+				temp = make_var (lhs);
+				assg = new binaryNode ('=', 
+                                                       (idNode *) ref_clone_changer::clone(temp, false),
+                                                       (exprNode *) ref_clone_changer::clone(lhs, false),
+						       p->coord());
+				emit_temp_assign (assg);
+				lhs = temp;
+			}
+		}
+                
+		return new binaryNode(op, lhs, (exprNode *) ref_clone_changer::clone(rhs, false), p->coord());
+
+	case Operator::Index: {
+
+	  if (dismantle_flags & INDEX_IS_PRIMITIVE) {
+	    lhs = dismantle_expr (p->left());
+	    rhs = dismantle_expr (p->right());
+	    tempcalc = new binaryNode 
+	      (Operator::Index, lhs, rhs, p->coord());
+	    return tempcalc;
+	  }
+	  // transform to equivalent pointer syntax, then
+	  // dismantle again
+	  // NOTE: the code that comes out of this will look pretty
+	  // weird if a multi-dimensional array is involved, however it 
+	  // will work.
+	  lhs = p->left();
+	  rhs = p->right();
+	  // a[i] => *(a+i)
+	  tempcalc = new binaryNode 
+	    ('+', (exprNode *) ref_clone_changer::clone(lhs, false), (exprNode *) ref_clone_changer::clone(rhs, false),
+	     p->coord());
+	  tempcalc = new unaryNode ('*', tempcalc, p->coord());
+	  return dismantle_expr (tempcalc);
+	}
+	break;
+
+	default:
+                temp = make_var (p);
+                rhs = dismantle_expr (p->right());
+		lhs = dismantle_expr (p->left());
+		p->right(rhs);
+		p->left(lhs);
+		assg = new binaryNode('=', 
+				      (idNode *) ref_clone_changer::clone(temp, false), 
+				      (exprNode *) ref_clone_changer::clone(p, false),
+				      p->coord());
+		emit_temp_assign (assg);
+		return temp;
+	}
+}
+
+exprNode * ExpressionDismantleChanger::dismantle_opeq 
+	(binaryNode *p, unsigned int op) {
+	exprNode *lhs, *rhs, *tempcalc, *assg;
+	// lhs @@= rhs
+	// =>
+	// lhs = lhs @@ rhs
+	rhs = dismantle_expr (p->right());
+	lhs = dismantle_expr (p->left());
+	tempcalc = new binaryNode (op, 
+				   (exprNode *) ref_clone_changer::clone (lhs, false), rhs, p->coord());
+	assg = new binaryNode ('=',
+			       (exprNode *) ref_clone_changer::clone(lhs, false),
+			       tempcalc, p->coord());
+	emit_expr (assg);
+	return lhs;
+}
+	
+void ExpressionDismantleChanger::emit_stmt (stmtNode *p) {
+	code->stmts().push_back (p);
+}
+
+void ExpressionDismantleChanger::emit_decl (idNode *id, typeNode *type) {
+  declNode * d = new declNode((idNode *) ref_clone_changer::clone(id, false),
+			      declNode::NONE,
+			      (typeNode *) ref_clone_changer::clone(type, false),
+			      NULL,
+			      NULL);
+  d->decl_location( declNode::BLOCK );
+  id->decl (d);
+    code->decls().push_back (d);
+}
+
+void ExpressionDismantleChanger::emit_expr (exprNode *p) {
+	code->stmts().push_back (new exprstmtNode (p));
+               
+}
+
+void ExpressionDismantleChanger::emit_temp_assign (exprNode *b) {
+	emit_expr (b);
+}
+
+idNode *ExpressionDismantleChanger::make_var (exprNode *p) {
+	typeNode *ty;
+
+	if (p->type() == NULL)
+		semcheck_expr_visitor::check(p);
+	if (p->type()->is_void())
+	  cout << p->coord() << " dismantle_expr::make_var():variable type is void!\n";
+	ty = (typeNode *) ref_clone_changer::clone(p->type(), false);
+	ty->type_qualifiers (typeNode::NONE);
+
+	// arrays are coerced to pointers
+
+	if (ty->typ() == Array)
+		ty = new ptrNode (typeNode::NONE, ty->type(), p->coord());
+
+	// functions are coerced to pointers to themselves
+
+	if (ty->typ() == Func)
+		ty = new ptrNode (typeNode::NONE, ty, p->coord());
+
+	idNode *id = new_id("T");
+	emit_decl(id, (typeNode *) ref_clone_changer::clone(ty, false));
+	id->type((typeNode *) ref_clone_changer::clone(ty, false));
+	// throw away const, volatile, etc. this is just a temp.
+	id->type()->type_qualifiers (typeNode::NONE);
+	return id;
+}
+
+idNode *ExpressionDismantleChanger::make_int (void) {
+	idNode *id = new_id("T");
+	emit_decl (id, new primNode(basic_type::Int));
+	return id;
+}

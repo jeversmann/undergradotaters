@@ -1,0 +1,43 @@
+%{
+
+int read(char* buffer_ptr, int size);
+
+char* strcpy(char* src, const char* dst);
+
+void syslog(char* msg);
+
+}%
+
+property Taint : { Tainted, Untainted }
+  initially Untainted
+
+procedure read(buffer_ptr, size)
+{
+  on_entry { buffer_ptr --> buffer }
+  
+  modify { buffer }
+
+  analyze Taint {
+    buffer <- Tainted
+  }
+}
+
+procedure strcpy(src, dst)
+{
+  on_entry { src --> string1 
+	     dst --> string2 }
+  
+  access { string1, string2 }
+  modify { string2 }
+  
+  analyze Taint {
+    string2 <- string1
+  }
+}
+
+procedure syslog(msg)
+{
+  on_entry { msg --> msg_string }
+  error if (Taint : msg_string could-be Tainted)
+    "Error: tainted msg string.";
+}

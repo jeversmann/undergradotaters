@@ -1,0 +1,13 @@
+
+     buffer           IOHandle
+ FDKind   Trust    FDKind   Trust
+--------------------------------------
+Inet      Remote   Inet      Remote
+Unix      Remote   Unix      Remote
+Socket    Remote   Socket    Remote
+File      Remote   File      Remote
+Unknown   Remote   Unknown   Remote
+Unix      Local    Unix      Local
+Socket    Local    Socket    Local
+File      Local    File      Local
+Unknown   Local    Unknown   Local

@@ -1,0 +1,52 @@
+
+#include "../../stdclib.pal"
+
+%{
+
+int plp_vsnprintf(char *str, size_t count, const char *fmt, va_list args);
+int plp_snprintf (char *str,size_t count,const char *fmt,...);
+}%
+
+procedure plp_snprintf(str, size, format, args)
+{
+  on_entry {
+    str --> output_string
+    format --> format_string
+    args --> arg_contents
+  }
+  access { output_string, format_string, arg_contents }
+  modify { output_string }
+
+  analyze Taint {
+    output_string <- arg_contents
+  }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @callsite ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @callsite ++ "\n";
+
+}
+
+procedure plp_vsnprintf(str, size, format, args)
+{
+  on_entry {
+    str --> output_string
+    format --> format_string
+    args --> arg_contents
+  }
+  access { output_string, format_string, arg_contents }
+  modify { output_string }
+
+  analyze Taint {
+    output_string <- arg_contents
+  }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @callsite ++ "\n";
+
+}

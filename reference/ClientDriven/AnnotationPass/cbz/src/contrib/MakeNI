@@ -1,0 +1,12 @@
+
+include ../../Makefile.inc
+
+LDFLAGS = -L$(CBZHOME)/lib -lc-breeze 
+
+now: testNodeInfo
+
+testNodeInfo: testNodeInfo.o $(CBZHOME)/lib/libc-breeze.a
+	$(LD) -o testNodeInfo testNodeInfo.o $(LDFLAGS)
+
+testNodeInfo.o: testNodeInfo.cc
+	$(CXX) $(CFLAGS) -c testNodeInfo.cc

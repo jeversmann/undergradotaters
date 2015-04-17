@@ -1,0 +1,6 @@
+#!/bin/sh
+
+cd AnnotationPass/test/
+clang -O0 -emit-llvm taintedness-test1.c
+cd ../../
+opt -load ../../../Debug+Asserts/lib/Broadway.so -use-fi -main -pal AnnotationPass/test/taintedness.pal < AnnotationPass/test/taintedness-test1.s 

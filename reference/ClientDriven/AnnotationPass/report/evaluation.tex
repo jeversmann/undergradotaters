@@ -1,0 +1,30 @@
+\chapter{Evaluation}
+
+\section{Annotation Parsing}
+In order to check if our Annotations class is properly parsing the annotation files. We compare its annotation parse output with our compiled version of the original Broadway. Recall that we cannot actually make Broadway run the analysis, but it does successfully parse the annotations and returns a summary.  For each of our test
+
+
+\section{ Library-Level Error Detection}
+As described earlier, our AnnotationAnalysis call performs flow-insensitive annotation analysis on procedure calls. In particular, it looks at enum properties and propagates these property values to the corresponding point to sets of variables used or modified in the procedure. In addition AnnotationAnalysis supports condition reporting. We look into three library tests, each with their own unique enum property: filestate, matrix, and taintedness. We do not actually implement the library procedures, but rather just use ``stubs" to simulate their usage in our C test files. For each test library we have one annotation file for each of its procedures and three C test cases.
+
+\subsection{Filestate}
+
+\subsection{Matrix}
+
+\subsection{Taintedness}
+
+
+\section{Interface for IDFA and Pointer Analysis}
+
+The primary interface between IDFA and our Annotations class is through ProcedureAnnotationsInfo. Unfortunately, do to time, the IDFA group could not integrate the usage of this class during their actual analysis. However, this class is tested through its usage for AnnotationAnalysis. Currently, it provides access to:
+\begin{itemize}
+\item {\bf On\_Entry} : This is the analysis rules that occurs once the procedure is called.
+\item {\bf On\_Exit} : This is the analysis rules that occurs once the procedure exits.
+\item {\bf Uses} : These are the variables used used in the procedure.
+\item {\bf Defs} : These are the variables defined in the procedure.
+\item {\bf Procedure Parameters} : Theses are the arguments passed into the procedure call.
+\item {\bf Procedure Analyze Rules} : These are the actual property rules that the procedure has been annotated with; For example, it will assign a property value to a specific memory block once this procedure is called.
+\item {\bf Procedure Reports} : The reports provide us with conditions and a string to output via error or warnings if the conditions are met.
+\end{itemize}
+
+This information is consumed in our AnalyzeAnalysis to perform library-level error detection.

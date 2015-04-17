@@ -1,0 +1,1842 @@
+
+%{
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#define __USE_GNU
+#include <string.h>
+
+#include <signal.h>
+#include <math.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <utime.h>
+#include <unistd.h>
+#include <malloc.h>
+#include <sys/stat.h>
+#include <sys/times.h>
+#include <sys/time.h>
+#include <stdarg.h>
+#include <syslog.h>
+#include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <ctype.h>
+
+#undef vscanf
+#undef vfscanf
+#undef vsscanf
+
+extern int vscanf(const char * format, va_list args);
+extern int vfscanf(FILE * f, const char * format, va_list args);
+extern int vsscanf(char * str, const char * format, va_list args);
+
+#include <errno.h>
+#undef errno
+
+#include <sys/utsname.h>
+#include <netdb.h>
+
+}%
+
+// ------------------------------------------------------------
+//  Globals
+// ------------------------------------------------------------
+
+global { I/O Disk }
+
+global { asctime_static_buffer,
+	 strerror_static_buffer
+       }
+
+global { errno }
+
+// ------------------------------------------------------------
+// Analysis properties
+// ------------------------------------------------------------
+
+weak-property Taint : { MaybeTainted { Tainted,
+				  Untainted } }
+
+// ------------------------------------------------------------
+//  Memory operations
+// ------------------------------------------------------------
+
+procedure malloc(size)
+{
+  on_exit {
+    return --> new memory_chunk
+  }
+}
+
+procedure calloc(num, size)
+{
+  on_exit {
+    return --> new memory_chunk
+  }
+}
+
+procedure free(ptr)
+{
+  on_entry {
+    ptr --> memory_chunk
+  }
+}
+
+procedure cfree(ptr)
+{
+  on_entry {
+    ptr --> memory_chunk
+  }
+}
+
+procedure realloc(ptr, size)
+{
+  on_entry {
+    ptr --> old_memory_chunk
+  }
+
+  modify { old_memory_chunk }
+
+  on_exit {
+    return --> new memory_chunk
+  }
+}
+
+// ------------------------------------------------------------
+//  Error handling
+// ------------------------------------------------------------
+
+procedure __errno_location()
+{
+  on_exit {
+    return --> errno
+  }
+}
+
+procedure strerror(num)
+{
+  modify { strerror_static_buffer }
+  on_exit {
+    return --> strerror_static_buffer
+  }
+}
+
+procedure perror(message)
+{
+  on_entry {
+    message --> message_string
+  }
+  access { message_string }
+  modify { Disk }
+}
+
+// ------------------------------------------------------------
+// Environment
+// ------------------------------------------------------------
+
+procedure uname(buf)
+{
+  on_entry {
+    buf --> struct_utsname { sysname --> sysname_contents
+                             nodename --> nodename_contents
+                             release --> release_contents
+                             version --> version_contents
+                             machine --> machine_contents
+                             domainname --> domainname_contents }
+  }
+
+  modify { sysname_contents,
+	     nodename_contents,
+	     release_contents,
+	     version_contents,
+	     machine_contents,
+	     domainname_contents }
+}
+
+procedure getpid() {}
+
+procedure getppid() {}
+
+procedure getuid() {}
+
+procedure geteuid() {}
+
+procedure getenv(name)
+{
+  on_entry {
+    name --> name_string }
+
+  access name_string
+  modify value_string
+
+  analyze Taint {
+    value_string <- Tainted
+  }
+
+  on_exit {
+    return --> new value_string }
+}
+
+procedure putenv(name)
+{
+  on_entry {
+    name --> name_string }
+
+  access name_string
+}
+
+
+procedure gettimeofday(tv, tz)
+{
+  on_entry {
+    tv --> struct_timeval { tv_sec, tv_usec }
+    tz --> struct_timezone { tz_minuteswest, tz_dsttime }
+  }
+
+  modify { struct_timeval.tv_sec,
+	     struct_timeval.tv_usec,
+	     struct_timezone.tz_minuteswest,
+	     struct_timezone.tz_dsttime }
+}
+
+
+procedure time(timep)
+{
+  on_entry {
+    timep --> the_time
+  }
+
+  modify { the_time }
+}
+
+procedure asctime(timeptr)
+{
+  on_entry {
+    timeptr --> struct_tm { tm_sec         // seconds
+                          tm_min         // minutes
+                          tm_hour        // hours 
+                          tm_mday        // day of the month
+                          tm_mon         // month
+                          tm_year        // year
+                          tm_wday        // day of the week
+                          tm_yday        // day in the year
+                          tm_isdst       // daylight saving time
+			}
+  }
+
+  access { struct_tm.tm_sec,
+	     struct_tm.tm_min,
+	     struct_tm.tm_hour,
+	     struct_tm.tm_mday,
+	     struct_tm.tm_mon,
+	     struct_tm.tm_year,
+	     struct_tm.tm_wday,
+	     struct_tm.tm_yday,
+	     struct_tm.tm_isdst }
+
+  modify { asctime_static_buffer }
+
+  on_exit {
+    return --> asctime_static_buffer
+  }
+}
+
+procedure ctime(timep)
+{
+  on_entry {
+    timep --> the_time
+  }
+
+  access the_time
+  modify time_string
+
+  on_exit {
+    return --> new time_string
+  }
+}
+
+procedure localtime(timep)
+{
+  on_entry {
+    timep --> the_time
+  }
+
+  access { the_time }
+
+  modify {struct_tm.tm_sec,
+	    struct_tm.tm_min,
+	    struct_tm.tm_hour,
+	    struct_tm.tm_mday,
+	    struct_tm.tm_mon,
+	    struct_tm.tm_year,
+	    struct_tm.tm_wday,
+	    struct_tm.tm_yday,
+	    struct_tm.tm_isdst }
+
+  on_exit {
+    return --> new struct_tm { tm_sec         // seconds
+                               tm_min         // minutes
+                               tm_hour        // hours 
+                               tm_mday        // day of the month
+                               tm_mon         // month
+                               tm_year        // year
+                               tm_wday        // day of the week
+                               tm_yday        // day in the year
+                               tm_isdst       // daylight saving time
+			     }
+  }
+}
+
+procedure gmtime(timep)
+{
+  on_entry {
+    timep --> the_time
+  }
+
+  access { the_time }
+
+  modify {struct_tm.tm_sec,
+	    struct_tm.tm_min,
+	    struct_tm.tm_hour,
+	    struct_tm.tm_mday,
+	    struct_tm.tm_mon,
+	    struct_tm.tm_year,
+	    struct_tm.tm_wday,
+	    struct_tm.tm_yday,
+	    struct_tm.tm_isdst }
+
+  on_exit {
+    return --> new struct_tm { tm_sec         // seconds
+                               tm_min         // minutes
+                               tm_hour        // hours 
+                               tm_mday        // day of the month
+                               tm_mon         // month
+                               tm_year        // year
+                               tm_wday        // day of the week
+                               tm_yday        // day in the year
+                               tm_isdst       // daylight saving time
+			     }
+  }
+}
+
+procedure mktime(timeptr)
+{
+  on_entry {
+    timeptr --> struct_tm { tm_sec         // seconds
+                          tm_min         // minutes
+                          tm_hour        // hours 
+                          tm_mday        // day of the month
+                          tm_mon         // month
+                          tm_year        // year
+                          tm_wday        // day of the week
+                          tm_yday        // day in the year
+                          tm_isdst       // daylight saving time
+			}
+  }
+
+  access { struct_tm.tm_sec,
+	     struct_tm.tm_min,
+	     struct_tm.tm_hour,
+	     struct_tm.tm_mday,
+	     struct_tm.tm_mon,
+	     struct_tm.tm_year,
+	     struct_tm.tm_wday,
+	     struct_tm.tm_yday,
+	     struct_tm.tm_isdst }
+}
+
+// ------------------------------------------------------------
+//  Misc
+// ------------------------------------------------------------
+
+procedure exit(status)
+{
+  modify { Disk }
+}
+
+procedure atexit(function_ptr)
+{
+  on_entry {
+    function_ptr --> function
+  }
+  access { function }
+}
+
+procedure abort() {}
+
+procedure ferror(stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+}
+
+procedure feof(stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+}
+
+procedure fflush(stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+  modify { file_structure, Disk }
+}
+
+procedure truncate(path, length)
+{
+  on_entry {
+    path --> path_string
+  }
+
+  access { path_string }
+  modify { Disk }
+}
+
+procedure ftruncate(fd, length)
+{
+  modify { Disk }
+}
+
+procedure fileno(stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+}
+
+%{
+#define _GNU_SOURCE
+#include <getopt.h>
+}%
+
+#ifdef FOOBAR
+
+procedure getopt(argc, argv, optstring)
+{
+  on_entry {
+    argv --> argv_array --> arg
+    optstring --> optstring_contents
+  }
+
+  access { arg, optstring_contents }
+}
+
+procedure getopt_long(argc, argv, optstring, longopts, longindex)
+{
+  on_entry {
+    argv --> argv_array --> arg
+    optstring --> optstring_contents
+    longopts --> struct_option { name --> name_string,
+				 has_arg,
+				 flag --> flag_var,
+				 val }
+  }
+
+  access { arg, optstring_contents, name_string, struct_option.has_arg,
+	     flag_var, struct_option.val }
+
+  modify { flag_var }
+}
+
+procedure getopt_long_only(argc, argv, optstring, longopts, longindex)
+{
+  on_entry {
+    argv --> argv_array --> arg
+    optstring --> optstring_contents
+    longopts --> struct_option { name --> name_string,
+				 has_arg,
+				 flag --> flag_var,
+				 val }
+  }
+
+  access { arg, optstring_contents, name_string, struct_option.has_arg,
+	     flag_var, struct_option.val }
+
+  modify { flag_var }
+}
+
+#endif
+
+// ------------------------------------------------------------
+//  File position
+// ------------------------------------------------------------
+
+procedure lseek(fd, offset, whence)
+{
+
+}
+
+procedure fseek( stream, offset, whence)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+  modify { file_structure, Disk }
+}
+
+procedure ftell( stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+}
+
+procedure rewind( stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+  modify { file_structure, Disk }
+}
+
+procedure fgetpos( stream, pos_ptr)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+}
+
+procedure fsetpos( stream, pos_ptr)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+  modify { file_structure, Disk }
+}
+
+// ------------------------------------------------------------
+//  File meta-information
+// ------------------------------------------------------------
+
+%{
+
+#include <unistd.h>
+#include <dirent.h>
+
+}%
+
+procedure readdir(dir)
+{
+  on_entry {
+    dir --> dirent
+  }
+
+  on_exit {
+    return --> new struct_dirent { d_ino, d_off, d_reclen,
+				   d_name --> new name_string }
+  }
+
+  modify { struct_dirent.d_ino, struct_dirent.d_off,
+	     struct_dirent.d_reclen, name_string }
+}
+
+procedure opendir(name)
+{
+  on_entry {
+    name --> name_string
+  }
+  access { name_string }
+  modify { dir_entry }
+
+  on_exit {
+    return --> new dir_entry
+  }
+}
+
+procedure closedir(dir)
+{
+  on_entry {
+    dir --> dirent
+  }
+  access { dirent }
+}
+
+
+procedure stat(file_name, buf)
+{
+  on_entry {
+    file_name --> file_name_string
+    buf --> struct_stat { st_dev,
+			    st_ino,
+			    st_mode,
+			    st_nlink,
+			    st_uid,
+			    st_gid,
+			    st_rdev,
+			    st_size,
+			    st_blksize,
+			    st_blocks,
+			    st_atime,
+			    st_mtime,
+			    st_ctime }
+  }
+
+  access { file_name_string, Disk }
+  modify { struct_stat.st_dev,
+	     struct_stat.st_ino,
+	     struct_stat.st_mode,
+	     struct_stat.st_nlink,
+	     struct_stat.st_uid,
+	     struct_stat.st_gid,
+	     struct_stat.st_rdev,
+	     struct_stat.st_size,
+	     struct_stat.st_blksize,
+	     struct_stat.st_blocks,
+	     struct_stat.st_atime,
+	     struct_stat.st_mtime,
+	     struct_stat.st_ctime }
+}
+
+procedure fstat(fd, buf)
+{
+  on_entry {
+    buf --> struct_stat { st_dev,
+			    st_ino,
+			    st_mode,
+			    st_nlink,
+			    st_uid,
+			    st_gid,
+			    st_rdev,
+			    st_size,
+			    st_blksize,
+			    st_blocks,
+			    st_atime,
+			    st_mtime,
+			    st_ctime }
+  }
+
+  access { Disk }
+  modify { struct_stat.st_dev,
+	     struct_stat.st_ino,
+	     struct_stat.st_mode,
+	     struct_stat.st_nlink,
+	     struct_stat.st_uid,
+	     struct_stat.st_gid,
+	     struct_stat.st_rdev,
+	     struct_stat.st_size,
+	     struct_stat.st_blksize,
+	     struct_stat.st_blocks,
+	     struct_stat.st_atime,
+	     struct_stat.st_mtime,
+	     struct_stat.st_ctime }
+}
+
+procedure lstat(file_name, buf)
+{
+  on_entry {
+    file_name --> file_name_string
+    buf --> struct_stat { st_dev,
+			    st_ino,
+			    st_mode,
+			    st_nlink,
+			    st_uid,
+			    st_gid,
+			    st_rdev,
+			    st_size,
+			    st_blksize,
+			    st_blocks,
+			    st_atime,
+			    st_mtime,
+			    st_ctime }
+  }
+
+  access { file_name_string, Disk }
+  modify { struct_stat.st_dev,
+	     struct_stat.st_ino,
+	     struct_stat.st_mode,
+	     struct_stat.st_nlink,
+	     struct_stat.st_uid,
+	     struct_stat.st_gid,
+	     struct_stat.st_rdev,
+	     struct_stat.st_size,
+	     struct_stat.st_blksize,
+	     struct_stat.st_blocks,
+	     struct_stat.st_atime,
+	     struct_stat.st_mtime,
+	     struct_stat.st_ctime }
+}
+
+procedure chmod(path, mode)
+{
+  on_entry {
+    path --> path_string
+    mode --> mode_string
+  }
+  access { path_string, mode_string }
+  modify { Disk }
+}
+
+procedure fchmod(fd, mode)
+{
+  modify { Disk }
+}
+
+procedure utime(filename, buf)
+{
+  on_entry {
+    filename --> filename_string
+    buf --> struct_utimebuf
+  }
+  access { filename_string, Disk }
+  modify { struct_utimebuf }
+}
+
+procedure chown(path, owner, group)
+{
+  on_entry {
+    path --> path_string
+  }
+  access { path_string }
+  modify { Disk }
+}
+
+procedure fchown(fd, owner, group)
+{
+  modify { Disk }
+}
+
+/*
+procedure access(path, mode)
+{
+  on_entry {
+    path --> path_string
+  }
+  access { path_string }
+  modify { }
+}
+
+*/
+// ------------------------------------------------------------
+// Open and close
+// ------------------------------------------------------------
+
+procedure fopen(path, mode)
+{
+  on_entry {
+    path --> path_string
+    mode --> mode_string
+  }
+  access { path_string, mode_string }
+  modify { Disk, file_structure }
+
+  on_exit {
+    return --> new file_structure 
+  }
+}
+
+procedure open(path, flags, mode)
+{
+  on_entry {
+    path --> path_string
+  }
+  access { path_string }
+  modify { Disk }
+}
+
+procedure umask(mask) {}
+
+procedure creat(path, mode)
+{
+  on_entry {
+    path --> path_string
+  }
+  access { path_string }
+  modify { Disk }
+}
+
+procedure fclose(stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+  modify { file_structure, Disk }
+}
+
+procedure close( fd )
+{
+  modify { Disk }
+}
+
+procedure rename(old_path, new_path)
+{
+  on_entry {
+    old_path --> old_path_string
+    new_path --> new_path_string
+  }
+
+  access { old_path_string, new_path_string }
+  modify { Disk }
+}
+
+procedure remove(path)
+{
+  on_entry {
+    path --> path_string
+  }
+  access { path_string }
+  modify { Disk }
+}
+
+
+procedure unlink(path)
+{
+  on_entry {
+    path --> path_string
+  }
+  access { path_string }
+  modify { Disk }
+}
+
+// ------------------------------------------------------------
+//  printf
+// ------------------------------------------------------------
+
+procedure printf(format, args)
+{
+  on_entry {
+    format --> format_string
+    args --> arg_contents
+  }
+  access { format_string, arg_contents }
+  modify { Disk }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+procedure fprintf(stream, format, args)
+{
+  on_entry {
+    stream --> file_structure
+    format --> format_string
+    args --> arg_contents
+  }
+  access { file_structure, format_string, arg_contents }
+  modify { file_structure, Disk }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+procedure sprintf(str, format, args)
+{
+  on_entry {
+    str --> output_string
+    format --> format_string
+    args --> arg_contents
+  }
+  access { output_string, format_string, arg_contents }
+  modify { output_string }
+
+  analyze Taint {
+    output_string <- arg_contents
+  }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+}
+
+procedure snprintf(str, size, format, args)
+{
+  on_entry {
+    str --> output_string
+    format --> format_string
+    args --> arg_contents
+  }
+  access { output_string, format_string, arg_contents }
+  modify { output_string }
+
+  analyze Taint {
+    output_string <- arg_contents
+  }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+}
+
+procedure vprintf(format, args)
+{
+  on_entry {
+    format --> format_string
+    args --> arg_contents
+  }
+  access { format_string, arg_contents }
+  modify { Disk }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+}
+
+procedure vfprintf(stream, format, args)
+{
+  on_entry {
+    stream --> file_structure
+    format --> format_string
+    args --> arg_contents
+  }
+  access { file_structure, format_string, arg_contents }
+  modify { file_structure, Disk }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+}
+
+procedure vsprintf(str, format, args)
+{
+  on_entry {
+    str --> output_string
+    format --> format_string
+    args --> arg_contents
+  }
+  access { output_string, format_string, arg_contents }
+  modify { output_string }
+
+  analyze Taint {
+    output_string <- arg_contents
+  }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+}
+
+procedure vsnprintf(str, size, format, args)
+{
+  on_entry {
+    str --> output_string
+    format --> format_string
+    args --> arg_contents
+  }
+  access { output_string, format_string, arg_contents }
+  modify { output_string }
+
+  analyze Taint {
+    output_string <- arg_contents
+  }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+}
+
+// ------------------------------------------------------------
+//  scanf
+// ------------------------------------------------------------
+
+procedure scanf(format, args)
+{
+  on_entry {
+    format --> format_string
+    args --> arg_contents --> arg_refs
+  }
+  access { format_string, Disk }
+  modify { arg_contents, arg_refs }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+procedure fscanf(stream, format, args)
+{
+  on_entry {
+    stream --> file_structure
+    format --> format_string
+    args --> arg_contents --> arg_refs
+  }
+  access { file_structure, format_string, Disk }
+  modify { arg_contents, arg_refs }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+procedure sscanf(str, format, args)
+{
+  on_entry {
+    str --> input_string
+    format --> format_string
+    args --> arg_contents --> arg_refs
+  }
+  access { input_string, format_string }
+  modify { arg_contents, arg_refs }
+
+  analyze Taint {
+    arg_contents <- input_string
+    arg_refs <- input_string
+  }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+procedure vscanf(format, args)
+{
+  on_entry {
+    format --> format_string
+    args --> arg_contents --> arg_refs
+  }
+  access { format_string, Disk }
+  modify { arg_contents, arg_refs }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+procedure vfscanf(stream, format, args)
+{
+  on_entry {
+    stream --> file_structure
+    format --> format_string
+    args --> arg_contents --> arg_refs
+  }
+  access { file_structure, format_string, Disk }
+  modify { arg_contents, arg_refs }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+procedure vsscanf(str, format, args)
+{
+  on_entry {
+    str --> input_string
+    format --> format_string
+    args --> arg_contents --> arg_refs
+  }
+  access { input_string, format_string }
+  modify { arg_contents, arg_refs }
+
+  analyze Taint {
+    arg_contents <- input_string
+    arg_refs <- input_string
+  }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+// ------------------------------------------------------------
+//  get
+// ------------------------------------------------------------
+
+procedure fgetc(stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure, Disk }
+  modify { file_structure }
+}
+
+procedure fgets(str, size, stream)
+{
+  on_entry {
+    str --> string
+    stream --> file_structure
+  }
+  access { file_structure, Disk }
+  modify { file_structure, string }
+
+  analyze Taint {
+    string <- Tainted
+  }
+
+  on_exit {
+    return --> string
+  }
+}
+
+procedure getc(stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure, Disk }
+  modify { file_structure }
+
+  analyze Taint {
+    return <- Tainted
+  }
+}
+
+procedure getchar()
+{
+  access { Disk }
+
+  analyze Taint {
+    return <- Tainted
+  }
+}
+
+procedure gets(str)
+{
+  on_entry {
+    str --> string
+  }
+  access { Disk }
+  modify { string }
+
+  analyze Taint {
+    string <- Tainted
+  }
+
+  on_exit {
+    return --> string
+  }
+}
+
+procedure ungetc(c, stream)
+{
+  on_entry {
+    stream --> file_structure
+  }
+  modify { stream, Disk }
+}
+
+// ------------------------------------------------------------
+//  put
+// ------------------------------------------------------------
+
+procedure fputc(c, stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+  modify { file_structure, Disk }  
+}
+
+procedure fputs(str, stream)
+{
+  on_entry {
+    str --> string
+    stream --> file_structure
+  }
+  access { file_structure, string }
+  modify { file_structure, Disk }  
+}
+
+procedure putc(c, stream)
+{
+  on_entry { stream --> file_structure }
+  access { file_structure }
+  modify { file_structure, Disk }  
+}
+
+procedure putchar(c)
+{
+  modify { Disk }  
+}
+
+procedure puts(str)
+{
+  on_entry {
+    str --> string
+  }
+  access { string }
+  modify { Disk }  
+}
+
+// ------------------------------------------------------------
+//  read
+// ------------------------------------------------------------
+
+procedure fread(buf_ptr, size, num, stream)
+{
+  on_entry {
+    stream --> file_structure
+    buf_ptr --> buffer
+  }
+  access { file_structure, Disk }
+  modify { file_structure, buffer }
+
+  analyze Taint {
+    buffer <- Tainted
+  }
+}
+
+procedure read(fd, buf_ptr, size)
+{
+  on_entry {
+    buf_ptr --> buffer
+  }
+  access { Disk }
+  modify { buffer }
+
+  analyze Taint {
+    buffer <- Tainted
+  }
+}
+
+// ------------------------------------------------------------
+//  write
+// ------------------------------------------------------------
+
+procedure fwrite(buf_ptr, size, num, stream)
+{
+  on_entry {
+    stream --> file_structure
+    buf_ptr --> buffer
+  }
+  access { file_structure, buffer }
+  modify { file_structure, Disk }
+}
+
+procedure write(fd, buf_ptr, size)
+{
+  on_entry {
+    buf_ptr --> buffer
+  }
+  access { buffer }
+  modify { Disk }
+}
+
+
+procedure isatty(desc)
+{}
+
+// ------------------------------------------------------------
+//  strings
+// ------------------------------------------------------------
+
+procedure strcat(dest, src)
+{
+  on_entry {
+    dest --> dest_string
+    src --> src_string
+  }
+  access { src_string }
+  modify { dest_string }
+
+  analyze Taint {
+    dest_string <- src_string
+  }
+
+  on_exit {
+    return --> dest_string
+  }
+}
+
+procedure strncat(dest, src, size)
+{
+  on_entry {
+    dest --> dest_string
+    src --> src_string
+  }
+  access { src_string }
+  modify { dest_string }
+
+  analyze Taint {
+    dest_string <- src_string
+  }
+
+  on_exit {
+    return --> dest_string
+  }
+}
+
+procedure strcmp(s1, s2)
+{
+  on_entry {
+    s1 --> s1_string
+    s2 --> s2_string
+  }
+  access { s1_string }
+  modify { s2_string }
+}
+
+procedure strncmp(s1, s2, size)
+{
+  on_entry {
+    s1 --> s1_string
+    s2 --> s2_string
+  }
+  access { s1_string }
+  modify { s2_string }
+}
+
+procedure strcpy(dest, src)
+{
+  on_entry {
+    dest --> dest_string
+    src --> src_string
+  }
+  access { src_string }
+  modify { dest_string }
+
+  analyze Taint {
+    dest_string <- src_string
+  }
+
+  on_exit {
+    return --> dest_string
+  }
+}
+
+procedure stpcpy(dest, src)
+{
+  on_entry {
+    dest --> dest_string
+    src --> src_string
+  }
+  access { src_string }
+  modify { dest_string }
+
+  analyze Taint {
+    dest_string <- src_string
+  }
+
+  on_exit {
+    return --> dest_string
+  }
+}
+
+procedure strncpy(dest, src, size)
+{
+  on_entry {
+    dest --> dest_string
+    src --> src_string
+  }
+  access { src_string }
+  modify { dest_string }
+
+  analyze Taint {
+    dest_string <- src_string
+  }
+
+  on_exit {
+    return --> dest_string
+  }
+}
+
+procedure strlen(s)
+{
+  on_entry {
+    s --> s_string
+  }
+  access { s_string }
+}
+
+procedure strdup(src)
+{
+  on_entry {
+    src --> src_string
+  }
+
+  access { src_string }
+  modify { dup_string }
+
+  analyze Taint {
+    dup_string <- src_string
+  }
+
+  on_exit {
+    return --> new dup_string
+  }
+}
+
+procedure strpbrk(str, find_str)
+{
+  on_entry {
+    str --> string
+    find_str --> find_string
+  }
+
+  access { string, find_string }
+
+  on_exit {
+    return --> string
+  }
+}
+
+procedure strstr(str, find_str)
+{
+  on_entry {
+    str --> string
+    find_str --> find_string
+  }
+
+  access { string, find_string }
+
+  on_exit {
+    return --> string
+  }
+}
+
+procedure strtok(str, find_str)
+{
+  on_entry {
+    str --> string
+    find_str --> find_string
+  }
+
+  access { string, find_string }
+
+  on_exit {
+    return --> string
+  }
+}
+
+procedure strchr(str, find_char)
+{
+  on_entry {
+    str --> string
+  }
+
+  access { string }
+
+  on_exit {
+    return --> string
+  }
+}
+
+procedure strrchr(str, find_char)
+{
+  on_entry {
+    str --> string
+  }
+
+  access { string }
+
+  on_exit {
+    return --> string
+  }
+}
+
+procedure tolower(c) {}
+
+procedure toupper(c) {}
+
+procedure strtod( str, endptr )
+{
+  on_entry {
+    str --> string
+    endptr --> end
+  }
+  access { string }
+  on_exit {
+    end --> string
+  }
+}
+
+procedure strtol( str, endptr, base )
+{
+  on_entry {
+    str --> string
+    endptr --> end
+  }
+  access { string }
+  on_exit {
+    end --> string
+  }
+}
+
+procedure strtoul( str, endptr, base )
+{
+  on_entry {
+    str --> string
+    endptr --> end
+  }
+  access { string }
+  on_exit {
+    end --> string
+  }
+}
+
+// ------------------------------------------------------------
+//  Memory operations
+// ------------------------------------------------------------
+
+procedure memcmp(ptr1, ptr2, size)
+{
+  on_entry {
+    ptr1 --> buffer_1
+    ptr2 --> buffer_2
+  }
+  access { buffer_1, buffer_2 }
+}
+
+procedure memcpy(dest, src, size)
+{
+  on_entry {
+    dest --> dest_buffer
+    src --> src_buffer
+  }
+
+  access { src_buffer }
+  modify { dest_buffer }
+
+  analyze Taint {
+    dest_buffer <- src_buffer
+  }
+
+  on_exit {
+    return --> dest_buffer
+  }
+}
+
+procedure memccpy(dest, src, c, size)
+{
+  on_entry {
+    dest --> dest_buffer
+    src --> src_buffer
+  }
+
+  access { src_buffer }
+  modify { dest_buffer }
+
+  analyze Taint {
+    dest_buffer <- src_buffer
+  }
+
+  on_exit {
+    return --> dest_buffer
+  }
+}
+
+procedure memmove(dest, src, size)
+{
+  on_entry {
+    dest --> dest_buffer
+    src --> src_buffer
+  }
+
+  access { src_buffer }
+  modify { dest_buffer }
+
+  analyze Taint {
+    dest_buffer <- src_buffer
+  }
+
+  on_exit {
+    return --> dest_buffer
+  }
+}
+
+procedure memset(dest, c, size)
+{
+  on_entry {
+    dest --> dest_buffer
+  }
+
+  modify { dest_buffer }
+
+  analyze Taint {
+    if (c is-exactly Tainted) {
+      dest_buffer <- Tainted
+    }
+  }
+
+  on_exit {
+    return --> dest_buffer
+  }
+}
+
+procedure bzero(dest, size)
+{
+  on_entry {
+    dest --> dest_buffer
+  }
+
+  modify { dest_buffer }
+}
+
+procedure bcopy(src, dest, size)
+{
+  on_entry {
+    dest --> dest_buffer
+    src --> src_buffer
+  }
+
+  access { src_buffer }
+  modify { dest_buffer }
+
+  analyze Taint {
+    dest_buffer <- src_buffer
+  }
+}
+
+// ------------------------------------------------------------
+//  Network information
+// ------------------------------------------------------------
+
+procedure gethostname(name, size)
+{
+  on_entry {
+    name --> name_string
+  }
+  modify { name_string }
+}
+
+procedure gethostbyname(name)
+{
+  on_entry {
+    name --> name_string
+  }
+
+  access { name_string }
+
+  modify { h_name_string, h_alias_entry, struct_hostent.h_addrtype,
+	     struct_hostent.h_length, h_addr_entry }
+
+  on_exit {
+    return --> new struct_hostent { h_name --> new h_name_string
+                                    h_aliases --> new h_alias_array --> new h_alias_entry
+				    h_addrtype
+                                    h_length
+                                    h_addr_list --> new h_addr_array --> new h_addr_entry }
+  }
+}
+
+// These are declared in netdb.h
+
+procedure setnetgrent(item)
+{
+  on_entry {
+    item --> item_string
+  }
+
+  access { item_string }
+}
+
+procedure getnetgrent(machine_p, user_p, domain_p)
+{
+  on_entry {
+    machine_p --> machine
+    user_p --> user
+    domain_p --> domain
+  }
+
+  modify { machine_string, user_string, domain_string }
+
+  on_exit {
+    machine --> new machine_string
+    user --> new user_string
+    domain --> new domain_string
+  }
+}
+
+procedure endnetgrent() {}
+
+%{
+#include <pwd.h>
+}%
+
+procedure getpwnam(name)
+{
+  on_entry {
+    name --> name_string
+  }
+
+  access { name_string }
+
+  modify { pw_name_string, pw_passwd_string, struct_passwd.pw_uid,
+	     struct_passwd.pw_gid, pw_gecos_string, pw_dir_string,
+	     pw_shell_string }
+
+  on_exit {
+    return --> new  struct_passwd { pw_name --> new pw_name_string
+                                    pw_passwd --> new pw_passwd_string
+                                    pw_uid,
+                                    pw_gid,
+                                    pw_gecos --> new pw_gecos_string
+                                    pw_dir --> new pw_dir_string
+                                    pw_shell --> new pw_shell_string }
+  }
+}
+
+// ------------------------------------------------------------
+//  System log
+// ------------------------------------------------------------
+
+procedure openlog( ident, option, facility)
+{
+  on_entry {
+    ident --> ident_string
+  }
+  access { ident_string }
+  modify { Disk }
+}
+
+procedure syslog( priority, format, args)
+{
+  on_entry {
+    format --> format_string
+    args --> arg_contents
+  }
+  access { format_string, arg_contents }
+  modify { Disk }
+
+  report if (Taint : format_string is-exactly Tainted) "Tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+
+  report if (Taint : format_string is-exactly MaybeTainted) "Possibly tainted argument " ++ [ format ] ++
+    " at " ++ @context ++ "\n";
+}
+
+procedure closelog( )
+{
+  modify { Disk }
+}
+
+// ------------------------------------------------------------
+//  Reg exp
+// ------------------------------------------------------------
+
+%{
+
+#include <regex.h>
+
+}%
+
+procedure regcomp(preg, regex, cflags)
+{
+  on_entry {
+    preg --> regex_buffer
+    regex --> regex_string
+  }
+
+  access { regex_string }
+  modify { regex_buffer }
+}
+
+procedure regexec(preg,  string, nmatch,pmatch, eflags)
+{
+  on_entry {
+    preg --> regex_buffer
+    string --> string_contents
+    pmatch --> pmatch_array --> regmatch_struct { rm_so, rm_eo }
+  }
+
+  access { regex_buffer, string_contents }
+  modify { regmatch_struct.rm_so, regmatch_struct.rm_eo }
+}
+
+procedure regerror(errcode, preg, errbuf, errbuf_size)
+{
+  on_entry {
+    preg --> regex_buffer
+    errbuf --> errbuf_contents
+  }
+
+  access { regex_buffer }
+  modify { errbuf_contents }
+}
+
+procedure regfree(preg)
+{
+  on_entry {
+    preg --> regex_buffer
+  }
+
+  access { regex_buffer }
+}
+
+// ------------------------------------------------------------
+//  Converions
+// ------------------------------------------------------------
+
+procedure atoi( a )
+{
+  on_entry {
+    a --> a_string
+  }
+  access { a_string }
+}
+
+// ------------------------------------------------------------
+//  Signals
+// ------------------------------------------------------------
+
+procedure signal(signum, function)
+{
+  modify { Disk }
+}
+
+// ------------------------------------------------------------
+// Sockets
+// ------------------------------------------------------------
+
+procedure send(s, msg, len, flags)
+{
+  on_entry {
+    msg --> msg_buffer
+  }
+
+  access { msg_buffer }
+  modify { Disk }
+}
+
+procedure sendto(s, msg, len, flags, to, tolen)
+{
+  on_entry {
+    msg --> msg_buffer
+    to --> struct_sockaddr
+  }
+
+  access { msg_buffer, struct_sockaddr }
+  modify { Disk }
+}
+
+procedure sendmsg(s, msg, flags)
+{
+  on_entry {
+    msg --> struct_msghdr {
+      msg_name --> msg_name_contents     /* optional address */
+      msg_namelen                        /* size of address */
+      msg_iov --> msg_iov_contents       /* scatter/gather array */
+      msg_iovlen                         /* # elements in msg_iov */
+      msg_control --> msg_control_contents  /* ancillary data, see below */
+      msg_controllen                     /* ancillary data buffer len */
+      msg_flags                          /* flags on received message */
+    }
+  }
+
+  access { msg_name_contents, struct_msghdr.msg_namelen,
+	     msg_iov_contents, struct_msghdr.msg_iovlen, 
+	     msg_control_contents, struct_msghdr.msg_controllen,
+	     struct_msghdr.msg_flags }
+
+  modify { Disk }
+}
+
+
+procedure recv(s, buf, len, flags)
+{
+  on_entry {
+    buf --> buffer
+  }
+
+  modify { buffer, Disk }
+}
+
+procedure recvfrom(s, buf,  len, flags, from, fromlen)
+{
+  on_entry {
+    buf --> buffer
+    from --> struct_sockaddr
+  }
+
+  access { struct_sockaddr }
+  modify { buffer, Disk }
+}
+
+

@@ -1,0 +1,1060 @@
+/*
+------------------------------------------------------------------------------
+- ########################################################################## -
+
+	C-Breeze Machine Architecture Specification
+
+	Author: Charles Nevill (c.nevill@mail.utexas.edu)
+
+	Description:
+
+		This file describes the x86 architecture (486 and above).
+
+		This file is used by the c-breeze backend to make the translation 
+		from the compiler's Low-level Intermediate Representation (LIR) to 
+		machine-specific assembly code.  It must describe the architecture
+		in enough detail to allow this translation to take place without
+		any additional information.
+		
+	Formatting:
+
+		Except as noted, names are not case sensitive.  Whitespace is also 
+		ignored - the following statements are equivalent:
+
+			RegSP= %@esp
+			Regsp = 	%@esp
+			REGSP=%@esp
+
+		For options that must span more than one line, use the C/C++ line 
+		continuation character (\)
+
+		Except as noted, elements of this arcecture specification may appear
+		in any order.  That is, most (Key = Value) pairs may appear on any
+		line relative to other pairs.
+
+	Comments:
+
+		Both C++ (//) and perl-style (#) line comments are supported.  For 
+		multi-line comments, use C/C++ block comments.
+
+	Assumptions:
+
+		Currently the following assumptions are made about all architectures:
+
+			- stack grows down (from higher addresses to lower addresses)
+			- local variables that do not fit in registers go on the stack
+
+		As necessary, these items may become part of the machine 
+		specification and thus be configurable across architectures.
+
+	Register names:
+
+		All register names must be prefixed by the @ symbol.  This symbol is 
+		not visible in generated assembly output from the compiler.
+
+
+- ########################################################################## -
+------------------------------------------------------------------------------
+*/
+
+// ---------------------------------------------------------------------
+// general information
+
+	// ArchName
+	//
+	// a human readable name for this architecture
+	//
+	ArchName = Intel x86 (486 and above)
+
+	// AsmLineComment
+	//
+	// character or string to start an assembler line comment
+	//
+	AsmLineComment = \#
+
+	// RegPrefix
+	//
+	// optional prefix prepended to register names in generated output.  
+	//
+	AsmRegPrefixAdd = %
+
+	// ConstPrefix
+	//
+	// optional prefix prepended to constant immediate integer values
+	//	in generated output
+	//
+	AsmConstPrefix = $
+
+
+// end general information	
+// ---------------------------------------------------------------------
+
+
+// ---------------------------------------------------------------------
+// register information
+//
+// NOTE: the register names 'dest', 'opnd1', and 'opnd2' are reserved
+
+	// RegsAll
+	//
+	// list of all registers on the machine.  
+	//
+	// NOTE: this list must appear in the file before any other register 
+	//	options are specified.
+	//
+	RegsAll = @eax @ebx @esi @edi @ecx @edx @ebp @esp
+
+	// RegsGpr
+	//
+	// list of general-purpose integer registers.
+	//
+	RegsGpr = @eax @ebx @ecx @edx @esi @edi
+
+	// RegsFpr
+	//
+	// list of general-purpose floating-point registers.
+	//
+	RegsFpr = 
+
+	// RegSP
+	//
+	// stack pointer register
+	//
+	RegSP = @esp
+
+	// RegFP
+	//
+	// frame pointer register
+	//
+	RegFP = @ebp
+
+	// RegsParamFixed
+	//
+	// registers used for passing fixed-point arguments to functions
+	//	may be empty list if registers are not used for parameter passing.
+	//
+	RegsParamFixed = 
+
+	// RegsParamFloat
+	//
+	// registers used for passing floating-point arguments to functions
+	//	may be empty list if registers are not used for parameter passing.
+	//
+	RegsParamFloat = 
+
+	// RegRetValFixed
+	//
+	// register which contains return value of function call returning a 
+	//	fixed-point number or a pointer
+	//
+	RegRetValFixed = @eax
+
+	// RegRetValFloat
+	//
+	// register which contains return value of function call returning a 
+	//	floating-point number
+	//
+	RegRetValFloat = 
+
+	// RegsCallerSave
+	//
+	// registers which must be saved by caller before calling a function
+	//	may be empty list if no registers are saved by caller
+	//
+	RegsCallerSave = @ecx @edx
+
+	// RegsCalleeSave
+	//
+	// registers which must be saved by callee and restored before returning
+	//	from a function.
+	//
+	RegsCalleeSave = @ebx @esi @edi
+
+	// RegDataTypeGpr
+	//
+	// the primitive type of a general-purpose register, used for 
+	//	saving/restoring values of caller- and callee-save registers.
+	//
+	RegDataTypeGpr = ulong
+
+	// DataSizeFpr
+	//
+	// number of bytes in a floating-point register
+	//
+	RegDataTypeFpr = double
+
+
+// end register information
+// ----------------------------------------------------
+
+// --------------------------------------------------------------------------
+// data type information
+
+
+	// DataSizeShort
+	//
+	// number of bytes in the C 'short int' data type
+	//
+	DataSizeShort = 4
+
+	// DataSizeInt
+	//
+	// number of bytes in the C 'int' data type
+	//
+	DataSizeInt = 4
+
+	// DataSizeLong
+	//
+	// number of bytes in the C 'long int' data type
+	//
+	DataSizeLong = 4
+
+	// DataSizeFloat
+	//
+	// number of bytes in the C 'float' data type
+	//
+	DataSizeFloat = 4
+
+	// DataSizeDouble
+	//
+	// number of bytes in the C 'double' data type
+	//
+	DataSizeDouble = 8
+
+	// DataSizePtr
+	//
+	// number of bytes in a pointer
+	//
+	DataSizePtr = 4
+
+
+	//
+	// NOTE: to avoid having to support multiple register sizes on x86 we will 
+	//	treat chars, shorts, ints, and longs as being 4 bytes, but we will add 
+	//	instructions to force the smaller types to their appropriate sizes.
+	//
+
+	// DataAlignChar
+	//
+	// byte alignment of the C 'char' data type
+	//
+	DataAlignShort = 4
+
+	// DataAlignShort
+	//
+	// byte alignment of the C 'short int' data type
+	//
+	DataAlignShort = 4
+
+	// DataAlignInt
+	//
+	// byte alignment of the C 'int' data type
+	//
+	DataAlignInt = 4
+
+	// DataAlignLong
+	//
+	// byte alignment of the C 'long int' data type
+	//
+	DataAlignLong = 4
+
+	// DataAlignFloat
+	//
+	// byte alignment of the C 'float' data type
+	//
+	DataAlignFloat = 4
+
+	// DataAlignDouble
+	//
+	// byte alignment of the C 'double' data type
+	//
+	DataAlignDouble = 8
+
+
+// end data type information
+// --------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------
+// stack usage information
+
+	// NOTE: for purposes of this architecture specification, the "bottom" of a 
+	//	stack frame is defined to be the end with the lower address - that is,
+	//	the end farthest from the stack frame of the callling procedure.  the "top"
+	// 	is defined to be the end with the higher address - that is, the end closest
+	//	to the frame of the calling procedure.
+
+	// StackFrameMinSize
+	//
+	// minimum size of a stack frame.  useful for architectures such as sparc
+	//	that require such a minimum.  note that this value must be a multiple
+	//	of StackAlign if both are specified nonzero.
+	//
+	StackFrameMinSize = 0
+
+	// StackExtraTop
+	//
+	// number of extra bytes of stack space required by architecture-specific 
+	//	code, at the top of the stack frame
+	//
+	StackExtraTop = 0
+
+	// StackExtraBottom
+	//
+	// number of extra bytes of stack space required by architecture-specific 
+	//	code at the bottom of the stack frame.  this space is reserved between
+	//	the stack pointer and the first stack location used for a function 
+	//	parameter, or if no functions require stack space, between the stack
+	//	pointer and the last stack-based local variable.
+	//
+	StackExtraBottom = 0
+
+	// StackAlign
+	//
+	// required byte alignment of the runtime stack.  use zero if no particular
+	//	alignment is required.
+	//
+	StackAlign = 4
+
+	// StackFormalsOffset
+	//
+	// on entry to a procedure, byte offset from the frame pointer to the first
+	//	formal procedure argument.  this depends on the effects of the Call 
+	//	instruction and the function prologue, and the StackExtraBottom option.
+	//
+	// for this arch spec, the offset is 8, because the call instruction 
+	//	implicitly pushes return address, and function prologue pushes ebp
+	StackFormalsOffset = 8
+
+
+// end stack usage information
+// --------------------------------------------------------------------------
+
+
+// ----------------------------------------------------
+// LIR instruction mapping information
+
+	// LirEmulate3Address
+	//
+	// for machines that are natively 2-address machines, this value should
+	//	be set to True or Yes, so that the backend knows that the architecture
+	//	cannot support true 3-address instructions.  a "true 3-address"
+	//	instruction is something like A = B op A, where op is a non-commutative
+	//	operator.such as - or /.  this type of instruction cannot be handled
+	//	by a 2-address machine because 2-address instructions must take the form 
+	//	A op= B.  a 2-address machine can emulate A = B op C by copying B into
+	//	A and then doing A op= C, as long as A, B, and C are distinct registers.
+	//
+	// x86 is a 2-address machine so we must emulate 3-address
+	LirEmulate3Address = True
+
+	/*
+	--------------------------------------------------------------------------
+
+	The bulk of this section is structured as a list of records.  Each record 
+	contains a set of LIR instructions to be matched, an optional set of data
+	types that must also be matched, and chunk of architecture-specific 
+	template code.  Each time one of the specified LIR instructions is 
+	encountered, the template code is emitted with the appropriate 
+	replacements.  The record may also contain information describing the 
+	side-effects of the instruction.
+
+	Record fields:
+
+		LIR : a LIR instruction mnemonic to be matched, without the mn_ prefix.
+			this field may appear more than once.
+
+		DataType : optional - an instruction data type for which this record is
+			applicable.  possible types: 
+					
+				char 
+				short 
+				int 
+				long 
+				float 
+				double
+				pointer
+			
+			if this field is omitted, it is assumed that the provided code
+			will work for any data type.  this field may appear more than once,
+			to specify more than one data type for which the template code is 
+			valid.
+			
+			NOTE: for the ConvertType instruction, this is the source data 
+
+		ConvertToType : for the ConvertType instruction, the data type to 
+			convert to.  see list above for possible types.
+
+		Immed : for arithmetic and bitwise instructions, true/false value that 
+			indicates whether or not the second operand is an immediate.
+
+		Code : the code template.  may contain any number of real instructions 
+			to be executed for the given LIR instruction.
+
+
+	Each record is delimited with an 'Lir2Asm' token and square brackets.
+
+	The LIR instructions are defined in the 'mnemonic' enumeration, found in 
+	opnd1/backend/instruction.h of the c-breeze source code (the mn_ prefix is
+	dropped).
+
+	For the LIR instruction ConvertType, only one DataType and ConvertToType
+	specification is allowed.
+
+	The architecture-specific code template specifies the instruction(s) to be 
+	generated for the given LIR instruction.  The template will typically 
+	contain the one or more instructions, and one or more special operand 
+	tokens. These tokens are replaced with the appropriate values each time 
+	the template is used.  Not all tokens apply to all instruction types.
+	If there is only one instruction, it may be placed on the line with
+	the Code keyword (separated by an = sign).  Or, the template code may be
+	delimited with curly braces.  In both cases the formatting of the template
+	code is preserved, except for leading and trailing whitespace.  If braces
+	are used in the code, they may be included in the template by preceding them 
+	with the escape character '\'.  Code lines beginning with a '.' character 
+	and code lines for label instructions are emitted with no leading whitespace, 
+	and all other code is preceded by one tab character ('\t').
+
+	Tokens that may be used in instruction template code:
+
+		$dest 		- destination operand
+		$opnd1		- source operand 1
+		$opnd2		- source operand 2 (2-operand instructions only)
+		$base		- base register for loads/stores
+		$offset		- offset register or constant for loads/stores
+		$target		- branch/call target, label name
+		$stacksize  - the size of the local stack frame
+
+ 	NOTE: Not all tokens are available for all instructions - see the source
+ 	headers that define the instruction mnemonics for more information.
+
+	To indicate that a given LIR instruction is not supported on the 
+	architecture, simply do not provide a record that maps that instruction
+	to code (or comment the record out).  Or, provide a record that lists
+	the instruction but provides no code for it - i.e. does not provide a Code
+	field. (note that specifying "Code = " or "Code = {}" will not work for 
+	this purpose, because an empty template is considered valid - such a 
+	template might be used if a particular operation requires no instructions 
+	on the architecture).
+
+	Records may also contain annotations that provide information about 
+	side-effects of the template code.  Possible annotations are:
+
+		Kill : a list of registers that may be killed by the template code,
+			other than the obvious (e.g. destination register).  it is assumed
+			that this kill may happen before any source operands are read.
+
+	Samples (x86):
+
+	// matches an integer load
+	Lir2Asm [
+		LIR = Load
+		DataType = int
+		Code = movl $opnd1, $dest
+	]
+
+	// explitly indicates that load double is not supported (no code template)
+	Lir2Asm
+	[
+		LIR = Load
+		DataType = double
+	]
+
+	// matches fixed-point division, always kills eax and edx 
+	Lir2Asm
+	[
+		LIR = Div
+		DataType = char 
+		DataType = short 
+		DataType = int 
+		DataType = long
+		Kill = @eax @edx
+		Code
+		{
+			mr $opnd1, @eax
+			cdq
+			idiv $opnd2, @eax
+			mr $dest, @eax
+		}
+	]
+
+	--------------------------------------------------------------------------
+
+	*/
+
+	// NOTE: we currently do not support floating point computation on x86
+
+
+	//////////////////////////////////////////////////////
+	// type conversions requiring nothing special
+
+	Lir2Asm
+	[
+		LIR = ConvertType
+
+		DataType = pointer
+		DataType = long
+		DataType = ulong
+		DataType = int
+		DataType = uint
+		DataType = short
+		DataType = ushort
+		DataType = char
+		DataType = uchar
+
+		ConvertToType = pointer
+		ConvertToType = long
+		ConvertToType = ulong
+		ConvertToType = int
+		ConvertToType = uint
+		ConvertToType = short
+		ConvertToType = ushort
+		ConvertToType = char
+		ConvertToType = uchar
+		
+		Code = 
+	]
+
+	//////////////////////////////////////////////////////
+	// type conversions requiring change in data size
+
+/*	Lir2Asm
+	[
+		LIR = ConvertType
+		
+		DataType = pointer
+		DataType = long
+		DataType = ulong
+		DataType = int
+		DataType = uint
+
+		ConvertToType = short
+		ConvertToType = ushort
+
+		Code
+		{
+			movl $opnd1, $dest
+			andl 0x0000ffff, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = ConvertType
+		
+		DataType = char
+		DataType = uchar
+
+		ConvertToType = short
+		ConvertToType = ushort
+
+		Code
+		{
+			movl $opnd1, $dest
+			andl 0x000000ff, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = ConvertType
+
+		DataType = short
+		DataType = ushort
+
+		ConvertToType = pointer
+		ConvertToType = long
+		ConvertToType = ulong
+		ConvertToType = int
+		ConvertToType = uint
+
+		Code
+		{
+			movl $opnd1, $dest
+			andl 0x0000ffff, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = ConvertType
+
+		DataType = short
+		DataType = ushort
+
+		ConvertToType = char
+		ConvertToType = uchar
+
+		Code
+		{
+			movl $opnd1, $dest
+			andl 0x0000ffff, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = ConvertType
+		
+		DataType = pointer
+		DataType = long
+		DataType = ulong
+		DataType = int
+		DataType = uint
+
+		ConvertToType = char
+		ConvertToType = uchar
+
+		Code
+		{
+			movl $opnd1, $dest
+			andl 0x000000ff, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = ConvertType
+
+		DataType = char
+		DataType = uchar
+
+		ConvertToType = pointer
+		ConvertToType = long
+		ConvertToType = ulong
+		ConvertToType = int
+		ConvertToType = uint
+
+		Code
+		{
+			movl $opnd1, $dest
+			andl 0x000000ff, $dest
+		}
+	]
+*/
+	/////////////////////////////////////////////////
+	// various memory load instructions
+
+	Lir2Asm
+	[
+		LIR = Load
+		DataType = pointer
+		DataType = long
+		DataType = ulong
+		DataType = int
+		DataType = uint
+		DataType = short
+		DataType = ushort
+		DataType = char
+		DataType = uchar
+		Code = movl $offset($base), $dest
+	]
+
+	/////////////////////////////////////////////////
+	// various load immediate instructions
+
+	Lir2Asm
+	[
+		LIR = LoadImmediate
+		DataType = pointer
+		DataType = long
+		DataType = ulong
+		DataType = int
+		DataType = uint
+		DataType = short
+		DataType = ushort
+		DataType = char
+		DataType = uchar
+		Code = movl $opnd2, $dest
+	]
+
+/*	Lir2Asm
+	[
+		LIR = LoadImmediate
+		DataType = short
+		Code 
+		{
+			movl $opnd2, $dest
+			andl 0x0000ffff, $dest
+		}		
+	]
+
+	Lir2Asm
+	[
+		LIR = LoadImmediate
+		DataType = char
+		Code 
+		{
+			movl $opnd2, $dest
+			andl 0x000000ff, $dest
+		}		
+	]
+*/
+	/////////////////////////////////////////////////
+	// various memory store instructions
+
+	Lir2Asm
+	[
+		LIR = Store
+		DataType = pointer
+		DataType = long
+		DataType = ulong
+		DataType = int
+		DataType = uint
+		DataType = short
+		DataType = ushort
+		DataType = char
+		DataType = uchar
+		Code = movl $opnd1, $offset($base)
+	]
+
+/*	Lir2Asm
+	[
+		LIR = Store
+		DataType = short
+		Code 
+		{
+			andl 0x0000ffff, $opnd1
+			movl $opnd1, $offset($base)
+		}		
+	]
+
+	Lir2Asm
+	[
+		LIR = Store
+		DataType = char
+		Code 
+		{
+			andl 0x000000ff, $opnd1
+			movl $opnd1, $offset($base)
+		}		
+	]
+*/
+	///////////////////////////////////////////////
+	// arithmetic stuff
+
+	Lir2Asm
+	[
+		LIR = Add
+		Code
+		{
+			movl $opnd1, $dest
+			addl $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = Sub
+		Code
+		{
+			movl $opnd1, $dest
+			subl $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = Mul
+		Code
+		{
+			movl $opnd1, $dest
+			imull $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		// uses idiv instruction - answer is in @eax
+
+		LIR = Div
+		Kill = @eax @edx
+		Code
+		{
+			movl $opnd1, @eax
+			cdq
+			idivl $opnd2, @eax
+			movl @eax, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		// uses idiv instruction - answer is in @edx
+
+		LIR = Mod
+		Kill = @eax @edx
+		Code
+		{
+			movl $opnd1, @eax
+			cdq
+			idivl $opnd2, @eax
+			movl @edx, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = Neg
+		Code
+		{
+			movl $opnd1, $dest
+			negl $dest
+		}
+	]
+
+	////////////////////////////////////////////////////////
+	// bitwise boolean operations
+
+	Lir2Asm
+	[
+		LIR = BitwiseOR
+		Code
+		{
+			movl $opnd1, $dest
+			orl $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = BitwiseAND
+		Code
+		{
+			movl $opnd1, $dest
+			andl $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = BitwiseXOR
+		Code
+		{
+			movl $opnd1, $dest
+			xorl $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = BitwiseNOT
+		Code
+		{
+			movl $opnd1, $dest
+			notl $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = BitwiseShiftLeft
+		Code
+		{
+			movl $opnd1, $dest
+			sall $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = BitwiseShiftRight
+		Code
+		{
+			movl $opnd1, $dest
+			sarl $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = BitwiseRotateRight
+		Code
+		{
+			movl $opnd1, $dest
+			ror $opnd2, $dest
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = BitwiseRotateLeft
+		Code
+		{
+			movl $opnd1, $dest
+			rol $opnd2, $dest
+		}
+	]
+
+	///////////////////////////////////////////////////
+	// control flow stuff
+
+	Lir2Asm
+	[
+		LIR = Compare
+		Code = cmpl $opnd2, $opnd1
+	]
+
+	Lir2Asm
+	[
+		LIR = BranchEQ
+		Code = je $target
+	]
+
+	Lir2Asm
+	[
+		LIR = BranchNE
+		Code = jne $target
+	]
+
+	Lir2Asm
+	[
+		// note: this is inverted because we inverted the order of the comparison
+		LIR = BranchLT
+		Code  = jl $target
+	]
+
+	Lir2Asm
+	[
+		// note: this is inverted because we inverted the order of the comparison
+		LIR = BranchLE
+		Code = jle $target
+	]
+
+	Lir2Asm
+	[
+		// note: this is inverted because we inverted the order of the comparison
+		LIR = BranchGT
+		Code = jg $target
+	]
+
+	Lir2Asm
+	[
+		// note: this is inverted because we inverted the order of the comparison
+		LIR = BranchGE
+		Code = jge $target
+	]
+
+	Lir2Asm
+	[
+		LIR = Jmp
+		Code = jmp $target
+	]
+
+	Lir2Asm
+	[
+		LIR = Call
+		Code = call $target
+	]
+
+	Lir2Asm
+	[
+		LIR = Return
+		Code
+		{
+			movl @ebp, @esp
+			popl @ebp
+			ret
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = Label
+		Code = $target:
+	]
+
+	/////////////////////////////////////////////////
+	// random assorted stuff
+
+	Lir2Asm
+	[
+		LIR = GetEffectiveAddr
+		Code = lea $offset($base), $dest
+	]
+
+	Lir2Asm
+	[
+		LIR = Move
+		Code = movl $opnd1, $dest
+	]
+
+	Lir2Asm
+	[
+		LIR = NOP
+		Code = 
+	]
+
+	/////////////////////////////////////////////////
+	// assembler directives
+
+	Lir2Asm
+	[
+		LIR = BeginProc
+		Code 
+		{
+			.align 16
+			.globl $target
+			$target:
+			push @ebp
+			movl @esp, @ebp
+			subl $$stacksize, @esp
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = EndProc
+		Code 
+		{
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = BeginUnit
+		Code 
+		{
+			.text
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = EndUnit
+		Code 
+		{
+		}
+	]
+
+	///////////////////////////////////////////////
+	// static data management
+
+	Lir2Asm
+	[
+		LIR = LoadStatic
+		DataType = pointer
+		Code = movl $$target, $dest
+	]
+
+	Lir2Asm
+	[
+		LIR = StaticDataString
+		Code
+		{
+			.align 4
+			.ascii "$string\0"
+		}
+	]
+
+	Lir2Asm
+	[
+		LIR = StaticDataBinary
+		DataType = int
+		DataType = uint
+		DataType = long
+		DataType = ulong
+		Code = .long 0x$b0$b1$b2$b3
+	]
+
+// end LIR instruction mapping information
+// ----------------------------------------------------

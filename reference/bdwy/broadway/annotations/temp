@@ -1,0 +1,72 @@
+LocalFile      LocalFile       LocalCopy
+LocalFile      RemoteFile      RemoteCopy
+  LocalFile    File            LocalCopy RemoteCopy
+LocalFile      Unix            LocalRead
+LocalFile      Inet            RemoteRead
+  LocalFile    Socket          LocalRead RemoteRead
+    LocalFile  LocalUnknown    LocalCopy LocalRead
+    LocalFile  RemoteUnknown   LocalCopy LocalRead RemoteCopy RemoteRead
+
+RemoteFile     LocalFile       RemoteCopy
+RemoteFile     RemoteFile      RemoteCopy
+  RemoteFile   File            RemoteCopy
+RemoteFile     Unix            LocalRead
+RemoteFile     Inet            FTPRead
+  RemoteFile   Socket          LocalRead FTPRead
+    RemoteFile LocalUnknown    RemoteCopy LocalRead
+    RemoteFile RemoteUnknown   RemoteCopy LocalRead FTPRead
+
+File           LocalFile       LocalCopy RemoteCopy
+File           RemoteFile      RemoteCopy
+  File         File            LocalCopy RemoteCopy
+File           Unix            LocalRead
+File           Inet            RemoteRead FTPRead
+  File         Socket          LocalRead RemoteRead FTPRead
+    File       LocalUnknown    LocalCopy RemoteCopy LocalRead
+    File       RemoteUnknown   LocalCopy RemoteCopy LocalRead RemoteRead FTPRead
+
+Unix           LocalFile       LocalStore
+Unix           RemoteFile      LocalStore
+  Unix         File            LocalStore
+Unix           Unix            LocalPipe
+Unix           Inet            RemotePipe
+  Unix         Socket          LocalPipe RemotePipe
+    Unix       LocalUnknown    LocalStore LocalPipe
+    Unix       RemoteUnknown   LocalStore LocalPipe RemotePipe
+
+Inet           LocalFile       RemoteStore
+Inet           RemoteFile      FTPStore
+  Inet         File            RemoteStore FTPStore
+Inet           Unix            RemotePipe
+Inet           Inet            RemotePipe
+  Inet         Socket          RemotePipe
+    Inet       LocalUnknown    RemoteStore RemotePipe
+    Inet       RemoteUnknown   RemoteStore RemotePipe FTPStore
+
+Socket         LocalFile       LocalStore RemoteStore
+Socket         RemoteFile      LocalStore FTPStore
+  Socket       File            LocalStore RemoteStore FTPStore
+Socket         Unix            LocalPipe RemotePipe
+Socket         Inet            RemotePipe
+  Socket       Socket          LocalPipe RemotePipe
+    Socket     LocalUnknown    LocalStore RemoteStore LocalPipe RemotePipe
+    Socket     RemoteUnknown   LocalStore RemoteStore LocalPipe RemotePipe FTPStore
+
+LocalUnknown      LocalFile       LocalCopy LocalStore
+LocalUnknown      RemoteFile      RemoteCopy LocalStore
+  LocalUnknown    File            LocalCopy RemoteCopy LocalStore
+LocalUnknown      Unix            LocalRead LocalPipe
+LocalUnknown      Inet            RemoteRead RemotePipe
+  LocalUnknown    Socket          LocalRead RemoteRead LocalPipe RemotePipe
+    LocalUnknown  LocalUnknown    LocalCopy LocalStore LocalRead LocalPipe
+    LocalUnknown  RemoteUnknown   LocalCopy LocalStore LocalRead LocalPipe RemoteRead RemotePipe
+
+RemoteUnknown      LocalFile       LocalCopy RemoteCopy LocalStore RemoteStore
+RemoteUnknown      RemoteFile      RemoteCopy LocalStore FTPStore
+  RemoteUnknown    File            
+RemoteUnknown      Unix            
+RemoteUnknown      Inet            
+  RemoteUnknown    Socket          
+    RemoteUnknown  LocalUnknown    
+    RemoteUnknown  RemoteUnknown   
+

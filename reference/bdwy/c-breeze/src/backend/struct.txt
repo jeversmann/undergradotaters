@@ -1,0 +1,392 @@
+/************/
+/**struct.c**/
+/************/
+
+struct AN_struct{
+	int	num1;
+	char	ltr1;
+	float	flt1;
+};
+
+struct PTRstruct{
+	int	*numPtr;
+	char	*ltrPtr;
+	float	*fltPtr;
+};
+
+int main(void){
+
+	struct AN_struct mystruct1;
+	struct PTRstruct mystruct2;
+
+	mystruct1.num1 = 1;
+	mystruct1.ltr1 = 'c';
+	mystruct1.flt1 = 6 + 'l';
+
+	*(mystruct2.numPtr) = 1.8;
+	*(mystruct2.ltrPtr) = 16;
+	*(mystruct2.fltPtr) = 6 + 'l' + 3.2;
+
+	mystruct1.num1 = *(mystruct2.numPtr) + *(mystruct2.numPtr);
+	mystruct1.ltr1 = *(mystruct2.ltrPtr) + *(mystruct2.ltrPtr);
+	mystruct1.flt1 = *(mystruct2.fltPtr) + *(mystruct2.fltPtr);
+	
+	mystruct1.num1 = *(mystruct2.ltrPtr);
+	mystruct1.ltr1 = *(mystruct2.fltPtr);
+	mystruct1.flt1 = *(mystruct2.numPtr);
+	
+	//mystruct2.numPtr = &(mystruct1.num1);
+	//mystruct2.fltPtr = &(mystruct1.flt1);
+	//mystruct2.ltrPtr = &(mystruct1.ltr1);
+	
+	
+	return 0;
+}
+
+/***************/
+/**struct.p.c***/
+/***************/
+
+struct AN_struct
+{
+  int num1;
+  char ltr1;
+  float flt1;
+};
+
+struct PTRstruct
+{
+  int * numPtr;
+  char * ltrPtr;
+  float * fltPtr;
+};
+
+int main(void)
+{
+  struct AN_struct mystruct1;
+  struct PTRstruct mystruct2;
+  int __RVL1;
+  struct AN_struct * __TE0;
+  struct AN_struct * __TE1;
+  int __TE2;
+  struct AN_struct * __TE3;
+  struct PTRstruct * __TE4;
+  int * __TE5;
+  struct PTRstruct * __TE6;
+  char * __TE7;
+  double __TE8;
+  int __TE9;
+  struct PTRstruct * __TE10;
+  float * __TE11;
+  int __TE12;
+  struct PTRstruct * __TE13;
+  int * __TE14;
+  struct PTRstruct * __TE15;
+  int * __TE16;
+  struct AN_struct * __TE17;
+  int __TE18;
+  struct PTRstruct * __TE19;
+  char * __TE20;
+  struct PTRstruct * __TE21;
+  char * __TE22;
+  struct AN_struct * __TE23;
+  float __TE24;
+  struct PTRstruct * __TE25;
+  float * __TE26;
+  struct PTRstruct * __TE27;
+  float * __TE28;
+  struct AN_struct * __TE29;
+  struct PTRstruct * __TE30;
+  char * __TE31;
+  struct AN_struct * __TE32;
+  struct PTRstruct * __TE33;
+  float * __TE34;
+  struct AN_struct * __TE35;
+  struct PTRstruct * __TE36;
+  int * __TE37;
+  struct AN_struct * __TE38;
+  
+  {
+    /* # 1: preds( ) succs( ) */
+    __TE0 = & mystruct1;
+    __TE0 -> num1 = 1;
+    __TE1 = & mystruct1;
+    __TE1 -> ltr1 = 99;
+    __TE2 = 6 + 108;
+    __TE3 = & mystruct1;
+    __TE3 -> flt1 = __TE2;
+    __TE4 = & mystruct2;
+    __TE5 = __TE4 -> numPtr;
+    * __TE5 = 1.8;
+    __TE6 = & mystruct2;
+    __TE7 = __TE6 -> ltrPtr;
+    * __TE7 = 16;
+    __TE9 = 6 + 108;
+    __TE8 = __TE9 + 3.2;
+    __TE10 = & mystruct2;
+    __TE11 = __TE10 -> fltPtr;
+    * __TE11 = __TE8;
+    __TE13 = & mystruct2;
+    __TE14 = __TE13 -> numPtr;
+    __TE15 = & mystruct2;
+    __TE16 = __TE15 -> numPtr;
+    __TE12 = * __TE16 + * __TE14;
+    __TE17 = & mystruct1;
+    __TE17 -> num1 = __TE12;
+    __TE19 = & mystruct2;
+    __TE20 = __TE19 -> ltrPtr;
+    __TE21 = & mystruct2;
+    __TE22 = __TE21 -> ltrPtr;
+    __TE18 = * __TE22 + * __TE20;
+    __TE23 = & mystruct1;
+    __TE23 -> ltr1 = __TE18;
+    __TE25 = & mystruct2;
+    __TE26 = __TE25 -> fltPtr;
+    __TE27 = & mystruct2;
+    __TE28 = __TE27 -> fltPtr;
+    __TE24 = * __TE28 + * __TE26;
+    __TE29 = & mystruct1;
+    __TE29 -> flt1 = __TE24;
+    __TE30 = & mystruct2;
+    __TE31 = __TE30 -> ltrPtr;
+    __TE32 = & mystruct1;
+    __TE32 -> num1 = * __TE31;
+    __TE33 = & mystruct2;
+    __TE34 = __TE33 -> fltPtr;
+    __TE35 = & mystruct1;
+    __TE35 -> ltr1 = * __TE34;
+    __TE36 = & mystruct2;
+    __TE37 = __TE36 -> numPtr;
+    __TE38 = & mystruct1;
+    __TE38 -> flt1 = * __TE37;
+    __RVL1 = 0;
+    return __RVL1;
+  }
+}
+
+
+
+/*******************/
+/***code_generator**/
+/*******************/
+Struct AN_struct added
+added item num1 to AN_struct of type 2
+added item ltr1 to AN_struct of type 1
+added item flt1 to AN_struct of type 3
+
+Struct PTRstruct added
+added item numPtr to PTRstruct of type 5
+added item ltrPtr to PTRstruct of type 4
+added item fltPtr to PTRstruct of type 6
+
+decl_struct	mystruct1	instruction added to list
+decl_struct	mystruct2	instruction added to list
+decl_int	__RVL1		instruction added to list
+decl_st_ptr	__TE0		instruction added to list
+decl_st_ptr	__TE1		instruction added to list
+decl_int	__TE2		instruction added to list
+decl_st_ptr	__TE3		instruction added to list
+decl_st_ptr	__TE4		instruction added to list
+decl_ipt	__TE5		instruction added to list
+decl_st_ptr	__TE6		instruction added to list
+decl_cpt	__TE7		instruction added to list
+decl_flt	__TE8		instruction added to list
+decl_int	__TE9		instruction added to list
+decl_st_ptr	__TE10		instruction added to list
+decl_fpt	__TE11		instruction added to list
+decl_int	__TE12		instruction added to list
+decl_st_ptr	__TE13		instruction added to list
+decl_ipt	__TE14		instruction added to list
+decl_st_ptr	__TE15		instruction added to list
+decl_ipt	__TE16		instruction added to list
+decl_st_ptr	__TE17		instruction added to list
+decl_int	__TE18		instruction added to list
+decl_st_ptr	__TE19		instruction added to list
+decl_cpt	__TE20		instruction added to list
+decl_st_ptr	__TE21		instruction added to list
+decl_cpt	__TE22		instruction added to list
+decl_st_ptr	__TE23		instruction added to list
+decl_flt	__TE24		instruction added to list
+decl_st_ptr	__TE25		instruction added to list
+decl_fpt	__TE26		instruction added to list
+decl_st_ptr	__TE27		instruction added to list
+decl_fpt	__TE28		instruction added to list
+decl_st_ptr	__TE29		instruction added to list
+decl_st_ptr	__TE30		instruction added to list
+decl_cpt	__TE31		instruction added to list
+decl_st_ptr	__TE32		instruction added to list
+decl_st_ptr	__TE33		instruction added to list
+decl_fpt	__TE34		instruction added to list
+decl_st_ptr	__TE35		instruction added to list
+decl_st_ptr	__TE36		instruction added to list
+decl_ipt	__TE37		instruction added to list
+decl_st_ptr	__TE38		instruction added to list
+
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE0	instruction added to list
+load_int_imm		R1, #1		instruction added to list
+load_int_val		R2, __TE0	instruction added to list
+load_int_imm		R3, #0		instruction added to list
+store_int_bpo		R1, R2, R3	instruction added to list
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE1	instruction added to list
+load_int_imm		R1, #99		instruction added to list
+cvt_int2chr		R2, R1		instruction added to list
+load_int_val		R3, __TE1	instruction added to list
+load_int_imm		R4, #4		instruction added to list
+store_char_bpo		R2, R3, R4	instruction added to list
+load_int_imm		R1, #108	instruction added to list
+load_int_imm		R2, #6		instruction added to list
+add_fixed		R3, R2, R1	instruction added to list
+store_int_val		R3, __TE2	instruction added to list
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE3	instruction added to list
+load_int_val		R1, __TE2	instruction added to list
+cvt_int2flt		R2, R1		instruction added to list
+load_int_val		R3, __TE3	instruction added to list
+load_int_imm		R4, #5		instruction added to list
+store_float_bpo		R2, R3, R4	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE4	instruction added to list
+load_int_val		R1, __TE4	instruction added to list
+load_int_imm		R2, #0		instruction added to list
+load_int_adr_bpo	R3, R1, R2	instruction added to list
+store_int_val		R3, __TE5	instruction added to list
+load_float_imm		R1, #1.8	instruction added to list
+cvt_flt2int		R2, R1		instruction added to list
+store_int_idr		R2, __TE5	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE6	instruction added to list
+load_int_val		R1, __TE6	instruction added to list
+load_int_imm		R2, #4		instruction added to list
+load_char_adr_bpo	R3, R1, R2	instruction added to list
+store_char_val		R3, __TE7	instruction added to list
+load_int_imm		R1, #16		instruction added to list
+cvt_int2chr		R2, R1		instruction added to list
+store_char_idr		R2, __TE7	instruction added to list
+load_int_imm		R1, #108	instruction added to list
+load_int_imm		R2, #6		instruction added to list
+add_fixed		R3, R2, R1	instruction added to list
+store_int_val		R3, __TE9	instruction added to list
+load_float_imm		R1, #3.2	instruction added to list
+load_int_val		R2, __TE9	instruction added to list
+cvt_int2flt		R3, R2		instruction added to list
+add_float		R4, R3, R1	instruction added to list
+store_float_val		R4, __TE8	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE10	instruction added to list
+load_int_val		R1, __TE10	instruction added to list
+load_int_imm		R2, #8		instruction added to list
+load_float_adr_bpo	R3, R1, R2	instruction added to list
+store_float_val		R3, __TE11	instruction added to list
+load_float_val		R1, __TE8	instruction added to list
+store_float_idr		R1, __TE11	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE13	instruction added to list
+load_int_val		R1, __TE13	instruction added to list
+load_int_imm		R2, #0		instruction added to list
+load_int_adr_bpo	R3, R1, R2	instruction added to list
+store_int_val		R3, __TE14	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE15	instruction added to list
+load_int_val		R1, __TE15	instruction added to list
+load_int_imm		R2, #0		instruction added to list
+load_int_adr_bpo	R3, R1, R2	instruction added to list
+store_int_val		R3, __TE16	instruction added to list
+load_int_idr		R1, __TE14	instruction added to list
+load_int_idr		R2, __TE16	instruction added to list
+add_fixed		R3, R2, R1	instruction added to list
+store_int_val		R3, __TE12	instruction added to list
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE17	instruction added to list
+load_int_val		R1, __TE12	instruction added to list
+load_int_val		R2, __TE17	instruction added to list
+load_int_imm		R3, #0		instruction added to list
+store_int_bpo		R1, R2, R3	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE19	instruction added to list
+load_int_val		R1, __TE19	instruction added to list
+load_int_imm		R2, #4		instruction added to list
+load_char_adr_bpo	R3, R1, R2	instruction added to list
+store_char_val		R3, __TE20	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE21	instruction added to list
+load_int_val		R1, __TE21	instruction added to list
+load_int_imm		R2, #4		instruction added to list
+load_char_adr_bpo	R3, R1, R2	instruction added to list
+store_char_val		R3, __TE22	instruction added to list
+load_char_idr		R1, __TE20	instruction added to list
+load_char_idr		R2, __TE22	instruction added to list
+add_fixed		R3, R2, R1	instruction added to list
+cvt_chr2int		R4, R3		instruction added to list
+store_int_val		R4, __TE18	instruction added to list
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE23	instruction added to list
+load_int_val		R1, __TE18	instruction added to list
+cvt_int2chr		R2, R1		instruction added to list
+load_int_val		R3, __TE23	instruction added to list
+load_int_imm		R4, #4		instruction added to list
+store_char_bpo		R2, R3, R4	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE25	instruction added to list
+load_int_val		R1, __TE25	instruction added to list
+load_int_imm		R2, #8		instruction added to list
+load_float_adr_bpo	R3, R1, R2	instruction added to list
+store_float_val		R3, __TE26	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE27	instruction added to list
+load_int_val		R1, __TE27	instruction added to list
+load_int_imm		R2, #8		instruction added to list
+load_float_adr_bpo	R3, R1, R2	instruction added to list
+store_float_val		R3, __TE28	instruction added to list
+load_float_idr		R1, __TE26	instruction added to list
+load_float_idr		R2, __TE28	instruction added to list
+add_float		R3, R2, R1	instruction added to list
+store_float_val		R3, __TE24	instruction added to list
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE29	instruction added to list
+load_float_val		R1, __TE24	instruction added to list
+load_int_val		R2, __TE29	instruction added to list
+load_int_imm		R3, #5		instruction added to list
+store_float_bpo		R1, R2, R3	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE30	instruction added to list
+load_int_val		R1, __TE30	instruction added to list
+load_int_imm		R2, #4		instruction added to list
+load_char_adr_bpo	R3, R1, R2	instruction added to list
+store_char_val		R3, __TE31	instruction added to list
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE32	instruction added to list
+load_char_idr		R1, __TE31	instruction added to list
+cvt_chr2int		R2, R1		instruction added to list
+load_int_val		R3, __TE32	instruction added to list
+load_int_imm		R4, #0		instruction added to list
+store_int_bpo		R2, R3, R4	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE33	instruction added to list
+load_int_val		R1, __TE33	instruction added to list
+load_int_imm		R2, #8		instruction added to list
+load_float_adr_bpo	R3, R1, R2	instruction added to list
+store_float_val		R3, __TE34	instruction added to list
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE35	instruction added to list
+load_float_idr		R1, __TE34	instruction added to list
+cvt_flt2chr		R2, R1		instruction added to list
+load_int_val		R3, __TE35	instruction added to list
+load_int_imm		R4, #4		instruction added to list
+store_char_bpo		R2, R3, R4	instruction added to list
+load_int_adr		R1, mystruct2	instruction added to list
+store_int_val		R1, __TE36	instruction added to list
+load_int_val		R1, __TE36	instruction added to list
+load_int_imm		R2, #0		instruction added to list
+load_int_adr_bpo	R3, R1, R2	instruction added to list
+store_int_val		R3, __TE37	instruction added to list
+load_int_adr		R1, mystruct1	instruction added to list
+store_int_val		R1, __TE38	instruction added to list
+load_int_idr		R1, __TE37	instruction added to list
+cvt_int2flt		R2, R1		instruction added to list
+load_int_val		R3, __TE38	instruction added to list
+load_int_imm		R4, #5		instruction added to list
+store_float_bpo		R2, R3, R4	instruction added to list
+load_int_imm		R1, #0		instruction added to list
+store_int_val		R1, __RVL1	instruction added to list

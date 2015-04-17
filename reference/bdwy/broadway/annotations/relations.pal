@@ -1,0 +1,15 @@
+
+property Conformal : [equivalence]
+
+procedure Foo(a, b)
+{
+  analyze Conformal {
+
+    if ({a} == {b}) {
+    }
+
+    if (a !<=> b) {
+
+      
+    }
+

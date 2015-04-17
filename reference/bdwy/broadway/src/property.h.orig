@@ -1,0 +1,413 @@
+
+#ifndef BDWY_PROPERTY_H
+#define BDWY_PROPERTY_H
+
+typedef list< propertyValueAnn * > propertyvalue_list;
+typedef propertyvalue_list::iterator propertyvalue_list_p;
+typedef propertyvalue_list::const_iterator propertyvalue_list_cp;
+
+typedef map< string, propertyAnn *> property_map;
+typedef property_map::iterator property_map_p;
+typedef property_map::const_iterator property_map_cp;
+
+
+/** @brief A dataflow analysis lattice element
+ *
+ */
+
+class propertyValueAnn : public Ann
+{
+private:
+
+  /** @brief Name of the value */
+
+  string _name;
+
+  /** @brief Pointer to the lower lattice element */
+
+  propertyValueAnn * _more_general;
+
+  /** @brief List of higher lattice elements  */
+
+  propertyvalue_list _more_specific;
+
+  /** @brief Height in the lattice */
+
+  int _height;
+
+  /** @brief Unique id number */
+
+  int _id;
+
+public:
+
+  /** @brief Create a new property value */
+
+  propertyValueAnn(const parserID * name,
+		   propertyvalue_list * more_specific);
+
+  // Fields
+
+  inline string & name() { return _name; }
+  inline const string & name() const { return _name; }
+
+  inline propertyValueAnn * more_general() const { return _more_general; }
+
+  inline propertyvalue_list & more_specific() { return _more_specific; }
+  inline const propertyvalue_list & more_specific() const { return _more_specific; }
+
+  inline int height() const { return _height; }
+  inline void height(int new_height) { _height = new_height; }
+
+  inline int id() const { return _id; }
+  inline void id(int new_id) { _id = new_id; }
+};
+
+/** @brief A dataflow analysis property
+ *
+ */
+
+class propertyAnn : public Ann
+{
+public:
+
+  typedef vector< propertyValueAnn *> propertyvalue_vec;
+  typedef propertyvalue_vec::iterator propertyvalue_vec_p;
+  typedef propertyvalue_vec::const_iterator propertyvalue_vec_cp;
+
+  typedef map< memoryAccess *, propertyValueAnn * > defuse_property_map;
+  typedef defuse_property_map::iterator defuse_property_map_p;
+
+  typedef map< memoryBlock *, propertyValueAnn * > block_property_map;
+  typedef block_property_map::iterator block_property_map_p;
+
+  typedef set< propertyValueAnn * > propertyvalue_set;
+  typedef propertyvalue_set::iterator propertyvalue_set_p;
+
+  typedef map< memoryBlock *, propertyvalue_set > block_propertyset_map;
+  typedef block_propertyset_map::iterator block_propertyset_map_p;
+
+private:
+
+  /** @brief Name of the property */
+
+  string _name;
+
+  /** @brief ID
+   *
+   * This number is used to index into the vectors of propertyValues used
+   * by the property analyzer. The value for this property will always
+   * occupy the position given by this number. */
+
+  int _id;
+
+  /** @brief Enabled
+   *
+   * This flag allows us to turn analysis on or off. */
+
+  bool _is_enabled;
+
+  /** @brief Analysis direction */
+
+  Direction _direction;
+
+  /** @brief Strong or weak
+   *
+   * We can have properties that enforce weak updates, or not. It's up to
+   * the user to make sure that these are correct. */
+
+  bool _enforce_weak_updates;
+
+  /** @brief Pointer to the lattice elements
+   *
+   *  This pointer actually refers to the "bottom" element. All other
+   *  elements are reachable by following the "more_specific" pointers. */
+
+  TREE propertyValueAnn * _values;
+
+  /** @brief Lattic top */
+
+  TREE propertyValueAnn * _top;
+
+  /** @brief Default value
+   *
+   * This is the value we'll use whenever there isn't a reaching definition
+   * (or use, depending on the direction). If none is provided, then TOP is
+   * used. */
+
+  REF propertyValueAnn * _default;
+
+  /** @brief Lattice elements ordered by index */
+
+  REF propertyvalue_vec _value_index;
+
+  /** @brief Flow-sensitive "must" values */
+
+  defuse_property_map _now_values;
+
+  /** @brief Flow-insensitive "must" values */
+
+  block_property_map _always_values;
+
+  /** @brief Flow-insensitive "may" values */
+
+  block_propertyset_map _ever_values;
+
+public:
+
+  /** @brief Create a new property */
+
+  propertyAnn(const parserID * name,
+	      Direction direction,
+	      bool enforce_weak_updates,
+	      const parserID * default_name,
+	      propertyvalue_list * lowest_values);
+
+  /** @brief Set ID
+   *
+   * This should only be called once, by the annotations method
+   * add_property(). */
+
+  inline void set_id(int id) { _id = id; }
+
+  /** @brief Get the ID */
+
+  inline int get_id() const { return _id; }
+
+  /** @brief Clear the analysis information
+   *
+   * Call this method to re-initialize the analysis information so that the
+   * property analyzer can be run again. */
+
+  void clear();
+
+  /** @brief Property name */
+
+  inline string & name() { return _name; }
+  inline const string & name() const { return _name; }
+
+  /** @brief Is enabled? */
+
+  inline bool is_enabled() const { return _is_enabled; }
+
+  /** @brief Disable this analysis */
+
+  inline void disable() { _is_enabled = false; }
+
+  /** @brief Enable this analysis */
+
+  inline void enable() { _is_enabled = true; }
+
+  /** @brief Direction */
+
+  inline Direction direction() const { return _direction; }
+
+  /** @brief Query whether it enforces weak updates */
+
+  inline bool enforce_weak_updates() const { return _enforce_weak_updates; }
+
+  /** @brief Lattice */
+
+  inline propertyValueAnn * values() const { return _values; }
+
+  /** @brief Lookup a value by name */
+
+  propertyValueAnn * lookup(const string & name);
+
+  /** @brief Return the bottom element */
+
+  inline propertyValueAnn * bottom() const { return _values; }
+
+  /** @brief Return the top element */
+
+  inline propertyValueAnn * top() const { return _top; }
+
+  /** @brief Return the default element */
+
+  inline propertyValueAnn * default_val() const { return _default; }
+
+  /** @brief Meet function */
+
+  propertyValueAnn * meet(propertyValueAnn * one,
+			  propertyValueAnn * two);
+
+  /** @brief At-least function */
+
+  bool at_least(propertyValueAnn * lower,
+		propertyValueAnn * higher);
+
+  /** @brief Test two variables
+   *
+   *  Test a particular property condition between two variables. */
+
+  bool test(exprAnn::Operator op, propertyExprAnn::FlowSensitivity flow_sensitivity,
+	    pointerValue & lhs, string & lhs_name,
+	    pointerValue & rhs, string & rhs_name);
+
+  /** @brief Test one variable
+   *
+   *  Apply the specified test operator to the given variable and property
+   *  value. */
+
+  bool test(exprAnn::Operator op, propertyExprAnn::FlowSensitivity flow_sensitivity,
+	    pointerValue & lhs, string & lhs_name,
+	    propertyValueAnn * rhs_value);
+
+  /** @brief Property test
+   *
+   *  Apply the specified test operator to the two given property values. */
+
+  bool test(exprAnn::Operator op,
+	    propertyValueAnn * lhs_value, propertyValueAnn * rhs_value);
+
+  /** @brief Lookup flow-sensitive "now" value
+   *
+   * Defaults to "top" */
+
+  propertyValueAnn * lookup_now_value(memoryBlock * block, memoryAccess * def_or_use);
+
+  /** @brief Set flow-sensitive "now" value
+   *
+   * We don't store "top" values, because the lookup method above defaults
+   * to "top". Return true if this changed the value. */
+
+  bool update_now_value(memoryBlock * block, memoryAccess * def_or_use, propertyValueAnn * value);
+
+  /** @brief Lookup flow-insensitive must "always" value
+   *
+   * Defaults to "top" */
+
+  propertyValueAnn * lookup_always_value(memoryBlock * block);  
+
+  /** @brief Set flow-insensitive must "always" value
+   *
+   * We don't store "top" values, because the lookup method above defaults
+   * to "top". Return true if this changed the value. */
+
+  bool update_always_value(memoryBlock * block, propertyValueAnn * value);
+
+  /** @brief Set flow-insensitive must "ever" value
+   *
+   * We don't store "top" values, because the lookup method above defaults
+   * to "top". Return true if this changed the value. */
+
+  bool update_ever_value(memoryBlock * block, propertyValueAnn * value);
+
+  /** @name Value construction methods */
+  //@{
+
+  /** @brief Construct flow-sensitive "now" value
+   *
+   * For each memoryblock in the pointer value, get the property value
+   * associated with the most recent dominating def. Meet all of these
+   * values together. If there is no reaching def/use, return the default
+   * property value. */
+
+  propertyValueAnn * construct_now_value(pointerValue & variable, string & name);
+
+  /** @brief Construct flow-sensitive "now" value
+   *
+   * 
+   * Same method as above, but for a single memoryBlock. Also, if there is
+   * no reaching def/use, return null. */
+
+  propertyValueAnn * construct_now_value(memoryBlock * block);
+
+  /** @brief Construct flow-sensitive "after now" value
+   *
+   * For each memoryblock in the pointer value, get the property value
+   * associated with modifications in the transfer functions (defs at this
+   * location). Meet all these values together. */
+
+  propertyValueAnn * construct_after_value(pointerValue & variable, string & name);
+
+  /** @brief Construct flow-sensitive "after now" value
+   *
+   * Same method as above, but for a single memoryBlock. Also, if there is
+   * no reaching def/use, return null. */
+
+  propertyValueAnn * construct_after_value(memoryBlock * block);
+
+  /** @brief Construct flow-insensitive must "always" value
+   *
+   * For each memoryblock in the pointer value, look up the property
+   * value. Meet all of these values together. */
+
+  propertyValueAnn * construct_always_value(pointerValue & variable, string & name);
+
+  /** @brief Construct flow-insensitive may "ever" value
+   *
+   * For each memoryblock in the pointer value, union the sets of property
+   * values together. */
+
+  void construct_ever_value(pointerValue & variable, string & name,
+			    propertyvalue_set & values);
+
+  /** @brief Construct weak value
+   *
+   * During backwards analysis, when we construct the value for the LHS, we
+   * need to take into account the previous value of objects that were
+   * weakly updated. Therefore, this is a special version of
+   * construct_now_value() that meets the now value with the after value
+   * for weakly updated blocks. */
+
+  propertyValueAnn * construct_weak_now_value(pointerValue & variable, string & name);
+
+  //@}
+
+  /** @brief Change state
+   *
+   *  Update the state of the given variable to have the given property
+   *  value. This method updates all three kinds of flow
+   *  information. Return true if it results in a change of state
+   *  (indicating that the analysis problem hasn't converged). */
+
+  bool apply_next(memoryBlock * block, propertyValueAnn * new_value);
+
+  /** @brief Apply merge
+   *
+   * At a control-flow merge, get the reaching "now" values for the given
+   * object and merge them together. Return true if that results in a
+   * change. */
+
+  void apply_merge(memoryBlock * block, memoryuse_list & phi_uses,
+		   memoryblock_set & changes);
+
+  /** @brief Apply assignment
+   *
+   * At a normal assignment, build the "now" value for the right-hand side,
+   * and assign it to the left-hand side. We'll also handle weak updates by
+   * calling the weak_update() method below. */
+
+  void apply_assignment(pointerValue & left, pointerValue & right,
+			memoryblock_set & changes);
+
+  /** @brief Report
+   *
+   * Retrieve the value for the given variable and flow-sensitivity mode,
+   * print out the results. */
+
+  void report(ostream & out,
+	      propertyExprAnn::FlowSensitivity flow_sensitivity,
+	      pointerValue & lhs, string & lhs_name);
+
+  /** @brief Output operator */
+
+  friend ostream& operator<<(ostream & o, const propertyAnn & anns) {
+    anns.print(o);
+    return o;
+  }
+
+  /** @brief Output method */
+
+  void print(ostream & o) const;  
+
+private:
+
+  void print(ostream & o, propertyValueAnn * prop, int depth) const;
+
+  void number_values(propertyValueAnn * prop,
+		     int & cur_index, int height, int & max_height);
+};
+
+#endif /* BDWY_PROPERTY_H */

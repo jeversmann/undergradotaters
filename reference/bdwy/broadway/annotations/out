@@ -1,0 +1,363 @@
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD LocalCopy 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD RemoteCopy 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD FTPRead 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD RemoteRead 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD LocalCopy 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD RemoteCopy 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalCopy 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD RemoteCopy 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD RemoteCopy 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD FTPRead 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalCopy 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalRead 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteCopy 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteRead 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD FTPRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD LocalRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD RemoteRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly File && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD LocalRead 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD FTPStore 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD RemoteStore 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD RemotePipe 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD RemoteStore 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD RemotePipe 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD RemoteStore 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD FTPStore 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD FTPStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemotePipe 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD RemotePipe 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Inet && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD RemotePipe 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD LocalCopy 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD RemoteCopy 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD RemoteRead 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD LocalCopy 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalCopy 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalRead 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD RemoteCopy 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalCopy 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalRead 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteCopy 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteRead 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD LocalRead 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD RemoteRead 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly LocalFile && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD LocalRead 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD LocalCopy 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD LocalStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD RemoteCopy 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD FTPRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD RemotePipe 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD RemoteRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD LocalCopy 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD LocalStore 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD RemoteCopy 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD RemoteStore 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalCopy 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalPipe 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalRead 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalStore 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD FTPStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD LocalStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD RemoteCopy 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalCopy 7 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalPipe 7 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalRead 7 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalStore 7 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteCopy 7 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemotePipe 7 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteRead 7 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD LocalPipe 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD LocalRead 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD RemotePipe 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD RemoteRead 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD LocalPipe 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD LocalRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unknown  && Trust : buffer is-exactly Local && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD RemotePipe 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD RemoteCopy 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD FTPRead 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD RemoteCopy 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalRead 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD RemoteCopy 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD RemoteCopy 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD FTPRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalRead 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteCopy 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD FTPRead 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD LocalRead 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly RemoteFile && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD LocalRead 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD FTPStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD LocalStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD RemoteStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD RemotePipe 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD LocalStore 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD RemoteStore 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalPipe 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalStore 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD RemotePipe 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD RemoteStore 4 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD FTPStore 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD LocalStore 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD FTPStore 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalPipe 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalStore 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemotePipe 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemoteStore 5 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD LocalPipe 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD RemotePipe 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD LocalPipe 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Socket && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD RemotePipe 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly File) \
+    "RECORD LocalStore 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Inet) \
+    "RECORD RemotePipe 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly LocalFile) \
+    "RECORD LocalStore 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalPipe 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Local) \
+    "RECORD LocalStore 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly RemoteFile) \
+    "RECORD LocalStore 1 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalPipe 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD LocalStore 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Unknown  && Trust : IOHandle is-exactly Remote) \
+    "RECORD RemotePipe 3 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD LocalPipe 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Socket) \
+    "RECORD RemotePipe 2 " ++ @context ++ "\n"; \
+  report if (FDKind : buffer is-exactly Unix && \
+             FDKind : IOHandle is-exactly Unix) \
+    "RECORD LocalPipe 1 " ++ @context ++ "\n"; \

@@ -1,0 +1,16 @@
+%{
+
+void foo(int in, int * out);
+
+}%
+
+procedure foo(in, out)
+{
+  on_entry { out --> actual_out }
+
+  modify { actual_out }
+
+  analyze constants {
+    actual_out = in
+  }
+}

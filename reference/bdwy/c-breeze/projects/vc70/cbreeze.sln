@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 7.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cbreeze", "cbreeze.vcproj", "{67EE632C-8ED3-48C8-A4E9-5EE0358ABABF}"
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		ConfigName.0 = Debug
+		ConfigName.1 = Release
+	EndGlobalSection
+	GlobalSection(ProjectDependencies) = postSolution
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{67EE632C-8ED3-48C8-A4E9-5EE0358ABABF}.Debug.ActiveCfg = Debug|Win32
+		{67EE632C-8ED3-48C8-A4E9-5EE0358ABABF}.Debug.Build.0 = Debug|Win32
+		{67EE632C-8ED3-48C8-A4E9-5EE0358ABABF}.Release.ActiveCfg = Release|Win32
+		{67EE632C-8ED3-48C8-A4E9-5EE0358ABABF}.Release.Build.0 = Release|Win32
+		{110FE3E0-9B08-420A-BAF8-06FF3E77EEA1}.Debug.ActiveCfg = Debug|Win32
+		{110FE3E0-9B08-420A-BAF8-06FF3E77EEA1}.Release.ActiveCfg = Release|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		DPBuild = 5
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

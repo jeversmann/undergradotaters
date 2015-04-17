@@ -1,0 +1,62 @@
+%{
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
+}%
+
+#include "stdclib.pal"
+
+property PessimisticSocketState :
+  { Error { Listening { Bound { Created }}}}
+
+procedure socket(domain, type, protocol)
+{
+  analyze PessimisticSocketState {
+    the_socket <- Created
+  }
+
+  on_exit { return --> new the_socket }
+}
+
+procedure bind(socket_ptr, addr_ptr, namelen)
+{
+  on_entry { socket_ptr --> the_socket }
+  analyze PessimisticSocketState {
+    if (the_socket is-exactly Created)
+      { the_socket <- Bound }
+
+    if (the_socket is-exactly Bound)
+      { the_socket <- Bound }
+
+    default
+      { the_socket <- Error }
+  }
+
+  report
+    if ( ! PessimisticSocketState : the_socket @after is-exactly Bound )
+      "Error at " ++ @context ++ "socket " ++
+      [ the_socket ] ++ " not created.\n";
+}
+
+
+procedure listen(socket_ptr, backlog)
+{
+  on_entry { socket_ptr --> the_socket }
+  analyze PessimisticSocketState {
+    if (the_socket is-exactly Bound)
+      { the_socket <- Listening }
+    default
+      { the_socket <- Error }
+  }
+  report
+    if ( ! PessimisticSocketState : the_socket is-exactly Bound)
+      "Error at " ++ @context ++ "socket " ++
+      [ the_socket ] ++ " is " ++ PessimisticSocketState : the_socket ++ "\n";
+}
+
+procedure fcntl(socket_ptr, cmd, arg)
+{
+  on_entry { socket_ptr --> the_socket }
+}
+

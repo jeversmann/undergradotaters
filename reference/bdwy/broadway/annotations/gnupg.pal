@@ -1,0 +1,43 @@
+
+#include "../../stdclib.pal"
+
+%{
+#include "memory.h"
+}%
+
+procedure secmem_set_flags( flags )
+{}
+
+procedure secmem_get_flags()
+{}
+
+procedure secmem_init( n )
+{}
+
+procedure secmem_malloc( size )
+{
+  on_exit {
+    return --> new memory_chunk
+  }
+}
+
+procedure secmem_realloc( p, newsize )
+{
+  on_entry {
+    p --> old_memory_chunk
+  }
+
+  on_exit {
+    return --> new memory_chunk
+  }
+}
+
+procedure secmem_free( a )
+{}
+
+procedure secmem_term()
+{}
+
+procedure secmem_dump_stats()
+{}
+
