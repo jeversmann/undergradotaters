@@ -1,0 +1,25 @@
+
+#include "../stdclib.pal"
+
+%{
+
+void taint(char *** argv_ref);
+
+}%
+
+procedure taint(argv_ref)
+{
+  on_entry {
+    argv_ref --> argv
+  }
+  access { arg }
+  modify { arg }
+
+  analyze Taint {
+    arg <- Tainted
+  }
+
+  on_exit {
+    argv --> new arg_vector --> new arg
+  }
+}

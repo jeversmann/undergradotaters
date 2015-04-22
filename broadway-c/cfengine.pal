@@ -1,0 +1,36 @@
+
+#include "../../stdclib.pal"
+
+// ------------------------------------------------------------
+//  For cfengine
+// ------------------------------------------------------------
+
+%{
+
+void CfLog(int level, char * string, char * errstr);
+
+}%
+
+procedure CfLog(level, string, errstr)
+{
+  on_entry {
+    string --> string_contents
+    errstr --> errstr_contents
+  }
+
+  access { string_contents, errstr_contents }
+  modify { Disk }
+
+  report if (Taint : string_contents is-exactly Tainted) "Tainted argument " ++ [ string ] ++
+    " at " ++ @callsite ++ "\n";
+
+  report if (Taint : string_contents is-exactly MaybeTainted) "Possibly tainted argument " ++ [ string ] ++
+    " at " ++ @callsite ++ "\n";
+
+  report if (Taint : errstr_contents is-exactly Tainted) "Tainted argument " ++ [ errstr ] ++
+    " at " ++ @callsite ++ "\n";
+
+  report if (Taint : errstr_contents is-exactly MaybeTainted) "Possibly tainted argument " ++ [ errstr ] ++
+    " at " ++ @callsite ++ "\n";
+}
+
