@@ -1,0 +1,112 @@
+start = annotations+:{ annotation };
+
+annotation = header | property | procedure;
+
+header = '%{' code:c_code '}%';
+
+global = ();
+
+procedure = 'procedure' name:procname '(' arguments:identifier_list ')' '{'
+            statements+:{ statement } '}';
+
+statement = pointers | usedefs | analyze | transform | report;
+
+pointers = 'on_entry' '{' entries+:{ structure } '}'
+         | 'on_exit' '{' exits+:{ structure } '}';
+
+
+structure = points_to
+          | struct
+          | delete
+          | variable;
+variable = name:varname;
+points_to = name:varname '-->' new:['new'] target:structure;
+struct = name:varname '{' members+:{ structure } '}';
+delete = 'delete' name:varname;
+
+usedefs = access | modify;
+access = 'access' '{' names:identifier_list '}';
+modify = 'modify' '{' names:identifier_list '}';
+
+property = 'property' name:propname ':' direction:[dir] '{' values+:{ property_vals } '}'
+           [ 'initially' initial:propval ];
+
+property_vals = '{' values:property_val_list '}';
+property_val_list = value:property_val [ ',' rest:property_val_list ];
+property_val = value:propval [ sublist:property_vals ];
+
+dir = forward | backward;
+forward = '@forward';
+backward = '@backward';
+
+analyze = 'analyze' name:propname '{' rules+:{ analysis_rule } '}'
+        | 'analyze' name:propname '{' effects+:{ effect } '}';
+
+analysis_rule = if
+              | default;
+if = 'if' '(' condition:condition ')' '{' effects+:{ effect } '}';
+default = 'default' '{' effects+:{ effect } '}';
+
+condition = numeric_comparison | disjunction | conjunction | negation | condition_test;
+condition_test = [ property:propname ':' ] test;
+disjunction = lhs:condition '||' rhs:condition;
+conjunction = lhs:condition '&&' rhs:condition;
+negation = '!' condition:condition;
+
+numeric_comparison = num_compare_expression | numeric_is_comparison;
+numeric_is_comparison = name:propname 'is-' value:number;
+num_compare_expression = equal_to | not_equal_to | less_than | greater_than
+                       | less_or_equal | greater_or_equal;
+equal_to = lhs:num_expression '==' rhs:num_expression;
+not_equal_to = lhs:num_expression '!=' rhs:num_expression;
+less_than = lhs:num_expression '<' rhs:num_expression;
+greater_than = lhs:num_expression '>' rhs:num_expression;
+less_or_equal= lhs:num_expression '<=' rhs:num_expression;
+greater_or_equal = lhs:num_expression '>=' rhs:num_expression;
+
+num_expression = propname | sub_expression | plus_expression | minus_expression
+               | or_expression | xor_expression | and_expression | mult_expression
+               | div_expression | mod_expression | positive_expression
+               | negative_expression | number;
+sub_expression = '(' @:num_expression ')';
+plus_expression = lhs:num_expression '+' rhs:num_expression;
+minus_expression = lhs:num_expression '-' rhs:num_expression;
+or_expression = lhs:num_expression '|' rhs:num_expression;
+xor_expression = lhs:num_expression '^' rhs:num_expression;
+and_expression = lhs:num_expression '&' rhs:num_expression;
+mult_expression = lhs:num_expression '*' rhs:num_expression;
+div_expression = lhs:num_expression '/' rhs:num_expression;
+mod_expression = lhs:num_expression '%' rhs:num_expression;
+positive_expression = '+' rhs:num_expression;
+negative_expression = '-' rhs:num_expression;
+
+test = bottom_test | exactly_test | atleast_test | could_be_test | atmost_test;
+bottom_test = name:varname 'is-??';
+exactly_test = name:varname 'is-exactly' value:propval;
+atleast_test = name:varname 'is-atleast' value:propval;
+could_be_test = name:varname 'could-be' value:propval;
+atmost_test = name:varname 'is-atmost' value:propval;
+
+effect = target:varname '<-' value:propval
+       | target:varname '<-' source:varname;
+
+transform = replace | inline;
+replace = 'when' '(' condition:condition ')' 'replace-with' '%{' code:c_code '%}';
+inline = 'when' '(' condition:condition ')' 'inline' ';';
+
+report = 'report' 'if' '(' condition:condition ')' report_elements+:{ report_element } ';';
+
+report_element = concat | callsite | report_var | string;
+concat = lhs:report_element '++' rhs:report_element;
+callsite = '@callsite';
+report_var = '[' name:varname ']';
+
+identifier_list = name:procname [ ',' rest:identifier_list ];
+
+propname = ?/\w+/?;
+procname = ?/\w+/?;
+propval = ?/\w+/?;
+varname = ?/\w+/?;
+number = ?/\d*\.?\d*/?;
+string = ?/\".+\"/?;
+c_code = ?/.+/?;
