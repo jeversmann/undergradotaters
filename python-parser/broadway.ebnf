@@ -61,10 +61,11 @@ analysis_rule = if
 if = 'if' '(' condition:condition ')' '{' effects+:{ analysis_effect } '}';
 default = 'default' '{' effects+:{ analysis_effect } '}';
 
-condition = disjunction | conjunction | negation | condition_group | test;
-disjunction = lhs:condition '||' rhs:condition;
-conjunction = lhs:condition '&&' rhs:condition;
-negation = '!' condition:condition;
+condition = conjunction;
+conjunction = { terms:disjunction [ '&&' &disjunction ] };
+disjunction = { terms:cond [ '||' &cond ] };
+negation = '!' condition:condition_group;
+cond = negation | condition_group | test;
 condition_group = '(' @:condition ')';
 
 test = enum_property_test | set_property_test | numeric_test | binding_test;

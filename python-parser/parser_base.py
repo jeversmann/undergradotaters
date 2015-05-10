@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 5, 9, 1, 48, 49, 5)
+__version__ = (2015, 5, 10, 19, 42, 14, 6)
 
 __all__ = [
     'BroadwayParser',
@@ -506,53 +506,63 @@ class BroadwayParser(Parser):
 
     @graken()
     def _condition_(self):
-        with self._choice():
-            with self._option():
-                self._disjunction_()
-            with self._option():
-                self._conjunction_()
-            with self._option():
-                self._negation_()
-            with self._option():
-                self._test_()
-            self._error('no available options')
+        self._conjunction_()
 
     @graken()
-    def _disjunction_(self):
-        self._condition_()
-        self.ast['lhs'] = self.last_node
-        self._token('||')
-        self._condition_()
-        self.ast['rhs'] = self.last_node
+    def _conjunction_(self):
+
+        def block0():
+            self._disjunction_()
+            self.ast['terms'] = self.last_node
+            with self._optional():
+                self._token('&&')
+                with self._if():
+                    self._disjunction_()
+        self._closure(block0)
 
         self.ast._define(
-            ['lhs', 'rhs'],
+            ['terms'],
             []
         )
 
     @graken()
-    def _conjunction_(self):
-        self._condition_()
-        self.ast['lhs'] = self.last_node
-        self._token('&&')
-        self._condition_()
-        self.ast['rhs'] = self.last_node
+    def _disjunction_(self):
+
+        def block0():
+            self._cond_()
+            self.ast['terms'] = self.last_node
+            with self._optional():
+                self._token('||')
+                with self._if():
+                    self._cond_()
+        self._closure(block0)
 
         self.ast._define(
-            ['lhs', 'rhs'],
+            ['terms'],
             []
         )
 
     @graken()
     def _negation_(self):
         self._token('!')
-        self._condition_()
+        self._condition_group_()
         self.ast['condition'] = self.last_node
 
         self.ast._define(
             ['condition'],
             []
         )
+
+    @graken()
+    def _cond_(self):
+        with self._choice():
+            with self._option():
+                self._negation_()
+            with self._option():
+                self._condition_group_()
+            with self._option():
+                self._test_()
+            self._error('no available options')
 
     @graken()
     def _condition_group_(self):
@@ -1503,13 +1513,16 @@ class BroadwaySemantics(object):
     def condition(self, ast):
         return ast
 
-    def disjunction(self, ast):
-        return ast
-
     def conjunction(self, ast):
         return ast
 
+    def disjunction(self, ast):
+        return ast
+
     def negation(self, ast):
+        return ast
+
+    def cond(self, ast):
         return ast
 
     def condition_group(self, ast):
