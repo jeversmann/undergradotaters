@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 5, 5, 4, 58, 6, 1)
+__version__ = (2015, 5, 9, 1, 48, 49, 5)
 
 __all__ = [
     'BroadwayParser',
@@ -53,9 +53,11 @@ class BroadwayParser(Parser):
             with self._option():
                 self._header_()
             with self._option():
+                self._procedure_()
+            with self._option():
                 self._property_()
             with self._option():
-                self._procedure_()
+                self._global_()
             self._error('no available options')
 
     @graken()
@@ -71,10 +73,6 @@ class BroadwayParser(Parser):
         )
 
     @graken()
-    def _global_(self):
-        pass
-
-    @graken()
     def _procedure_(self):
         self._token('procedure')
         self._procname_()
@@ -86,7 +84,7 @@ class BroadwayParser(Parser):
         self._token('{')
 
         def block3():
-            self._statement_()
+            self._procedure_annotation_()
         self._closure(block3)
         self.ast.setlist('statements', self.last_node)
         self._token('}')
@@ -97,29 +95,29 @@ class BroadwayParser(Parser):
         )
 
     @graken()
-    def _statement_(self):
+    def _procedure_annotation_(self):
         with self._choice():
             with self._option():
-                self._pointers_()
+                self._pointer_annotation_()
             with self._option():
-                self._usedefs_()
+                self._dependence_annotation_()
             with self._option():
-                self._analyze_()
+                self._analysis_rule_annotation_()
             with self._option():
-                self._transform_()
+                self._action_annotation_()
             with self._option():
-                self._report_()
+                self._report_annotation_()
             self._error('no available options')
 
     @graken()
-    def _pointers_(self):
+    def _pointer_annotation_(self):
         with self._choice():
             with self._option():
                 self._token('on_entry')
                 self._token('{')
 
                 def block1():
-                    self._structure_()
+                    self._pointer_structure_()
                 self._closure(block1)
                 self.ast.setlist('entries', self.last_node)
                 self._token('}')
@@ -128,8 +126,17 @@ class BroadwayParser(Parser):
                 self._token('{')
 
                 def block3():
-                    self._structure_()
+                    self._pointer_structure_()
                 self._closure(block3)
+                self.ast.setlist('exits', self.last_node)
+                self._token('}')
+            with self._option():
+                self._token('on_exit')
+                self._token('{')
+
+                def block5():
+                    self._cond_pointer_structure_()
+                self._closure(block5)
                 self.ast.setlist('exits', self.last_node)
                 self._token('}')
             self._error('expecting one of: on_entry on_exit')
@@ -140,7 +147,39 @@ class BroadwayParser(Parser):
         )
 
     @graken()
-    def _structure_(self):
+    def _cond_pointer_structure_(self):
+        with self._choice():
+            with self._option():
+                self._token('if')
+                self._token('(')
+                self._condition_()
+                self.ast['condition'] = self.last_node
+                self._token(')')
+                self._token('{')
+
+                def block2():
+                    self._pointer_structure_()
+                self._closure(block2)
+                self.ast.setlist('structures', self.last_node)
+                self._token('}')
+            with self._option():
+                self._token('default')
+                self._token('{')
+
+                def block4():
+                    self._pointer_structure_()
+                self._closure(block4)
+                self.ast.setlist('structures', self.last_node)
+                self._token('}')
+            self._error('expecting one of: default')
+
+        self.ast._define(
+            ['condition'],
+            ['structures']
+        )
+
+    @graken()
+    def _pointer_structure_(self):
         with self._choice():
             with self._option():
                 self._points_to_()
@@ -154,11 +193,14 @@ class BroadwayParser(Parser):
 
     @graken()
     def _variable_(self):
+        with self._optional():
+            self._token('I/O')
+            self.ast['io'] = self.last_node
         self._varname_()
         self.ast['name'] = self.last_node
 
         self.ast._define(
-            ['name'],
+            ['io', 'name'],
             []
         )
 
@@ -170,7 +212,7 @@ class BroadwayParser(Parser):
         with self._optional():
             self._token('new')
         self.ast['new'] = self.last_node
-        self._structure_()
+        self._pointer_structure_()
         self.ast['target'] = self.last_node
 
         self.ast._define(
@@ -185,7 +227,7 @@ class BroadwayParser(Parser):
         self._token('{')
 
         def block2():
-            self._structure_()
+            self._pointer_structure_()
         self._closure(block2)
         self.ast.setlist('members', self.last_node)
         self._token('}')
@@ -207,7 +249,7 @@ class BroadwayParser(Parser):
         )
 
     @graken()
-    def _usedefs_(self):
+    def _dependence_annotation_(self):
         with self._choice():
             with self._option():
                 self._access_()
@@ -243,71 +285,46 @@ class BroadwayParser(Parser):
 
     @graken()
     def _property_(self):
-        self._token('property')
-        self._propname_()
-        self.ast['name'] = self.last_node
-        self._token(':')
-        with self._optional():
-            self._dir_()
-        self.ast['direction'] = self.last_node
-        self._token('{')
+        with self._choice():
+            with self._option():
+                self._token('property')
+                self._propname_()
+                self.ast['name'] = self.last_node
+                self._token(':')
+                self._enum_property_definition_()
+                self.ast['def_'] = self.last_node
+            with self._option():
+                self._token('property')
+                self._propname_()
+                self.ast['name'] = self.last_node
+                self._token(':')
+                self._set_property_definition_()
+                self.ast['def_'] = self.last_node
+            self._error('no available options')
 
-        def block3():
-            self._property_vals_()
-        self._closure(block3)
-        self.ast.setlist('values', self.last_node)
-        self._token('}')
+        self.ast._define(
+            ['name', 'def'],
+            []
+        )
+
+    @graken()
+    def _enum_property_definition_(self):
         with self._optional():
-            self._token('initially')
-            self._propval_()
+            self._direction_()
+        self.ast['direction'] = self.last_node
+        self._property_values_()
+        self.ast.setlist('values', self.last_node)
+        with self._optional():
+            self._initial_value_()
             self.ast['initial'] = self.last_node
 
         self.ast._define(
-            ['name', 'direction', 'initial'],
+            ['direction', 'initial'],
             ['values']
         )
 
     @graken()
-    def _property_vals_(self):
-        self._token('{')
-        self._property_val_list_()
-        self.ast['values'] = self.last_node
-        self._token('}')
-
-        self.ast._define(
-            ['values'],
-            []
-        )
-
-    @graken()
-    def _property_val_list_(self):
-        self._property_val_()
-        self.ast['value'] = self.last_node
-        with self._optional():
-            self._token(',')
-            self._property_val_list_()
-            self.ast['rest'] = self.last_node
-
-        self.ast._define(
-            ['value', 'rest'],
-            []
-        )
-
-    @graken()
-    def _property_val_(self):
-        self._propval_()
-        self.ast['value'] = self.last_node
-        with self._optional():
-            self._property_vals_()
-            self.ast['sublist'] = self.last_node
-
-        self.ast._define(
-            ['value', 'sublist'],
-            []
-        )
-
-    @graken()
-    def _dir_(self):
+    def _direction_(self):
         with self._choice():
             with self._option():
                 self._forward_()
@@ -324,7 +341,94 @@ class BroadwayParser(Parser):
         self._token('@backward')
 
     @graken()
-    def _analyze_(self):
+    def _initial_value_(self):
+        self._token('initially')
+        self._propval_()
+        self.ast['name'] = self.last_node
+
+        self.ast._define(
+            ['name'],
+            []
+        )
+
+    @graken()
+    def _property_values_(self):
+        self._token('{')
+        self._property_value_list_()
+        self.ast['values'] = self.last_node
+        self._token('}')
+
+        self.ast._define(
+            ['values'],
+            []
+        )
+
+    @graken()
+    def _property_value_list_(self):
+
+        def block0():
+            self._property_value_()
+            self.ast['values'] = self.last_node
+            with self._optional():
+                self._token(',')
+                with self._if():
+                    self._property_value_()
+        self._closure(block0)
+
+        self.ast._define(
+            ['values'],
+            []
+        )
+
+    @graken()
+    def _property_value_(self):
+        self._propval_()
+        self.ast['value'] = self.last_node
+        with self._optional():
+            self._property_values_()
+            self.ast['sublist'] = self.last_node
+
+        self.ast._define(
+            ['value', 'sublist'],
+            []
+        )
+
+    @graken()
+    def _set_property_definition_(self):
+        self._token('{')
+        self._set_type_()
+        self.ast['type'] = self.last_node
+        self._token('}')
+
+        self.ast._define(
+            ['type'],
+            []
+        )
+
+    @graken()
+    def _set_type_(self):
+        with self._choice():
+            with self._option():
+                self._token('union-equivalence')
+                self.ast['union_equivalence'] = self.last_node
+            with self._option():
+                self._token('intersect-equivalence')
+                self.ast['intersect_equivalence'] = self.last_node
+            with self._option():
+                self._token('union-set')
+                self.ast['union'] = self.last_node
+            with self._option():
+                self._token('intersect-set')
+                self.ast['intersect'] = self.last_node
+            self._error('expecting one of: intersect-equivalence intersect-set union-equivalence union-set')
+
+        self.ast._define(
+            ['union_equivalence', 'intersect_equivalence', 'union', 'intersect'],
+            []
+        )
+
+    @graken()
+    def _analysis_rule_annotation_(self):
         with self._choice():
             with self._option():
                 self._token('analyze')
@@ -344,7 +448,7 @@ class BroadwayParser(Parser):
                 self._token('{')
 
                 def block5():
-                    self._effect_()
+                    self._analysis_effect_()
                 self._closure(block5)
                 self.ast.setlist('effects', self.last_node)
                 self._token('}')
@@ -374,7 +478,7 @@ class BroadwayParser(Parser):
         self._token('{')
 
         def block2():
-            self._effect_()
+            self._analysis_effect_()
         self._closure(block2)
         self.ast.setlist('effects', self.last_node)
         self._token('}')
@@ -390,7 +494,7 @@ class BroadwayParser(Parser):
         self._token('{')
 
         def block1():
-            self._effect_()
+            self._analysis_effect_()
         self._closure(block1)
         self.ast.setlist('effects', self.last_node)
         self._token('}')
@@ -404,29 +508,14 @@ class BroadwayParser(Parser):
     def _condition_(self):
         with self._choice():
             with self._option():
-                self._numeric_comparison_()
-            with self._option():
                 self._disjunction_()
             with self._option():
                 self._conjunction_()
             with self._option():
                 self._negation_()
             with self._option():
-                self._condition_test_()
+                self._test_()
             self._error('no available options')
-
-    @graken()
-    def _condition_test_(self):
-        with self._optional():
-            self._propname_()
-            self.ast['property'] = self.last_node
-            self._token(':')
-        self._test_()
-
-        self.ast._define(
-            ['property'],
-            []
-        )
 
     @graken()
     def _disjunction_(self):
@@ -466,24 +555,624 @@ class BroadwayParser(Parser):
         )
 
     @graken()
-    def _numeric_comparison_(self):
+    def _condition_group_(self):
+        self._token('(')
+        self._condition_()
+        self.ast['@'] = self.last_node
+        self._token(')')
+
+    @graken()
+    def _test_(self):
         with self._choice():
             with self._option():
-                self._num_compare_expression_()
+                self._enum_property_test_()
             with self._option():
-                self._numeric_is_comparison_()
+                self._set_property_test_()
+            with self._option():
+                self._numeric_test_()
+            with self._option():
+                self._binding_test_()
             self._error('no available options')
 
     @graken()
-    def _numeric_is_comparison_(self):
-        self._propname_()
+    def _enum_property_test_(self):
+        with self._choice():
+            with self._option():
+                self._enum_unknown_test_()
+            with self._option():
+                self._enum_operator_test_()
+            self._error('no available options')
+
+    @graken()
+    def _enum_unknown_test_(self):
+        with self._optional():
+            self._varname_()
+            self.ast['property'] = self.last_node
+            self._token(':')
+        self._varname_()
         self.ast['name'] = self.last_node
-        self._token('is-')
-        self._number_()
+        with self._optional():
+            self._temporal_operator_()
+        self.ast['time'] = self.last_node
+        self._token('is-??')
+
+        self.ast._define(
+            ['property', 'name', 'time'],
+            []
+        )
+
+    @graken()
+    def _enum_operator_test_(self):
+        with self._optional():
+            self._varname_()
+            self.ast['property'] = self.last_node
+            self._token(':')
+        self._varname_()
+        self.ast['name'] = self.last_node
+        with self._optional():
+            self._temporal_operator_()
+        self.ast['time'] = self.last_node
+        self._enum_property_operator_()
+        self.ast['operator'] = self.last_node
+        self._varname_()
+        self.ast['target'] = self.last_node
+
+        self.ast._define(
+            ['property', 'name', 'time', 'operator', 'target'],
+            []
+        )
+
+    @graken()
+    def _temporal_operator_(self):
+        with self._choice():
+            with self._option():
+                self._token('@before')
+            with self._option():
+                self._token('@after')
+            with self._option():
+                self._token('@always')
+            with self._option():
+                self._token('@ever')
+            self._error('expecting one of: @after @always @before @ever')
+
+    @graken()
+    def _enum_property_operator_(self):
+        with self._choice():
+            with self._option():
+                self._token('is-exactly')
+            with self._option():
+                self._token('is-atleast')
+            with self._option():
+                self._token('could-be')
+            with self._option():
+                self._token('is-atmost')
+            self._error('expecting one of: could-be is-atleast is-atmost is-exactly')
+
+    @graken()
+    def _set_property_test_(self):
+        with self._choice():
+            with self._option():
+                self._set_identifier_test_()
+            with self._option():
+                self._set_element_test_()
+            with self._option():
+                self._set_empty_test_()
+            self._error('no available options')
+
+    @graken()
+    def _set_identifier_test_(self):
+        self._varname_()
+        self.ast['name1'] = self.last_node
+        self._propname_()
+        self.ast['name2'] = self.last_node
+        self._varname_()
+        self.ast['name3'] = self.last_node
+
+        self.ast._define(
+            ['name1', 'name2', 'name3'],
+            []
+        )
+
+    @graken()
+    def _set_element_test_(self):
+        self._varname_()
+        self.ast['element'] = self.last_node
+        self._token('is-element-of')
+        self._varname_()
+        self.ast['set'] = self.last_node
+
+        self.ast._define(
+            ['element', 'set'],
+            []
+        )
+
+    @graken()
+    def _set_empty_test_(self):
+        self._varname_()
+        self.ast['set'] = self.last_node
+        self._token('is-{}')
+
+        self.ast._define(
+            ['set'],
+            []
+        )
+
+    @graken()
+    def _binding_test_(self):
+        with self._choice():
+            with self._option():
+                self._binding_alias_test_()
+            with self._option():
+                self._binding_sameas_test_()
+            with self._option():
+                self._binding_empty_test_()
+            self._error('no available options')
+
+    @graken()
+    def _binding_alias_test_(self):
+        self._varname_()
+        self.ast['lhs'] = self.last_node
+        self._token('is-aliasof')
+        self._varname_()
+        self.ast['rhs'] = self.last_node
+
+        self.ast._define(
+            ['lhs', 'rhs'],
+            []
+        )
+
+    @graken()
+    def _binding_sameas_test_(self):
+        self._varname_()
+        self.ast['lhs'] = self.last_node
+        self._token('is-sameas')
+        self._varname_()
+        self.ast['rhs'] = self.last_node
+
+        self.ast._define(
+            ['lhs', 'rhs'],
+            []
+        )
+
+    @graken()
+    def _binding_empty_test_(self):
+        self._varname_()
+        self.ast['name'] = self.last_node
+        self._token('is-empty')
+
+        self.ast._define(
+            ['name'],
+            []
+        )
+
+    @graken()
+    def _analysis_effect_(self):
+        with self._choice():
+            with self._option():
+                self._numeric_assignment_()
+            with self._option():
+                self._enum_property_assignment_()
+            with self._option():
+                self._set_property_operation_()
+            self._error('no available options')
+
+    @graken()
+    def _numeric_assignment_(self):
+        self._varname_()
+        self.ast['name'] = self.last_node
+        self._token('=')
+        self._num_expression_()
         self.ast['value'] = self.last_node
 
         self.ast._define(
             ['name', 'value'],
+            []
+        )
+
+    @graken()
+    def _enum_property_assignment_(self):
+        with self._choice():
+            with self._option():
+                self._enum_append_()
+            with self._option():
+                self._enum_assignment_()
+            self._error('no available options')
+
+    @graken()
+    def _enum_assignment_(self):
+        self._varname_()
+        self.ast['lhs'] = self.last_node
+        self._token('<-')
+        self._varname_()
+        self.ast['rhs'] = self.last_node
+
+        self.ast._define(
+            ['lhs', 'rhs'],
+            []
+        )
+
+    @graken()
+    def _enum_append_(self):
+        self._varname_()
+        self.ast['lhs'] = self.last_node
+        self._token('<-+')
+        self._varname_()
+        self.ast['rhs'] = self.last_node
+
+        self.ast._define(
+            ['lhs', 'rhs'],
+            []
+        )
+
+    @graken()
+    def _set_property_operation_(self):
+        with self._choice():
+            with self._option():
+                self._add_operation_()
+            with self._option():
+                self._remove_operation_()
+            with self._option():
+                self._identifier_operation_()
+            self._error('no available options')
+
+    @graken()
+    def _add_operation_(self):
+        self._token('add')
+        self._propname_()
+
+    @graken()
+    def _remove_operation_(self):
+        self._token('remove')
+        self._propname_()
+
+    @graken()
+    def _identifier_operation_(self):
+        self._varname_()
+        self._propname_()
+        self._varname_()
+
+    @graken()
+    def _report_annotation_(self):
+        with self._choice():
+            with self._option():
+                self._report_conditional_()
+            with self._option():
+                self._report_unconditional_()
+            with self._option():
+                self._error_conditional_()
+            with self._option():
+                self._error_unconditional_()
+            self._error('no available options')
+
+    @graken()
+    def _report_conditional_(self):
+        self._token('report')
+        self._token('if')
+        self._token('(')
+        self._condition_()
+        self.ast['condition'] = self.last_node
+        self._token(')')
+        self._report_element_list_()
+        self._token(';')
+
+        self.ast._define(
+            ['condition'],
+            []
+        )
+
+    @graken()
+    def _report_unconditional_(self):
+        self._token('report')
+        self._report_element_list_()
+        self._token(';')
+
+    @graken()
+    def _error_conditional_(self):
+        self._token('error')
+        self._token('if')
+        self._token('(')
+        self._condition_()
+        self.ast['condition'] = self.last_node
+        self._token(')')
+        self._report_element_list_()
+        self._token(';')
+
+        self.ast._define(
+            ['condition'],
+            []
+        )
+
+    @graken()
+    def _error_unconditional_(self):
+        self._token('error')
+        self._report_element_list_()
+        self._token(';')
+
+    @graken()
+    def _report_element_list_(self):
+
+        def block0():
+            self._report_element_()
+            self.ast['elements'] = self.last_node
+            with self._optional():
+                self._token('++')
+                with self._if():
+                    self._report_element_()
+        self._closure(block0)
+
+        self.ast._define(
+            ['elements'],
+            []
+        )
+
+    @graken()
+    def _report_element_(self):
+        with self._choice():
+            with self._option():
+                self._report_property_()
+            with self._option():
+                self._report_numeric_()
+            with self._option():
+                self._report_program_location_()
+            with self._option():
+                self._report_identifier_()
+            with self._option():
+                self._string_()
+            self._error('no available options')
+
+    @graken()
+    def _report_property_(self):
+        self._propname_()
+        self.ast['property'] = self.last_node
+        self._token(':')
+        self._varname_()
+        self.ast['name'] = self.last_node
+        with self._optional():
+            self._temporal_operator_()
+        self.ast['time'] = self.last_node
+
+        self.ast._define(
+            ['property', 'name', 'time'],
+            []
+        )
+
+    @graken()
+    def _report_numeric_(self):
+        self._num_expression_()
+        with self._optional():
+            self._temporal_operator_()
+        self.ast['time'] = self.last_node
+
+        self.ast._define(
+            ['time'],
+            []
+        )
+
+    @graken()
+    def _report_identifier_(self):
+        self._token('[')
+        self._varname_()
+        self.ast['name'] = self.last_node
+        self._token(']')
+
+        self.ast._define(
+            ['name'],
+            []
+        )
+
+    @graken()
+    def _report_program_location_(self):
+        with self._choice():
+            with self._option():
+                self._callsite_()
+            with self._option():
+                self._context_()
+            self._error('no available options')
+
+    @graken()
+    def _callsite_(self):
+        self._token('@callsite')
+
+    @graken()
+    def _context_(self):
+        self._token('@context')
+
+    @graken()
+    def _action_annotation_(self):
+        with self._choice():
+            with self._option():
+                self._replace_()
+            with self._option():
+                self._inline_()
+            self._error('no available options')
+
+    @graken()
+    def _replace_(self):
+        self._token('when')
+        self._token('(')
+        self._condition_()
+        self.ast['condition'] = self.last_node
+        self._token(')')
+        self._token('replace-with')
+        self._token('%{')
+        self._c_code_()
+        self.ast['code'] = self.last_node
+        self._token('%}')
+
+        self.ast._define(
+            ['condition', 'code'],
+            []
+        )
+
+    @graken()
+    def _inline_(self):
+        self._token('when')
+        self._token('(')
+        self._condition_()
+        self.ast['condition'] = self.last_node
+        self._token(')')
+        self._token('inline')
+        self._token(';')
+
+        self.ast._define(
+            ['condition'],
+            []
+        )
+
+    @graken()
+    def _global_(self):
+        with self._choice():
+            with self._option():
+                self._global_pointer_()
+            with self._option():
+                self._analysis_rule_annotation_()
+            self._error('no available options')
+
+    @graken()
+    def _global_pointer_(self):
+        self._token('global')
+        self._token('{')
+
+        def block1():
+            self._pointer_structure_()
+        self._closure(block1)
+        self.ast.setlist('structures', self.last_node)
+        self._token('}')
+
+        self.ast._define(
+            [],
+            ['structures']
+        )
+
+    @graken()
+    def _identifier_list_(self):
+
+        def block0():
+            self._procname_()
+            self.ast['names'] = self.last_node
+            with self._optional():
+                self._token(',')
+                with self._if():
+                    self._procname_()
+        self._closure(block0)
+
+        self.ast._define(
+            ['names'],
+            []
+        )
+
+    @graken()
+    def _propname_(self):
+        self._identifier_()
+
+    @graken()
+    def _procname_(self):
+        self._identifier_()
+
+    @graken()
+    def _propval_(self):
+        self._identifier_()
+
+    @graken()
+    def _varname_(self):
+        self._identifier_()
+
+    @graken()
+    def _number_(self):
+        self._pattern(r'((\d+(\.\d*)?)|(\.\d+))')
+
+    @graken()
+    def _string_(self):
+        self._pattern(r'\".+\"')
+
+    @graken()
+    def _c_code_(self):
+        self._pattern(r'.+')
+
+    @graken()
+    def _identifier_(self):
+        self._pattern(r'\w+')
+
+    @graken()
+    def _bottom_test_(self):
+        self._varname_()
+        self.ast['name'] = self.last_node
+        self._token('is-??')
+
+        self.ast._define(
+            ['name'],
+            []
+        )
+
+    @graken()
+    def _exactly_test_(self):
+        self._varname_()
+        self.ast['name'] = self.last_node
+        self._token('is-exactly')
+        self._propval_()
+        self.ast['value'] = self.last_node
+
+        self.ast._define(
+            ['name', 'value'],
+            []
+        )
+
+    @graken()
+    def _atleast_test_(self):
+        self._varname_()
+        self.ast['name'] = self.last_node
+        self._token('is-atleast')
+        self._propval_()
+        self.ast['value'] = self.last_node
+
+        self.ast._define(
+            ['name', 'value'],
+            []
+        )
+
+    @graken()
+    def _could_be_test_(self):
+        self._varname_()
+        self.ast['name'] = self.last_node
+        self._token('could-be')
+        self._propval_()
+        self.ast['value'] = self.last_node
+
+        self.ast._define(
+            ['name', 'value'],
+            []
+        )
+
+    @graken()
+    def _atmost_test_(self):
+        self._varname_()
+        self.ast['name'] = self.last_node
+        self._token('is-atmost')
+        self._propval_()
+        self.ast['value'] = self.last_node
+
+        self.ast._define(
+            ['name', 'value'],
+            []
+        )
+
+    @graken()
+    def _numeric_test_(self):
+        with self._choice():
+            with self._option():
+                self._num_compare_expression_()
+            with self._option():
+                self._numeric_is_number_()
+            self._error('no available options')
+
+    @graken()
+    def _numeric_is_number_(self):
+        self._propname_()
+        self.ast['name'] = self.last_node
+        self._token('is-#')
+
+        self.ast._define(
+            ['name'],
             []
         )
 
@@ -584,34 +1273,7 @@ class BroadwayParser(Parser):
 
     @graken()
     def _num_expression_(self):
-        with self._choice():
-            with self._option():
-                self._propname_()
-            with self._option():
-                self._sub_expression_()
-            with self._option():
-                self._plus_expression_()
-            with self._option():
-                self._minus_expression_()
-            with self._option():
-                self._or_expression_()
-            with self._option():
-                self._xor_expression_()
-            with self._option():
-                self._and_expression_()
-            with self._option():
-                self._mult_expression_()
-            with self._option():
-                self._div_expression_()
-            with self._option():
-                self._mod_expression_()
-            with self._option():
-                self._positive_expression_()
-            with self._option():
-                self._negative_expression_()
-            with self._option():
-                self._number_()
-            self._error('no available options')
+        self._number_()
 
     @graken()
     def _sub_expression_(self):
@@ -746,252 +1408,6 @@ class BroadwayParser(Parser):
             []
         )
 
-    @graken()
-    def _test_(self):
-        with self._choice():
-            with self._option():
-                self._bottom_test_()
-            with self._option():
-                self._exactly_test_()
-            with self._option():
-                self._atleast_test_()
-            with self._option():
-                self._could_be_test_()
-            with self._option():
-                self._atmost_test_()
-            self._error('no available options')
-
-    @graken()
-    def _bottom_test_(self):
-        self._varname_()
-        self.ast['name'] = self.last_node
-        self._token('is-??')
-
-        self.ast._define(
-            ['name'],
-            []
-        )
-
-    @graken()
-    def _exactly_test_(self):
-        self._varname_()
-        self.ast['name'] = self.last_node
-        self._token('is-exactly')
-        self._propval_()
-        self.ast['value'] = self.last_node
-
-        self.ast._define(
-            ['name', 'value'],
-            []
-        )
-
-    @graken()
-    def _atleast_test_(self):
-        self._varname_()
-        self.ast['name'] = self.last_node
-        self._token('is-atleast')
-        self._propval_()
-        self.ast['value'] = self.last_node
-
-        self.ast._define(
-            ['name', 'value'],
-            []
-        )
-
-    @graken()
-    def _could_be_test_(self):
-        self._varname_()
-        self.ast['name'] = self.last_node
-        self._token('could-be')
-        self._propval_()
-        self.ast['value'] = self.last_node
-
-        self.ast._define(
-            ['name', 'value'],
-            []
-        )
-
-    @graken()
-    def _atmost_test_(self):
-        self._varname_()
-        self.ast['name'] = self.last_node
-        self._token('is-atmost')
-        self._propval_()
-        self.ast['value'] = self.last_node
-
-        self.ast._define(
-            ['name', 'value'],
-            []
-        )
-
-    @graken()
-    def _effect_(self):
-        with self._choice():
-            with self._option():
-                self._varname_()
-                self.ast['target'] = self.last_node
-                self._token('<-')
-                self._propval_()
-                self.ast['value'] = self.last_node
-            with self._option():
-                self._varname_()
-                self.ast['target'] = self.last_node
-                self._token('<-')
-                self._varname_()
-                self.ast['source'] = self.last_node
-            self._error('no available options')
-
-        self.ast._define(
-            ['target', 'value', 'source'],
-            []
-        )
-
-    @graken()
-    def _transform_(self):
-        with self._choice():
-            with self._option():
-                self._replace_()
-            with self._option():
-                self._inline_()
-            self._error('no available options')
-
-    @graken()
-    def _replace_(self):
-        self._token('when')
-        self._token('(')
-        self._condition_()
-        self.ast['condition'] = self.last_node
-        self._token(')')
-        self._token('replace-with')
-        self._token('%{')
-        self._c_code_()
-        self.ast['code'] = self.last_node
-        self._token('%}')
-
-        self.ast._define(
-            ['condition', 'code'],
-            []
-        )
-
-    @graken()
-    def _inline_(self):
-        self._token('when')
-        self._token('(')
-        self._condition_()
-        self.ast['condition'] = self.last_node
-        self._token(')')
-        self._token('inline')
-        self._token(';')
-
-        self.ast._define(
-            ['condition'],
-            []
-        )
-
-    @graken()
-    def _report_(self):
-        self._token('report')
-        self._token('if')
-        self._token('(')
-        self._condition_()
-        self.ast['condition'] = self.last_node
-        self._token(')')
-
-        def block2():
-            self._report_element_()
-        self._closure(block2)
-        self.ast.setlist('report_elements', self.last_node)
-        self._token(';')
-
-        self.ast._define(
-            ['condition'],
-            ['report_elements']
-        )
-
-    @graken()
-    def _report_element_(self):
-        with self._choice():
-            with self._option():
-                self._concat_()
-            with self._option():
-                self._callsite_()
-            with self._option():
-                self._report_var_()
-            with self._option():
-                self._string_()
-            self._error('no available options')
-
-    @graken()
-    def _concat_(self):
-        self._report_element_()
-        self.ast['lhs'] = self.last_node
-        self._token('++')
-        self._report_element_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _callsite_(self):
-        self._token('@callsite')
-
-    @graken()
-    def _report_var_(self):
-        self._token('[')
-        self._varname_()
-        self.ast['name'] = self.last_node
-        self._token(']')
-
-        self.ast._define(
-            ['name'],
-            []
-        )
-
-    @graken()
-    def _identifier_list_(self):
-        self._procname_()
-        self.ast['name'] = self.last_node
-        with self._optional():
-            self._token(',')
-            self._identifier_list_()
-            self.ast['rest'] = self.last_node
-
-        self.ast._define(
-            ['name', 'rest'],
-            []
-        )
-
-    @graken()
-    def _propname_(self):
-        self._pattern(r'\w+')
-
-    @graken()
-    def _procname_(self):
-        self._pattern(r'\w+')
-
-    @graken()
-    def _propval_(self):
-        self._pattern(r'\w+')
-
-    @graken()
-    def _varname_(self):
-        self._pattern(r'\w+')
-
-    @graken()
-    def _number_(self):
-        self._pattern(r'\d*\.?\d*')
-
-    @graken()
-    def _string_(self):
-        self._pattern(r'\".+\"')
-
-    @graken()
-    def _c_code_(self):
-        self._pattern(r'.+')
-
 
 class BroadwaySemantics(object):
     def start(self, ast):
@@ -1003,19 +1419,19 @@ class BroadwaySemantics(object):
     def header(self, ast):
         return ast
 
-    def global_(self, ast):
-        return ast
-
     def procedure(self, ast):
         return ast
 
-    def statement(self, ast):
+    def procedure_annotation(self, ast):
         return ast
 
-    def pointers(self, ast):
+    def pointer_annotation(self, ast):
         return ast
 
-    def structure(self, ast):
+    def cond_pointer_structure(self, ast):
+        return ast
+
+    def pointer_structure(self, ast):
         return ast
 
     def variable(self, ast):
@@ -1030,7 +1446,7 @@ class BroadwaySemantics(object):
     def delete(self, ast):
         return ast
 
-    def usedefs(self, ast):
+    def dependence_annotation(self, ast):
         return ast
 
     def access(self, ast):
@@ -1042,16 +1458,10 @@ class BroadwaySemantics(object):
     def property(self, ast):
         return ast
 
-    def property_vals(self, ast):
+    def enum_property_definition(self, ast):
         return ast
 
-    def property_val_list(self, ast):
-        return ast
-
-    def property_val(self, ast):
-        return ast
-
-    def dir(self, ast):
+    def direction(self, ast):
         return ast
 
     def forward(self, ast):
@@ -1060,7 +1470,25 @@ class BroadwaySemantics(object):
     def backward(self, ast):
         return ast
 
-    def analyze(self, ast):
+    def initial_value(self, ast):
+        return ast
+
+    def property_values(self, ast):
+        return ast
+
+    def property_value_list(self, ast):
+        return ast
+
+    def property_value(self, ast):
+        return ast
+
+    def set_property_definition(self, ast):
+        return ast
+
+    def set_type(self, ast):
+        return ast
+
+    def analysis_rule_annotation(self, ast):
         return ast
 
     def analysis_rule(self, ast):
@@ -1075,9 +1503,6 @@ class BroadwaySemantics(object):
     def condition(self, ast):
         return ast
 
-    def condition_test(self, ast):
-        return ast
-
     def disjunction(self, ast):
         return ast
 
@@ -1087,10 +1512,178 @@ class BroadwaySemantics(object):
     def negation(self, ast):
         return ast
 
-    def numeric_comparison(self, ast):
+    def condition_group(self, ast):
         return ast
 
-    def numeric_is_comparison(self, ast):
+    def test(self, ast):
+        return ast
+
+    def enum_property_test(self, ast):
+        return ast
+
+    def enum_unknown_test(self, ast):
+        return ast
+
+    def enum_operator_test(self, ast):
+        return ast
+
+    def temporal_operator(self, ast):
+        return ast
+
+    def enum_property_operator(self, ast):
+        return ast
+
+    def set_property_test(self, ast):
+        return ast
+
+    def set_identifier_test(self, ast):
+        return ast
+
+    def set_element_test(self, ast):
+        return ast
+
+    def set_empty_test(self, ast):
+        return ast
+
+    def binding_test(self, ast):
+        return ast
+
+    def binding_alias_test(self, ast):
+        return ast
+
+    def binding_sameas_test(self, ast):
+        return ast
+
+    def binding_empty_test(self, ast):
+        return ast
+
+    def analysis_effect(self, ast):
+        return ast
+
+    def numeric_assignment(self, ast):
+        return ast
+
+    def enum_property_assignment(self, ast):
+        return ast
+
+    def enum_assignment(self, ast):
+        return ast
+
+    def enum_append(self, ast):
+        return ast
+
+    def set_property_operation(self, ast):
+        return ast
+
+    def add_operation(self, ast):
+        return ast
+
+    def remove_operation(self, ast):
+        return ast
+
+    def identifier_operation(self, ast):
+        return ast
+
+    def report_annotation(self, ast):
+        return ast
+
+    def report_conditional(self, ast):
+        return ast
+
+    def report_unconditional(self, ast):
+        return ast
+
+    def error_conditional(self, ast):
+        return ast
+
+    def error_unconditional(self, ast):
+        return ast
+
+    def report_element_list(self, ast):
+        return ast
+
+    def report_element(self, ast):
+        return ast
+
+    def report_property(self, ast):
+        return ast
+
+    def report_numeric(self, ast):
+        return ast
+
+    def report_identifier(self, ast):
+        return ast
+
+    def report_program_location(self, ast):
+        return ast
+
+    def callsite(self, ast):
+        return ast
+
+    def context(self, ast):
+        return ast
+
+    def action_annotation(self, ast):
+        return ast
+
+    def replace(self, ast):
+        return ast
+
+    def inline(self, ast):
+        return ast
+
+    def global_(self, ast):
+        return ast
+
+    def global_pointer(self, ast):
+        return ast
+
+    def identifier_list(self, ast):
+        return ast
+
+    def propname(self, ast):
+        return ast
+
+    def procname(self, ast):
+        return ast
+
+    def propval(self, ast):
+        return ast
+
+    def varname(self, ast):
+        return ast
+
+    def number(self, ast):
+        return ast
+
+    def string(self, ast):
+        return ast
+
+    def c_code(self, ast):
+        return ast
+
+    def identifier(self, ast):
+        return ast
+
+    def bottom_test(self, ast):
+        return ast
+
+    def exactly_test(self, ast):
+        return ast
+
+    def atleast_test(self, ast):
+        return ast
+
+    def could_be_test(self, ast):
+        return ast
+
+    def atmost_test(self, ast):
+        return ast
+
+    def numeric_test(self, ast):
+        return ast
+
+    def numeric_is_number(self, ast):
         return ast
 
     def num_compare_expression(self, ast):
@@ -1148,75 +1741,6 @@ class BroadwaySemantics(object):
         return ast
 
     def negative_expression(self, ast):
-        return ast
-
-    def test(self, ast):
-        return ast
-
-    def bottom_test(self, ast):
-        return ast
-
-    def exactly_test(self, ast):
-        return ast
-
-    def atleast_test(self, ast):
-        return ast
-
-    def could_be_test(self, ast):
-        return ast
-
-    def atmost_test(self, ast):
-        return ast
-
-    def effect(self, ast):
-        return ast
-
-    def transform(self, ast):
-        return ast
-
-    def replace(self, ast):
-        return ast
-
-    def inline(self, ast):
-        return ast
-
-    def report(self, ast):
-        return ast
-
-    def report_element(self, ast):
-        return ast
-
-    def concat(self, ast):
-        return ast
-
-    def callsite(self, ast):
-        return ast
-
-    def report_var(self, ast):
-        return ast
-
-    def identifier_list(self, ast):
-        return ast
-
-    def propname(self, ast):
-        return ast
-
-    def procname(self, ast):
-        return ast
-
-    def propval(self, ast):
-        return ast
-
-    def varname(self, ast):
-        return ast
-
-    def number(self, ast):
-        return ast
-
-    def string(self, ast):
-        return ast
-
-    def c_code(self, ast):
         return ast
 
 

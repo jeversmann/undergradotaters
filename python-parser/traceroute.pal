@@ -4,7 +4,7 @@ void taint(char *** argv_ref);
 
 }%
 
-procedure taint ( argv_ref )
+procedure taint ( argv_ref, test )
 {
   on_entry {
     argv_ref --> argv

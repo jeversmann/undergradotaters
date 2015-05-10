@@ -8,7 +8,7 @@ def main(filename, trace):
     parser = BroadwayParser()
     with open(filename) as f:
         buffer = Buffer(f.read(), filename=filename, trace=True)
-        ast = parser.parse(buffer, 'start')
+        ast = parser.parse(buffer, 'start', trace=trace, comments_re="//.*?$")
         print(json.dumps(ast, indent=2))
 
 if __name__ == '__main__':

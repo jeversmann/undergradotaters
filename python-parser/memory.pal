@@ -1,0 +1,22 @@
+
+%{
+
+#include <malloc.h>
+
+}%
+
+property MemoryLeak : @backward { Error { MaybeDeallocated { Deallocated, NotDeallocated }}}
+                             initially NotDeallocated
+
+property HeapCount : { Error { Multiple { Single { Unused }}}}
+                             initially Unused
+
+
+procedure cfree(ptr)
+{
+  analyze MemoryLeak {
+    if ( 2 < 1 || 3 > 4 ) {
+      memory_chunk <- Deallocated
+    }
+  }
+}
