@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 5, 10, 19, 42, 14, 6)
+__version__ = (2015, 5, 10, 20, 3, 47, 6)
 
 __all__ = [
     'BroadwayParser',
@@ -1283,140 +1283,84 @@ class BroadwayParser(Parser):
 
     @graken()
     def _num_expression_(self):
-        self._number_()
+        self._bitwise_expression_()
 
     @graken()
-    def _sub_expression_(self):
+    def _bitwise_expression_(self):
+
+        def block0():
+            self._sum_expression_()
+            with self._optional():
+                with self._group():
+                    with self._choice():
+                        with self._option():
+                            self._token('|')
+                            with self._ifnot():
+                                self._token('|')
+                        with self._option():
+                            self._token('&')
+                            with self._ifnot():
+                                self._token('&')
+                        with self._option():
+                            self._token('^')
+                        self._error('expecting one of: & ^ |')
+                with self._if():
+                    self._sum_expression_()
+        self._closure(block0)
+
+    @graken()
+    def _sum_expression_(self):
+
+        def block0():
+            self._mult_expression_()
+            with self._optional():
+                with self._group():
+                    with self._choice():
+                        with self._option():
+                            self._token('+')
+                            with self._ifnot():
+                                self._token('+')
+                        with self._option():
+                            self._token('-')
+                        self._error('expecting one of: + -')
+                with self._if():
+                    self._mult_expression_()
+        self._closure(block0)
+
+    @graken()
+    def _mult_expression_(self):
+
+        def block0():
+            self._factor_()
+            with self._optional():
+                with self._group():
+                    with self._choice():
+                        with self._option():
+                            self._token('*')
+                        with self._option():
+                            self._token('/')
+                        with self._option():
+                            self._token('%')
+                        self._error('expecting one of: % * /')
+                with self._if():
+                    self._factor_()
+        self._closure(block0)
+
+    @graken()
+    def _factor_(self):
+        with self._choice():
+            with self._option():
+                self._group_expression_()
+            with self._option():
+                self._number_()
+            self._error('no available options')
+
+    @graken()
+    def _group_expression_(self):
         self._token('(')
         self._num_expression_()
         self.ast['@'] = self.last_node
         self._token(')')
-
-    @graken()
-    def _plus_expression_(self):
-        self._num_expression_()
-        self.ast['lhs'] = self.last_node
-        self._token('+')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _minus_expression_(self):
-        self._num_expression_()
-        self.ast['lhs'] = self.last_node
-        self._token('-')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _or_expression_(self):
-        self._num_expression_()
-        self.ast['lhs'] = self.last_node
-        self._token('|')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _xor_expression_(self):
-        self._num_expression_()
-        self.ast['lhs'] = self.last_node
-        self._token('^')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _and_expression_(self):
-        self._num_expression_()
-        self.ast['lhs'] = self.last_node
-        self._token('&')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _mult_expression_(self):
-        self._num_expression_()
-        self.ast['lhs'] = self.last_node
-        self._token('*')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _div_expression_(self):
-        self._num_expression_()
-        self.ast['lhs'] = self.last_node
-        self._token('/')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _mod_expression_(self):
-        self._num_expression_()
-        self.ast['lhs'] = self.last_node
-        self._token('%')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['lhs', 'rhs'],
-            []
-        )
-
-    @graken()
-    def _positive_expression_(self):
-        self._token('+')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['rhs'],
-            []
-        )
-
-    @graken()
-    def _negative_expression_(self):
-        self._token('-')
-        self._num_expression_()
-        self.ast['rhs'] = self.last_node
-
-        self.ast._define(
-            ['rhs'],
-            []
-        )
 
 
 class BroadwaySemantics(object):
@@ -1723,37 +1667,19 @@ class BroadwaySemantics(object):
     def num_expression(self, ast):
         return ast
 
-    def sub_expression(self, ast):
+    def bitwise_expression(self, ast):
         return ast
 
-    def plus_expression(self, ast):
-        return ast
-
-    def minus_expression(self, ast):
-        return ast
-
-    def or_expression(self, ast):
-        return ast
-
-    def xor_expression(self, ast):
-        return ast
-
-    def and_expression(self, ast):
+    def sum_expression(self, ast):
         return ast
 
     def mult_expression(self, ast):
         return ast
 
-    def div_expression(self, ast):
+    def factor(self, ast):
         return ast
 
-    def mod_expression(self, ast):
-        return ast
-
-    def positive_expression(self, ast):
-        return ast
-
-    def negative_expression(self, ast):
+    def group_expression(self, ast):
         return ast
 
 
