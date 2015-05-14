@@ -1,22 +1,22 @@
-start = annotations+:{ annotation };
+start = annotations:{ annotation };
 
 annotation = header | procedure | property | global;
 
-header = '%{' code+:{ c_code } '}%';
+header = '%{' code:{ c_code } '}%';
 
 procedure = 'procedure' name:procname '(' arguments:identifier_list ')' '{'
-            statements+:{ procedure_annotation } '}';
+            statements:{ procedure_annotation } '}';
 
 procedure_annotation = pointer_annotation | dependence_annotation
                      | analysis_rule_annotation | action_annotation | report_annotation;
 
-pointer_annotation = 'on_entry' '{' entries+:{ pointer_structure } '}'
-                   | 'on_exit' '{' exits+:{ pointer_structure } '}'
-                   | 'on_exit' '{' exits+:{ cond_pointer_structure } '}';
+pointer_annotation = 'on_entry' '{' entries:{ pointer_structure } '}'
+                   | 'on_exit' '{' exits:{ pointer_structure } '}'
+                   | 'on_exit' '{' exits:{ cond_pointer_structure } '}';
 
 cond_pointer_structure = 'if' '(' condition:condition ')'
-                              '{' structures+:{ pointer_structure } '}'
-                       | 'default' '{' structures+:{ pointer_structure } '}';
+                              '{' structures:{ pointer_structure } '}'
+                       | 'default' '{' structures:{ pointer_structure } '}';
 
 
 pointer_structure = points_to
@@ -25,7 +25,7 @@ pointer_structure = points_to
                   | variable;
 variable = [io:'I/O'] name:varname;
 points_to = name:varname '-->' new:['new'] target:pointer_structure;
-struct = name:varname '{' members+:{ pointer_structure } '}';
+struct = name:varname '{' members:{ pointer_structure } '}';
 delete = 'delete' name:varname;
 
 dependence_annotation = access | modify;
@@ -53,13 +53,13 @@ set_type = union_equivalence:'union-equivalence'
          | union:'union-set'
          | intersect:'intersect-set';
 
-analysis_rule_annotation = 'analyze' name:propname '{' rules+:{ analysis_rule } '}'
-                         | 'analyze' name:propname '{' effects+:{ analysis_effect } '}';
+analysis_rule_annotation = 'analyze' name:propname '{' rules:{ analysis_rule } '}'
+                         | 'analyze' name:propname '{' effects:{ analysis_effect } '}';
 
 analysis_rule = if
               | default;
-if = 'if' '(' condition:condition ')' '{' effects+:{ analysis_effect } '}';
-default = 'default' '{' effects+:{ analysis_effect } '}';
+if = 'if' '(' condition:condition ')' '{' effects:{ analysis_effect } '}';
+default = 'default' '{' effects:{ analysis_effect } '}';
 
 condition = conjunction;
 conjunction = { terms:disjunction [ '&&' &disjunction ] };
@@ -170,5 +170,5 @@ num_expression = bitwise_expression;
 bitwise_expression = { sum_expression [ ('|' !'|' | '&' !'&' | '^') &sum_expression ] };
 sum_expression = { mult_expression [ ('+' !'+' | '-') &mult_expression ] };
 mult_expression = { factor [ ('*'|'/'|'%') &factor ] };
-factor = group_expression | number;
+factor = group_expression | number | varname;
 group_expression = '(' @:num_expression ')';
