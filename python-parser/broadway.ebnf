@@ -25,7 +25,7 @@ pointer_structure = points_to
                   | variable;
 variable = [io:'I/O'] name:varname;
 points_to = name:varname '-->' new:['new'] target:pointer_structure;
-struct = name:varname '{' members:{ pointer_structure } '}';
+struct = name:varname '{' members:{ pointer_structure [','] } '}';
 delete = 'delete' name:varname;
 
 dependence_annotation = access | modify;
@@ -41,7 +41,7 @@ direction = forward | backward;
 forward = '@forward';
 backward = '@backward';
 
-initial_value = 'initially' name:propval;
+initial_value = 'default' name:propval;
 
 property_values = '{' values:property_value_list '}';
 property_value_list = { values:property_value [ ',' &property_value ] };
@@ -124,7 +124,7 @@ context = '@context';
 
 
 action_annotation = replace | inline;
-replace = 'when' '(' condition:condition ')' 'replace-with' '%{' code:c_code '%}';
+replace = 'when' '(' condition:condition ')' 'replace-with' '%{' code:c_code '}%';
 inline = 'when' '(' condition:condition ')' 'inline' ';';
 
 
