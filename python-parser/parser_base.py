@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 5, 10, 20, 3, 47, 6)
+__version__ = (2015, 5, 14, 0, 37, 4, 3)
 
 __all__ = [
     'BroadwayParser',
@@ -63,13 +63,16 @@ class BroadwayParser(Parser):
     @graken()
     def _header_(self):
         self._token('%{')
-        self._c_code_()
-        self.ast['code'] = self.last_node
+
+        def block1():
+            self._c_code_()
+        self._closure(block1)
+        self.ast.setlist('code', self.last_node)
         self._token('}%')
 
         self.ast._define(
-            ['code'],
-            []
+            [],
+            ['code']
         )
 
     @graken()
@@ -1097,7 +1100,7 @@ class BroadwayParser(Parser):
 
     @graken()
     def _c_code_(self):
-        self._pattern(r'.+')
+        self._pattern(r'([^}]|}(?!%))+')
 
     @graken()
     def _identifier_(self):

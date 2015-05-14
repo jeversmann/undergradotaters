@@ -2,7 +2,7 @@ start = annotations+:{ annotation };
 
 annotation = header | procedure | property | global;
 
-header = '%{' code:c_code '}%';
+header = '%{' code+:{ c_code } '}%';
 
 procedure = 'procedure' name:procname '(' arguments:identifier_list ')' '{'
             statements+:{ procedure_annotation } '}';
@@ -140,7 +140,7 @@ propval = identifier;
 varname = identifier;
 number = ?/((\d+(\.\d*)?)|(\.\d+))/?;
 string = ?/\".+\"/?;
-c_code = ?/.+/?;
+c_code = ?/([^}]|}(?!%))+/?;
 identifier = ?/\w+/?;
 
 
