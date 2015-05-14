@@ -7,8 +7,8 @@ header = '%{' code:{ c_code } '}%';
 procedure = 'procedure' name:procname '(' arguments:identifier_list ')' '{'
             statements:{ procedure_annotation } '}';
 
-procedure_annotation = pointer_annotation | dependence_annotation
-                     | analysis_rule_annotation | action_annotation | report_annotation;
+procedure_annotation = @:pointer_annotation | @:dependence_annotation
+                     | @:analysis_rule_annotation | @:action_annotation | @:report_annotation;
 
 pointer_annotation = 'on_entry' '{' entries:{ pointer_structure } '}'
                    | 'on_exit' '{' exits:{ pointer_structure } '}'
@@ -167,8 +167,9 @@ less_or_equal= lhs:num_expression '<=' rhs:num_expression;
 greater_or_equal = lhs:num_expression '>=' rhs:num_expression;
 
 num_expression = bitwise_expression;
-bitwise_expression = { sum_expression [ ('|' !'|' | '&' !'&' | '^') &sum_expression ] };
-sum_expression = { mult_expression [ ('+' !'+' | '-') &mult_expression ] };
-mult_expression = { factor [ ('*'|'/'|'%') &factor ] };
+bitwise_expression = sum_expression { ('|' !'|' | '&' !'&' | '^') sum_expression };
+sum_expression = mult_expression { ('+' !'+' | '-') mult_expression };
+mult_expression = factor { mult_op factor };
 factor = group_expression | number | varname;
 group_expression = '(' @:num_expression ')';
+mult_op = '*'|'/'|'%';

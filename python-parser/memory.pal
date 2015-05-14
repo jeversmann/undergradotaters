@@ -4,26 +4,10 @@
 
 }%
 
-global {
-  mpi_comm_world,
-  plaInitialized,
-  mpiCommunicator,
-  I/O SideEffect
-}
-
-
-property MemoryLeak : @backward { Error { MaybeDeallocated { Deallocated, NotDeallocated }}}
-                             initially NotDeallocated
-
-property HeapCount : { Error { Multiple { Single { Unused }}}}
-                             initially Unused
-
-
 procedure cfree(ptr)
 {
-  analyze MemoryLeak {
-    if ( 2 + 2 < 1 || !(3 > 4 && 5 == 6)) {
-      memory_chunk <- Deallocated
-    }
+  analyze constants {
+    template.blocking = 5
+    template.offset = 10
   }
 }
