@@ -1,14 +1,14 @@
 from __future__ import print_function, division, absolute_import, unicode_literals
 from parser_base import BroadwayParser
-from parser_base import BroadwaySemantics
+from broadway_semantics import Semantics
 from grako.buffering import Buffer
 import sys, json
 
 def main(filename, trace):
-    parser = BroadwayParser()
+    parser = BroadwayParser(parseinfo=True, semantics=Semantics())
     with open(filename) as f:
         buffer = Buffer(f.read(), filename=filename, trace=True)
-        ast = parser.parse(buffer, 'start', trace=trace, comments_re="//.*?$")
+        ast = parser.parse(buffer, 'start', trace=trace)
         print(json.dumps(ast, indent=2))
 
 if __name__ == '__main__':
