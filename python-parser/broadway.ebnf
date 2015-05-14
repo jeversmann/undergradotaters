@@ -128,8 +128,8 @@ replace = 'when' '(' condition:condition ')' 'replace-with' '%{' code:c_code '%}
 inline = 'when' '(' condition:condition ')' 'inline' ';';
 
 
-global = global_pointer | analysis_rule_annotation;
-global_pointer = 'global' '{' structures+:{ pointer_structure } '}';
+global = (global_pointer | analysis_rule_annotation);
+global_pointer = 'global' '{' { structures+:pointer_structure [ ',' ] } '}';
 
 
 identifier_list = { names:procname [ ',' &procname ] };
@@ -141,7 +141,7 @@ varname = identifier;
 number = ?/((\d+(\.\d*)?)|(\.\d+))/?;
 string = ?/\".+\"/?;
 c_code = ?/([^}]|}(?!%))+/?;
-identifier = ?/\w+/?;
+identifier = ?/[\w\.]+/?;
 
 
 
@@ -167,8 +167,8 @@ less_or_equal= lhs:num_expression '<=' rhs:num_expression;
 greater_or_equal = lhs:num_expression '>=' rhs:num_expression;
 
 num_expression = bitwise_expression;
-bitwise_expression = { sum_expression [ ('|' !'|'|'&' !'&'|'^') &sum_expression ] };
-sum_expression = { mult_expression [ ('+' !'+'|'-') &mult_expression ] };
+bitwise_expression = { sum_expression [ ('|' !'|' | '&' !'&' | '^') &sum_expression ] };
+sum_expression = { mult_expression [ ('+' !'+' | '-') &mult_expression ] };
 mult_expression = { factor [ ('*'|'/'|'%') &factor ] };
 factor = group_expression | number;
 group_expression = '(' @:num_expression ')';

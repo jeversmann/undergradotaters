@@ -16,4 +16,3 @@ endif
 .PHONY: run
 run : parser_base.py
 	python broadway_parser.py $(RUN_ARGS) --trace
-

@@ -1,9 +1,16 @@
-// test
 %{
 
 #include <malloc.h>
 
 }%
+
+global {
+  mpi_comm_world,
+  plaInitialized,
+  mpiCommunicator,
+  I/O SideEffect
+}
+
 
 property MemoryLeak : @backward { Error { MaybeDeallocated { Deallocated, NotDeallocated }}}
                              initially NotDeallocated
