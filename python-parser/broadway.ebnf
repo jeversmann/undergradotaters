@@ -32,8 +32,11 @@ dependence_annotation = access | modify;
 access = 'access' '{' names:identifier_list '}';
 modify = 'modify' '{' names:identifier_list '}';
 
-property = 'property' name:propname ':' def:enum_property_definition
-         | 'property' name:propname ':' def:set_property_definition;
+property = strong_property | weak_property;
+strong_property = 'property' @:property_definition;
+weak_property = 'weak-property' @:property_definition;
+property_definition = name:propname ':' def:enum_property_definition
+                    | name:propname ':' def:set_property_definition;
 
 enum_property_definition = direction:[direction] values+:property_values [ initial:initial_value ];
 
@@ -167,9 +170,9 @@ less_or_equal= lhs:num_expression '<=' rhs:num_expression;
 greater_or_equal = lhs:num_expression '>=' rhs:num_expression;
 
 num_expression = bitwise_expression;
-bitwise_expression = sum_expression { ('|' !'|' | '&' !'&' | '^') sum_expression };
-sum_expression = mult_expression { ('+' !'+' | '-') mult_expression };
-mult_expression = factor { mult_op factor };
-factor = group_expression | number | varname;
+bitwise_expression = lhs:sum_expression { op:('|' !'|' | '&' !'&' | '^') rhs:sum_expression };
+sum_expression = lhs:mult_expression { op:('+' !'+' | '-') rhs:mult_expression };
+mult_expression = lhs:factor { op:mult_op rhs:factor };
+factor = value:group_expression | value:number | value:varname;
 group_expression = '(' @:num_expression ')';
 mult_op = '*'|'/'|'%';
