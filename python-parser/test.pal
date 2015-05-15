@@ -11,3 +11,14 @@ weak-property HeapCount : {Error { Multiple { Single { Unused, Used }}}}
          default Unused
 
 property SetProp : { union-set }
+
+global {
+  test --> I/O name,
+  something {
+    thing1,
+    thing2 --> new test
+  },
+  delete thing
+}
+
+

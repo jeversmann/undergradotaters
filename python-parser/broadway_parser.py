@@ -18,7 +18,7 @@ def main(options):
         with open(output_file, 'w') as out:
             text = json.dumps(ast, indent=2)
             out.write(text)
-            print(text)
+        print(text)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

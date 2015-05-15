@@ -24,7 +24,6 @@ class Semantics(BroadwaySemantics):
         self.headers = []
 
     def start(self, ast):
-        print(ast)
         annotations = ast['annotations']
         names = ['property', 'procedure', 'global_structure', 'global_analysis', 'header']
         node = { p.plural(name): [n[name] for n in annotations if name in n]
@@ -72,7 +71,7 @@ class Semantics(BroadwaySemantics):
         return { 'procedure': ast }
 
     def global_(self, ast):
-        return { (k if k != 'analysis_rule_annotation' else 'global_analysis') : v 
+        return { (k if k != 'analysis_rule_annotation' else 'global_analysis') : v
                  for k, v in ast }
 
     def global_pointer(self, ast):
@@ -86,3 +85,20 @@ class Semantics(BroadwaySemantics):
 
     def backward(self, ast):
         return 'backward'
+
+    def pointer_structure(self, ast):
+        keys = ['name', 'target', 'io', 'new', 'delete', 'members']
+        node = { key: ast.get(key) for key in keys }
+        if node['new']:
+            node['target']['new'] = True
+            node['new'] = None
+        return node
+
+    def variable(self, ast):
+        if ast['io']:
+            ast = { 'io': True, 'name': ast['name'] }
+        return ast
+
+    def delete(self, ast):
+        ast['delete'] = True
+        return ast

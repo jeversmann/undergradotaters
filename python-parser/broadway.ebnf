@@ -25,7 +25,7 @@ pointer_structure = points_to
                   | variable;
 variable = [io:'I/O'] name:varname;
 points_to = name:varname '-->' new:['new'] target:pointer_structure;
-struct = name:varname '{' members:{ pointer_structure [','] } '}';
+struct = name:varname '{' { members:pointer_structure [','] } '}';
 delete = 'delete' name:varname;
 
 dependence_annotation = access | modify;
@@ -132,7 +132,7 @@ inline = 'when' '(' condition:condition ')' 'inline' ';';
 
 
 global = global_pointer | analysis_rule_annotation;
-global_pointer = 'global' '{' { structures+:pointer_structure [ ',' ] } '}';
+global_pointer = 'global' '{' { @:pointer_structure [ ',' ] } '}';
 
 
 identifier_list = { names:procname [ ',' &procname ] };
