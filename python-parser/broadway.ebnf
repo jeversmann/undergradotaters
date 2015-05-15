@@ -11,7 +11,7 @@ procedure_annotation = pointer_annotation | dependence_annotation
                      | analysis_rule_annotation | action_annotation | report_annotation;
 
 pointer_annotation = pointer_entry | pointer_exit;
-pointer_entry = 'on_entry' '{' entry:{ pointer_structure } '}';
+pointer_entry = 'on_entry' '{' entry_pointer:{ pointer_structure } '}';
 pointer_exit = 'on_exit' '{' pointers:{ pointer_structure } '}'
              | 'on_exit' '{' cond_pointers:{ cond_pointer_structure } '}';
 
@@ -95,14 +95,12 @@ analysis_effect = numeric_assignment
                 | enum_property_assignment
                 | set_property_operation;
 numeric_assignment = name:varname '=' value:num_expression;
-enum_property_assignment = enum_append | enum_assignment;
-enum_assignment = lhs:varname '<-' rhs:varname;
-enum_append = lhs:varname '<-+' rhs:varname;
+enum_property_assignment = lhs:varname operator:('<-'|'<-+') rhs:varname;
 
 set_property_operation = add_operation | remove_operation | identifier_operation;
-add_operation = 'add' propname;
-remove_operation = 'remove' propname;
-identifier_operation = varname propname varname;
+add_operation = 'add' @:varname;
+remove_operation = 'remove' @:varname;
+identifier_operation = varname varname varname;
 
 
 report_annotation = report_conditional | report_unconditional | error_conditional
@@ -126,7 +124,7 @@ context = '@context';
 report_string = string:string;
 
 
-action_annotation = replace | inline;
+action_annotation = action:replace | action:inline;
 replace = 'when' '(' condition:condition ')' 'replace-with' '%{' code:c_code '}%';
 inline = 'when' '(' condition:condition ')' 'inline' ';';
 

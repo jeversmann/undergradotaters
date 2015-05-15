@@ -37,7 +37,7 @@ class Semantics(BroadwaySemantics):
     def procedure(self, ast):
         print(ast)
         statements = ast['statements']
-        names = ['entry', 'exit', 'modify', 'access', 'report']
+        names = ['entry_pointer', 'exit_pointer', 'modify', 'access', 'report', 'action']
         statements = aggregate_elements(names, statements)
         return {
             'procedure': {
@@ -123,7 +123,7 @@ class Semantics(BroadwaySemantics):
         pointers = [{'condition': None, 'pointers': ast['pointers']}] if ast['pointers'] else []
         if ast['cond_pointers']:
             pointers.extend([{'condition': c['condition'], 'pointers': c['structures']} for c in ast['cond_pointers']])
-        return { 'exit': pointers }
+        return { 'exit_pointer': pointers }
 
     def report_annotation(self, ast):
         return { 'report': ast }
@@ -133,3 +133,8 @@ class Semantics(BroadwaySemantics):
 
     def context(self, ast):
         return 'context'
+
+    def inline(self, ast):
+        ast['inline'] = True
+        return ast
+

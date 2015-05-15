@@ -1,10 +1,24 @@
 procedure realloc(ptr, size)
 {
+  on_entry {
+    ptr --> old_memory_chunk
+  }
+
+  modify { old_memory_chunk }
+
+  on_exit {
+    return --> new memory_chunk
+  }
+
   report "HeapCount: free at " ++ @callsite ++ ": " ++
     HeapCount : memory_chunk ++ " => " ++ HeapCount : memory_chunk @after ++ "\n";
 
   error if (HeapCount : memory_chunk is-exactly Error)
     "Error: malloc() at " ++ @callsite ++ " improperly freed.\n";
+
+  when (test is-exactly other) inline;
+
+  when (thing is-exactly that) replace-with %{ code here }%
 }
 
 
