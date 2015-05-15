@@ -10,5 +10,5 @@ f-meta.so: FMetaPass.o
 	$(CXX) -shared $^ -o $@
 clean:
 	rm -f *.o *~ *.so
-run:
-	opt -load ./licm-pass.so -load ./dce-pass.so -loop-simplify -licm-pass -dce-pass ADDFILENAME -o run_out.bc
+run: f-meta.so
+	opt -load ./f-meta.so  -fmeta-pass double_free.bc -o run_out.bc

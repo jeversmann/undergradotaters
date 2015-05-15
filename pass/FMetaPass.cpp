@@ -4,7 +4,9 @@
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#include "rapidjson/filereadstream.h"
 #include <iostream>
+#include <cstdio>
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Constant.h>
@@ -15,25 +17,25 @@ using namespace llvm;
 using namespace rapidjson;
 
 bool FMetaPass::runOnFunction(Function &f) {
-    // 1. Parse a JSON string into DOM.
-    const char* json = "{\"project\":\"rapidjson\",\"stars\":10}";
+    outs() << f.getName() << "\n";
+    FILE* fp = fopen("out.txt", "r"); // non-Windows use "r"
+    char readBuffer[65536];
+    FileReadStream is(fp, readBuffer, sizeof(readBuffer));
     Document d;
-    d.Parse(json);
+    d.ParseStream(is);
+    fclose(fp);
 
-    // 2. Modify it by DOM.
-    rapidjson::Value& s = d["stars"];
-    s.SetInt(s.GetInt() + 1);
-
-    // 3. Stringify the DOM
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
-    d.Accept(writer);
+    StringBuffer buffer2;
+    Writer<StringBuffer> writer2(buffer2);
 
-    // Output {"project":"rapidjson","stars":11}
-    std::cout << buffer.GetString() << std::endl;
+
+    d["annotations"][0].Accept(writer);
+    std::cout<< buffer.GetString() << std::endl;
+    d["annotations"][1].Accept(writer2);
+    std::cout<< buffer2.GetString() << std::endl;
     return 0; 
-  errs() << f.hasMetadata() << f;
-  return true;
 }
 
 void FMetaPass::getAnalysisUsage(AnalysisUsage &AU) const {

@@ -13,9 +13,10 @@
 
 from __future__ import print_function, division, absolute_import, unicode_literals
 from grako.parsing import graken, Parser
+from grako.util import re, RE_FLAGS
 
 
-__version__ = (2015, 5, 14, 0, 37, 4, 3)
+__version__ = (2015, 5, 15, 3, 7, 40, 4)
 
 __all__ = [
     'BroadwayParser',
@@ -25,12 +26,13 @@ __all__ = [
 
 
 class BroadwayParser(Parser):
-    def __init__(self, whitespace=None, nameguard=True, **kwargs):
+    def __init__(self, whitespace=None, nameguard=None, **kwargs):
         super(BroadwayParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
             comments_re=None,
             eol_comments_re=None,
+            ignorecase=None,
             **kwargs
         )
 
@@ -40,11 +42,11 @@ class BroadwayParser(Parser):
         def block1():
             self._annotation_()
         self._closure(block1)
-        self.ast.setlist('annotations', self.last_node)
+        self.ast['annotations'] = self.last_node
 
         self.ast._define(
-            [],
-            ['annotations']
+            ['annotations'],
+            []
         )
 
     @graken()
@@ -67,12 +69,12 @@ class BroadwayParser(Parser):
         def block1():
             self._c_code_()
         self._closure(block1)
-        self.ast.setlist('code', self.last_node)
+        self.ast['code'] = self.last_node
         self._token('}%')
 
         self.ast._define(
-            [],
-            ['code']
+            ['code'],
+            []
         )
 
     @graken()
@@ -89,12 +91,12 @@ class BroadwayParser(Parser):
         def block3():
             self._procedure_annotation_()
         self._closure(block3)
-        self.ast.setlist('statements', self.last_node)
+        self.ast['statements'] = self.last_node
         self._token('}')
 
         self.ast._define(
-            ['name', 'arguments'],
-            ['statements']
+            ['name', 'arguments', 'statements'],
+            []
         )
 
     @graken()
@@ -122,7 +124,7 @@ class BroadwayParser(Parser):
                 def block1():
                     self._pointer_structure_()
                 self._closure(block1)
-                self.ast.setlist('entries', self.last_node)
+                self.ast['entries'] = self.last_node
                 self._token('}')
             with self._option():
                 self._token('on_exit')
@@ -131,7 +133,7 @@ class BroadwayParser(Parser):
                 def block3():
                     self._pointer_structure_()
                 self._closure(block3)
-                self.ast.setlist('exits', self.last_node)
+                self.ast['exits'] = self.last_node
                 self._token('}')
             with self._option():
                 self._token('on_exit')
@@ -140,13 +142,13 @@ class BroadwayParser(Parser):
                 def block5():
                     self._cond_pointer_structure_()
                 self._closure(block5)
-                self.ast.setlist('exits', self.last_node)
+                self.ast['exits'] = self.last_node
                 self._token('}')
             self._error('expecting one of: on_entry on_exit')
 
         self.ast._define(
-            [],
-            ['entries', 'exits']
+            ['entries', 'exits'],
+            []
         )
 
     @graken()
@@ -163,7 +165,7 @@ class BroadwayParser(Parser):
                 def block2():
                     self._pointer_structure_()
                 self._closure(block2)
-                self.ast.setlist('structures', self.last_node)
+                self.ast['structures'] = self.last_node
                 self._token('}')
             with self._option():
                 self._token('default')
@@ -172,13 +174,13 @@ class BroadwayParser(Parser):
                 def block4():
                     self._pointer_structure_()
                 self._closure(block4)
-                self.ast.setlist('structures', self.last_node)
+                self.ast['structures'] = self.last_node
                 self._token('}')
             self._error('expecting one of: default')
 
         self.ast._define(
-            ['condition'],
-            ['structures']
+            ['condition', 'structures'],
+            []
         )
 
     @graken()
@@ -231,13 +233,15 @@ class BroadwayParser(Parser):
 
         def block2():
             self._pointer_structure_()
+            with self._optional():
+                self._token(',')
         self._closure(block2)
-        self.ast.setlist('members', self.last_node)
+        self.ast['members'] = self.last_node
         self._token('}')
 
         self.ast._define(
-            ['name'],
-            ['members']
+            ['name', 'members'],
+            []
         )
 
     @graken()
@@ -290,14 +294,33 @@ class BroadwayParser(Parser):
     def _property_(self):
         with self._choice():
             with self._option():
-                self._token('property')
+                self._strong_property_()
+            with self._option():
+                self._weak_property_()
+            self._error('no available options')
+
+    @graken()
+    def _strong_property_(self):
+        self._token('property')
+        self._property_definition_()
+        self.ast['@'] = self.last_node
+
+    @graken()
+    def _weak_property_(self):
+        self._token('weak-property')
+        self._property_definition_()
+        self.ast['@'] = self.last_node
+
+    @graken()
+    def _property_definition_(self):
+        with self._choice():
+            with self._option():
                 self._propname_()
                 self.ast['name'] = self.last_node
                 self._token(':')
                 self._enum_property_definition_()
                 self.ast['def_'] = self.last_node
             with self._option():
-                self._token('property')
                 self._propname_()
                 self.ast['name'] = self.last_node
                 self._token(':')
@@ -345,7 +368,7 @@ class BroadwayParser(Parser):
 
     @graken()
     def _initial_value_(self):
-        self._token('initially')
+        self._token('default')
         self._propval_()
         self.ast['name'] = self.last_node
 
@@ -442,7 +465,7 @@ class BroadwayParser(Parser):
                 def block2():
                     self._analysis_rule_()
                 self._closure(block2)
-                self.ast.setlist('rules', self.last_node)
+                self.ast['rules'] = self.last_node
                 self._token('}')
             with self._option():
                 self._token('analyze')
@@ -453,13 +476,13 @@ class BroadwayParser(Parser):
                 def block5():
                     self._analysis_effect_()
                 self._closure(block5)
-                self.ast.setlist('effects', self.last_node)
+                self.ast['effects'] = self.last_node
                 self._token('}')
             self._error('no available options')
 
         self.ast._define(
-            ['name'],
-            ['rules', 'effects']
+            ['name', 'rules', 'effects'],
+            []
         )
 
     @graken()
@@ -483,12 +506,12 @@ class BroadwayParser(Parser):
         def block2():
             self._analysis_effect_()
         self._closure(block2)
-        self.ast.setlist('effects', self.last_node)
+        self.ast['effects'] = self.last_node
         self._token('}')
 
         self.ast._define(
-            ['condition'],
-            ['effects']
+            ['condition', 'effects'],
+            []
         )
 
     @graken()
@@ -499,12 +522,12 @@ class BroadwayParser(Parser):
         def block1():
             self._analysis_effect_()
         self._closure(block1)
-        self.ast.setlist('effects', self.last_node)
+        self.ast['effects'] = self.last_node
         self._token('}')
 
         self.ast._define(
-            [],
-            ['effects']
+            ['effects'],
+            []
         )
 
     @graken()
@@ -1010,7 +1033,7 @@ class BroadwayParser(Parser):
         self._token('%{')
         self._c_code_()
         self.ast['code'] = self.last_node
-        self._token('%}')
+        self._token('}%')
 
         self.ast._define(
             ['condition', 'code'],
@@ -1034,22 +1057,25 @@ class BroadwayParser(Parser):
 
     @graken()
     def _global_(self):
-        with self._choice():
-            with self._option():
-                self._global_pointer_()
-            with self._option():
-                self._analysis_rule_annotation_()
-            self._error('no available options')
+        with self._group():
+            with self._choice():
+                with self._option():
+                    self._global_pointer_()
+                with self._option():
+                    self._analysis_rule_annotation_()
+                self._error('no available options')
 
     @graken()
     def _global_pointer_(self):
         self._token('global')
         self._token('{')
 
-        def block1():
+        def block0():
             self._pointer_structure_()
-        self._closure(block1)
-        self.ast.setlist('structures', self.last_node)
+            self.ast.setlist('structures', self.last_node)
+            with self._optional():
+                self._token(',')
+        self._closure(block0)
         self._token('}')
 
         self.ast._define(
@@ -1104,7 +1130,7 @@ class BroadwayParser(Parser):
 
     @graken()
     def _identifier_(self):
-        self._pattern(r'\w+')
+        self._pattern(r'[\w\.]+')
 
     @graken()
     def _bottom_test_(self):
@@ -1290,73 +1316,93 @@ class BroadwayParser(Parser):
 
     @graken()
     def _bitwise_expression_(self):
+        self._sum_expression_()
+        self.ast['lhs'] = self.last_node
 
-        def block0():
-            self._sum_expression_()
-            with self._optional():
-                with self._group():
-                    with self._choice():
-                        with self._option():
+        def block1():
+            with self._group():
+                with self._choice():
+                    with self._option():
+                        self._token('|')
+                        with self._ifnot():
                             self._token('|')
-                            with self._ifnot():
-                                self._token('|')
-                        with self._option():
+                    with self._option():
+                        self._token('&')
+                        with self._ifnot():
                             self._token('&')
-                            with self._ifnot():
-                                self._token('&')
-                        with self._option():
-                            self._token('^')
-                        self._error('expecting one of: & ^ |')
-                with self._if():
-                    self._sum_expression_()
-        self._closure(block0)
+                    with self._option():
+                        self._token('^')
+                    self._error('expecting one of: & ^ |')
+            self.ast['op'] = self.last_node
+            self._sum_expression_()
+            self.ast['rhs'] = self.last_node
+        self._closure(block1)
+
+        self.ast._define(
+            ['lhs', 'op', 'rhs'],
+            []
+        )
 
     @graken()
     def _sum_expression_(self):
+        self._mult_expression_()
+        self.ast['lhs'] = self.last_node
 
-        def block0():
-            self._mult_expression_()
-            with self._optional():
-                with self._group():
-                    with self._choice():
-                        with self._option():
+        def block1():
+            with self._group():
+                with self._choice():
+                    with self._option():
+                        self._token('+')
+                        with self._ifnot():
                             self._token('+')
-                            with self._ifnot():
-                                self._token('+')
-                        with self._option():
-                            self._token('-')
-                        self._error('expecting one of: + -')
-                with self._if():
-                    self._mult_expression_()
-        self._closure(block0)
+                    with self._option():
+                        self._token('-')
+                    self._error('expecting one of: + -')
+            self.ast['op'] = self.last_node
+            self._mult_expression_()
+            self.ast['rhs'] = self.last_node
+        self._closure(block1)
+
+        self.ast._define(
+            ['lhs', 'op', 'rhs'],
+            []
+        )
 
     @graken()
     def _mult_expression_(self):
+        self._factor_()
+        self.ast['lhs'] = self.last_node
 
-        def block0():
+        def block1():
+            self._mult_op_()
+            self.ast['op'] = self.last_node
             self._factor_()
-            with self._optional():
-                with self._group():
-                    with self._choice():
-                        with self._option():
-                            self._token('*')
-                        with self._option():
-                            self._token('/')
-                        with self._option():
-                            self._token('%')
-                        self._error('expecting one of: % * /')
-                with self._if():
-                    self._factor_()
-        self._closure(block0)
+            self.ast['rhs'] = self.last_node
+        self._closure(block1)
+
+        self.ast._define(
+            ['lhs', 'op', 'rhs'],
+            []
+        )
 
     @graken()
     def _factor_(self):
         with self._choice():
             with self._option():
                 self._group_expression_()
+                self.ast['value'] = self.last_node
             with self._option():
                 self._number_()
+                self.ast['value'] = self.last_node
+            with self._option():
+                self._varname_()
+                self.ast['value'] = self.last_node
             self._error('no available options')
+
+        self.ast._define(
+            ['value'],
+            []
+        )
 
     @graken()
     def _group_expression_(self):
@@ -1364,6 +1410,17 @@ class BroadwayParser(Parser):
         self._num_expression_()
         self.ast['@'] = self.last_node
         self._token(')')
+
+    @graken()
+    def _mult_op_(self):
+        with self._choice():
+            with self._option():
+                self._token('*')
+            with self._option():
+                self._token('/')
+            with self._option():
+                self._token('%')
+            self._error('expecting one of: % * /')
 
 
 class BroadwaySemantics(object):
@@ -1413,6 +1470,15 @@ class BroadwaySemantics(object):
         return ast
 
     def property(self, ast):
+        return ast
+
+    def strong_property(self, ast):
+        return ast
+
+    def weak_property(self, ast):
+        return ast
+
+    def property_definition(self, ast):
         return ast
 
     def enum_property_definition(self, ast):
@@ -1683,6 +1749,9 @@ class BroadwaySemantics(object):
         return ast
 
     def group_expression(self, ast):
+        return ast
+
+    def mult_op(self, ast):
         return ast
 
 
