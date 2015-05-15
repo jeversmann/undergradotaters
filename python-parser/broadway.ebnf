@@ -7,8 +7,8 @@ header = '%{' code:{ c_code } '}%';
 procedure = 'procedure' name:procname '(' arguments:identifier_list ')' '{'
             statements:{ procedure_annotation } '}';
 
-procedure_annotation = @:pointer_annotation | @:dependence_annotation
-                     | @:analysis_rule_annotation | @:action_annotation | @:report_annotation;
+procedure_annotation = pointer_annotation | dependence_annotation
+                     | analysis_rule_annotation | action_annotation | report_annotation;
 
 pointer_annotation = 'on_entry' '{' entries:{ pointer_structure } '}'
                    | 'on_exit' '{' exits:{ pointer_structure } '}'

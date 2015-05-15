@@ -4,10 +4,8 @@
 
 }%
 
-procedure cfree(ptr)
-{
-  analyze constants {
-    template.blocking = 5
-    template.offset = 10
-  }
-}
+property Other : {Error { Multiple { Single { Unuserd }}}}
+         default Unused
+
+property HeapCount : {Error { Multiple { Single { Unuserd }}}}
+         default Unused

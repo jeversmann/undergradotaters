@@ -53,7 +53,7 @@ procedure PLA_testresults(obj)
 		   data --> the_data
 		   template --> the_template }
   }
-
+  
   modify { SideEffect, view, the_data }
 
   analyze DataUsed {
