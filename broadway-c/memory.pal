@@ -11,10 +11,6 @@ property MemoryLeak : @backward { Error { MaybeDeallocated { Deallocated, NotDea
 property HeapCount : { Error { Multiple { Single { Unused }}}}
                              default Unused
 
-// ------------------------------------------------------------
-//  Memory operations
-// ------------------------------------------------------------
-
 procedure malloc(size)
 {
   on_exit {

@@ -80,9 +80,6 @@ class Semantics(BroadwaySemantics):
         else:
             return [root]
 
-    def set_type(self, ast):
-        return [v for k, v in ast.items() if v][0]
-
     def global_(self, ast):
         return { (k if k != 'analysis_rule_annotation' else 'global_analysis') : v
                  for k, v in ast }

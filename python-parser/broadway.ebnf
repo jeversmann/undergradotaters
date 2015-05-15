@@ -12,8 +12,9 @@ procedure_annotation = pointer_annotation | dependence_annotation
 
 pointer_annotation = pointer_entry | pointer_exit;
 pointer_entry = 'on_entry' ~ '{' entry_pointer:{ pointer_structure } '}';
-pointer_exit = 'on_exit' ~ '{' ( cond_pointers:{ cond_pointer_structure }
-                               | pointers:{ pointer_structure } ) '}';
+pointer_exit = 'on_exit' ~ '{' @:(exit_conditionals|exit_pointers) '}';
+exit_conditionals = cond_pointers:{ cond_pointer_structure }+;
+exit_pointers = pointers:{ pointer_structure };
 
 cond_pointer_structure = 'if' ~ '(' condition:condition ')' ~
                               '{' structures:{ pointer_structure } '}'
@@ -26,7 +27,7 @@ pointer_structure = points_to
                   | variable;
 variable = [io:'I/O'] name:varname;
 points_to = name:varname '-->' ~ new:['new'] target:pointer_structure;
-struct = name:varname '{' ~ { members:pointer_structure [','] } '}';
+struct = name:varname '{' { members:pointer_structure [','] } '}';
 delete = 'delete' ~ name:varname;
 
 dependence_annotation = access | modify;
@@ -51,12 +52,12 @@ property_value_list = { @:property_value [ ',' &property_value ] };
 property_value = name:propval [ sublist:property_values ];
 
 set_property_definition = '{' set_type:set_type '}';
-set_type = union_equivalence:'union-equivalence'
-         | intersect_equivalence:'intersect-equivalence'
-         | union:'union-set'
-         | intersect:'intersect-set';
+set_type = 'union-equivalence'
+         | 'intersect-equivalence'
+         | 'union-set'
+         | 'intersect-set';
 
-analysis_rule_annotation = 'analyze' ~ name:propname ~ ( '{' rules:{ analysis_rule } '}'
+analysis_rule_annotation = 'analyze' ~ name:propname ~ ( '{' rules:{ analysis_rule }+ '}'
                                                        | '{' effects:{ analysis_effect } '}');
                          
 analysis_rule = if
