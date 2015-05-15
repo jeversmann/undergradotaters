@@ -1,13 +1,250 @@
+
 %{
 
 #include <malloc.h>
 
 }%
 
-property Other : {Error { Multiple { Single { Unused }}}}
-         default Unused
+property MemoryLeak : @backward { Error { MaybeDeallocated { Deallocated, NotDeallocated }}}
+                             default NotDeallocated
 
-property HeapCount : {Error { Multiple { Single { Unused, Used }}}}
-         default Unused
+property HeapCount : { Error { Multiple { Single { Unused }}}}
+                             default Unused
 
+procedure malloc(size)
+{
+  on_exit {
+    return --> new memory_chunk
+  }
 
+  modify { memory_chunk }
+
+  analyze HeapCount {
+    if (memory_chunk is-exactly Unused) {
+      memory_chunk <- Single
+    }
+
+    if (memory_chunk is-exactly Single) {
+      memory_chunk <- Multiple
+    }
+    
+    if (memory_chunk is-exactly Multiple) {
+      memory_chunk <- Multiple
+    }
+    
+    if (memory_chunk is-exactly Error) {
+      memory_chunk <- Error
+    }
+  }
+
+  analyze MemoryLeak {
+    if ((memory_chunk is-exactly Deallocated) ||
+	(memory_chunk is-exactly MaybeDeallocated)) {
+      memory_chunk <- NotDeallocated
+    }
+
+    if (memory_chunk is-exactly Error) {
+      memory_chunk <- Error
+    }
+
+    default {
+      memory_chunk <- NotDeallocated
+    }
+  }
+
+  report if (((MemoryLeak : memory_chunk is-exactly NotDeallocated) ||
+	      (MemoryLeak : memory_chunk is-exactly MaybeDeallocated)) &&
+	     (HeapCount : memory_chunk is-exactly Unused))
+    "Error: malloc() at " ++ @callsite ++ " probably not be freed.\n";
+
+  report if (((MemoryLeak : memory_chunk is-exactly NotDeallocated) ||
+	      (MemoryLeak : memory_chunk is-exactly MaybeDeallocated)) &&
+	     (HeapCount : memory_chunk is-exactly Multiple))
+    "Error: malloc() at " ++ @callsite ++ " might not be freed.\n";
+
+  report if (HeapCount : memory_chunk is-exactly Error)
+    "Error: malloc() at " ++ @callsite ++ " improperly freed.\n";
+
+  report "MemoryLeak: malloc at " ++ @callsite ++ ": " ++
+    MemoryLeak : memory_chunk ++ " => " ++ MemoryLeak : memory_chunk @after ++ "\n";
+
+  report "HeapCount: malloc at " ++ @callsite ++ ": " ++
+    HeapCount : memory_chunk ++ " => " ++ HeapCount : memory_chunk @after ++ "\n";
+}
+
+procedure calloc(num, size)
+{
+  on_exit {
+    return --> new memory_chunk
+  }
+
+  modify { memory_chunk }
+
+  analyze HeapCount {
+    if (memory_chunk is-exactly Unused) {
+      memory_chunk <- Single
+    }
+
+    if (memory_chunk is-exactly Single) {
+      memory_chunk <- Multiple
+    }
+
+    if (memory_chunk is-exactly Multiple) {
+      memory_chunk <- Multiple
+    }
+
+    if (memory_chunk is-exactly Error) {
+      memory_chunk <- Error
+    }
+  }
+
+  analyze MemoryLeak {
+    if ((memory_chunk is-exactly Deallocated) ||
+	(memory_chunk is-exactly MaybeDeallocated)) {
+      memory_chunk <- NotDeallocated
+    }
+
+    if (memory_chunk is-exactly Error) {
+      memory_chunk <- Error
+    }
+
+    default {
+      memory_chunk <- NotDeallocated
+    }
+  }
+
+  report if (MemoryLeak : memory_chunk is-exactly NotDeallocated)
+    "Error: malloc() at " ++ @callsite ++ " might not be freed.\n";
+
+  report if (HeapCount : memory_chunk is-exactly Error)
+    "Error: malloc() at " ++ @callsite ++ " improperly freed.\n";
+
+  report "MemoryLeak: calloc at " ++ @callsite ++ ": " ++
+    MemoryLeak : memory_chunk ++ " => " ++ MemoryLeak : memory_chunk @after ++ "\n";
+
+  report "HeapCount: calloc at " ++ @callsite ++ ": " ++
+    HeapCount : memory_chunk ++ " => " ++ HeapCount : memory_chunk @after ++ "\n";
+}
+
+procedure free(ptr)
+{
+  on_entry {
+    ptr --> memory_chunk
+  }
+
+  access { memory_chunk }
+
+  analyze HeapCount {
+    if (memory_chunk is-exactly Unused) {
+      memory_chunk <- Error
+    }
+
+    if (memory_chunk is-exactly Single) {
+      memory_chunk <- Unused
+    }
+
+    if (memory_chunk is-exactly Multiple) {
+      memory_chunk <- Multiple
+    }
+
+    if (memory_chunk is-exactly Error) {
+      memory_chunk <- Error
+    }
+  }
+
+  analyze MemoryLeak {
+    if (HeapCount : memory_chunk is-exactly Unused) {
+      memory_chunk <- Error
+    }
+
+    if ((HeapCount : memory_chunk is-exactly Single) &&
+	((memory_chunk is-exactly NotDeallocated) || 
+	 (memory_chunk is-exactly MaybeDeallocated))) {
+      memory_chunk <- Deallocated
+    }
+
+    if ((HeapCount : memory_chunk is-exactly Multiple) &&
+	((memory_chunk is-exactly NotDeallocated) || 
+	 (memory_chunk is-exactly MaybeDeallocated))) {
+      memory_chunk <- MaybeDeallocated
+    }
+
+    default {
+      memory_chunk <- Error
+    }
+  }
+
+  report "MemoryLeak: free at " ++ @callsite ++ ": " ++
+    MemoryLeak : memory_chunk ++ " => " ++ MemoryLeak : memory_chunk @after ++ "\n";
+
+  report "HeapCount: free at " ++ @callsite ++ ": " ++
+    HeapCount : memory_chunk ++ " => " ++ HeapCount : memory_chunk @after ++ "\n";
+}
+
+procedure cfree(ptr)
+{
+  on_entry {
+    ptr --> memory_chunk
+  }
+
+  access { memory_chunk }
+
+  analyze HeapCount {
+    if (memory_chunk is-exactly Unused) {
+      memory_chunk <- Error
+    }
+
+    if (memory_chunk is-exactly Single) {
+      memory_chunk <- Unused
+    }
+
+    if (memory_chunk is-exactly Multiple) {
+      memory_chunk <- Multiple
+    }
+
+    if (memory_chunk is-exactly Error) {
+      memory_chunk <- Error
+    }
+  }
+
+  analyze MemoryLeak {
+    if (HeapCount : memory_chunk is-exactly Unused) {
+      memory_chunk <- Error
+    }
+
+    if ((HeapCount : memory_chunk is-exactly Single) &&
+	((memory_chunk is-exactly NotDeallocated) || 
+	 (memory_chunk is-exactly MaybeDeallocated))) {
+      memory_chunk <- Deallocated
+    }
+
+    if ((HeapCount : memory_chunk is-exactly Multiple) &&
+	((memory_chunk is-exactly NotDeallocated) || 
+	 (memory_chunk is-exactly MaybeDeallocated))) {
+      memory_chunk <- MaybeDeallocated
+    }
+
+    default {
+      memory_chunk <- Error
+    }
+  }
+
+  report "MemoryLeak: free at " ++ @callsite ++ ": " ++
+    MemoryLeak : memory_chunk ++ " => " ++ MemoryLeak : memory_chunk @after ++ "\n";
+
+  report "HeapCount: free at " ++ @callsite ++ ": " ++
+    HeapCount : memory_chunk ++ " => " ++ HeapCount : memory_chunk @after ++ "\n";
+}
+
+procedure realloc(ptr, size)
+{
+  on_entry {
+    ptr --> old_memory_chunk
+  }
+
+  modify { old_memory_chunk }
+
+  on_exit {
+    return --> new memory_chunk
+  }
+}

@@ -1,24 +1,26 @@
-%{
+procedure realloc(ptr, size)
+{
+  on_entry {
+    ptr --> old_memory_chunk
+  }
 
-#include <malloc.h>
+  modify { old_memory_chunk }
 
-}%
+  access { test1, test2 }
 
-property Other : @forward {Error { Multiple { Single { Unused }}}}
-         default Unused
+  on_exit {
+    return --> new memory_chunk
+  }
 
-weak-property HeapCount : {Error { Multiple { Single { Unused, Used }}}}
-         default Unused
-
-property SetProp : { union-set }
-
-global {
-  test --> I/O name,
-  something {
-    thing1,
-    thing2 --> new test
-  },
-  delete thing
+  on_exit {
+    if (test is-exactly this) {
+      test --> thing
+    }
+    default {
+      test --> null
+    }
+  }
 }
+
 
 

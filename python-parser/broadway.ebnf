@@ -10,9 +10,10 @@ procedure = 'procedure' name:procname '(' arguments:identifier_list ')' '{'
 procedure_annotation = pointer_annotation | dependence_annotation
                      | analysis_rule_annotation | action_annotation | report_annotation;
 
-pointer_annotation = 'on_entry' '{' entries:{ pointer_structure } '}'
-                   | 'on_exit' '{' exits:{ pointer_structure } '}'
-                   | 'on_exit' '{' exits:{ cond_pointer_structure } '}';
+pointer_annotation = pointer_entry | pointer_exit;
+pointer_entry = 'on_entry' '{' entry:{ pointer_structure } '}';
+pointer_exit = 'on_exit' '{' pointers:{ pointer_structure } '}'
+             | 'on_exit' '{' cond_pointers:{ cond_pointer_structure } '}';
 
 cond_pointer_structure = 'if' '(' condition:condition ')'
                               '{' structures:{ pointer_structure } '}'
@@ -65,9 +66,9 @@ if = 'if' '(' condition:condition ')' '{' effects:{ analysis_effect } '}';
 default = 'default' '{' effects:{ analysis_effect } '}';
 
 condition = conjunction;
-conjunction = { terms:disjunction [ '&&' &disjunction ] };
-disjunction = { terms:cond [ '||' &cond ] };
-negation = '!' condition:condition_group;
+conjunction = lhs:disjunction { '&&' rhs:disjunction };
+disjunction = lhs:cond { '||' rhs:cond };
+negation = '!' lhs:condition_group;
 cond = negation | condition_group | test;
 condition_group = '(' @:condition ')';
 
@@ -135,7 +136,7 @@ global = global_pointer | analysis_rule_annotation;
 global_pointer = 'global' '{' { @:pointer_structure [ ',' ] } '}';
 
 
-identifier_list = { names:procname [ ',' &procname ] };
+identifier_list = { @+:procname [ ',' &procname ] };
 
 propname = identifier;
 procname = identifier;

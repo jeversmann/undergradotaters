@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from parser_base import BroadwaySemantics
 import inflect
 import itertools
+from pprint import pprint
 p = inflect.engine()
 
 
@@ -13,6 +14,10 @@ def flatten_lists(ls):
         else:
             result.append(l)
     return result
+
+def aggregate_elements(names, annotations):
+    return { p.plural(name): [n[name] for n in annotations if name in n]
+             for name in names }
 
 class Semantics(BroadwaySemantics):
     def __init__(self, *args, **kwargs):
@@ -26,10 +31,7 @@ class Semantics(BroadwaySemantics):
     def start(self, ast):
         annotations = ast['annotations']
         names = ['property', 'procedure', 'global_structure', 'global_analysis', 'header']
-        node = { p.plural(name): [n[name] for n in annotations if name in n]
-                 for name in names }
-
-        return node
+        return aggregate_elements(names, annotations)
 
     def header(self, ast):
         return { 'header': '\n'.join(ast['code']) }
@@ -102,3 +104,16 @@ class Semantics(BroadwaySemantics):
     def delete(self, ast):
         ast['delete'] = True
         return ast
+
+    def access(self, ast):
+        return { 'access': ast['names'] }
+
+    def modify(self, ast):
+        return { 'modify': ast['names'] }
+
+    def pointer_exit(self, ast):
+        pointers = [{'condition': None, 'pointers': ast['pointers']}] if ast['pointers'] else []
+        if ast['cond_pointers']:
+            pointers.extend([{'condition': c['condition'], 'pointers': c['structures']} for c in ast['cond_pointers']])
+        return { 'exit': pointers }
+
