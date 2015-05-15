@@ -26,12 +26,9 @@ class Semantics(BroadwaySemantics):
     def start(self, ast):
         print(ast)
         annotations = ast['annotations']
-        dicts = ['property', 'procedure']
-        lists = ['global_structure', 'global_analysis', 'header']
+        names = ['property', 'procedure', 'global_structure', 'global_analysis', 'header']
         node = { p.plural(name): [n[name] for n in annotations if name in n]
-                 for name in lists }
-        node.update({p.plural(name) : [n[name] for n in annotations if name in n]
-                     for name in dicts})
+                 for name in names }
 
         return node
 
@@ -42,13 +39,12 @@ class Semantics(BroadwaySemantics):
         name = ast['name']
         definition = ast['def_']
         node = { 
-            name: {
-                'direction': definition['direction'],
-                'initial': definition['initial'],
-                'set_type': definition['set_type'],
-                'weak': definition['weak'],
-                'lattice': definition['values_']
-            }
+            'name': name,
+            'direction': definition['direction'],
+            'initial': definition['initial'],
+            'set_type': definition['set_type'],
+            'weak': definition['weak'],
+            'lattice': definition['values_']
         }
         return { 'property': node }
 
