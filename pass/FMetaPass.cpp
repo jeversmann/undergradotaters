@@ -16,30 +16,6 @@ using namespace cs380c;
 using namespace llvm;
 using namespace rapidjson;
 
-class BroadwayLattice {
-private:
-  std::map<std::string, std::string> parents;
-  std::map<std::string, std::set<std::string>> sets;
-
-public:
-  BroadwayLattice() {}
-
-  // Create a new set for a state
-  void addProperty(std::string name, std::string parent = "bottom") {
-    parents.emplace(name, parent);
-    sets[name]; // Constructs a set
-  }
-
-  // Add a var to a state's and its parent's sets
-  void addToProperty(std::string stateName, std::string varName) {
-    sets.at(stateName).insert(varName);
-    std::string parent = parents[stateName];
-    if (parent != "bottom") {
-      addToProperty(parent, varName);
-    }
-  }
-};
-
 bool FMetaPass::runOnFunction(Function &f) {
   outs() << f.getName() << "\n";
   FILE *fp = fopen("out.txt", "r"); // non-Windows use "r"
