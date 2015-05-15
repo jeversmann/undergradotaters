@@ -5,46 +5,45 @@
 #include <llvm/IR/CFG.h>
 
 namespace dataflow {
-    using namespace llvm;
+using namespace llvm;
 
-    template <class T>
-    class DCEVisitor: public InstVisitor<DCEVisitor<T>> {
-        using FlowSet = flow_set<Value*>;
-    private:
-        T &context;
-    public:
-        FlowSet state;
+template <class T> class DCEVisitor : public InstVisitor<DCEVisitor<T>> {
+  using FlowSet = flow_set<Value *>;
 
-        DCEVisitor(T &context, const FlowSet& state): context(context), state(state) {}
+private:
+  T &context;
 
-        void visitInstruction(Instruction&);
+public:
+  FlowSet state;
 
-        FlowSet&& getState() { return std::move(state); }
+  DCEVisitor(T &context, const FlowSet &state)
+      : context(context), state(state) {}
 
-        template <class C>
-        static void postMeet(C&, BasicBlock&) {};
-    };
+  void visitInstruction(Instruction &);
 
-    class DCEPass : public FunctionPass {
-        using FlowSet = flow_set<Value*>;
-    private:
-        DataFlowPass<Function, DCEVisitor<Function>, Value*> analysis;
-    public:
-        static char ID;
-        DCEPass(): FunctionPass(ID), analysis(MeetUnion<Value*>, backward) {}
-        bool runOnFunction(Function&) override;
-        void getAnalysisUsage(AnalysisUsage&) const override;
+  FlowSet &&getState() { return std::move(state); }
 
-        const FlowSet getInState(const BasicBlock* bb) const {
-            return analysis.getInState(bb);
-        }
+  template <class C> static void postMeet(C &, BasicBlock &) {}
+};
 
-        const FlowSet getOutState(const BasicBlock* bb) const {
-            return analysis.getOutState(bb);
-        }
+class DCEPass : public FunctionPass {
+  using FlowSet = flow_set<Value *>;
 
+private:
+  DataFlowPass<Function, DCEVisitor<Function>, Value *> analysis;
 
+public:
+  static char ID;
+  DCEPass() : FunctionPass(ID), analysis(MeetUnion<Value *>, backward) {}
+  bool runOnFunction(Function &) override;
+  void getAnalysisUsage(AnalysisUsage &) const override;
 
-    };
+  const FlowSet getInState(const BasicBlock *bb) const {
+    return analysis.getInState(bb);
+  }
 
+  const FlowSet getOutState(const BasicBlock *bb) const {
+    return analysis.getOutState(bb);
+  }
+};
 }
