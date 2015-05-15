@@ -37,7 +37,7 @@ class Semantics(BroadwaySemantics):
     def procedure(self, ast):
         print(ast)
         statements = ast['statements']
-        names = ['entry_pointer', 'exit_pointer', 'modify', 'access', 'report', 'action']
+        names = ['entry_pointer', 'exit_pointer', 'modify', 'access', 'report', 'action', 'analysis']
         statements = aggregate_elements(names, statements)
         return {
             'procedure': {
@@ -119,12 +119,6 @@ class Semantics(BroadwaySemantics):
     def modify(self, ast):
         return { 'modify': ast['names'] }
 
-    def pointer_exit(self, ast):
-        pointers = [{'condition': None, 'pointers': ast['pointers']}] if ast['pointers'] else []
-        if ast['cond_pointers']:
-            pointers.extend([{'condition': c['condition'], 'pointers': c['structures']} for c in ast['cond_pointers']])
-        return { 'exit_pointer': pointers }
-
     def report_annotation(self, ast):
         return { 'report': ast }
 
@@ -138,3 +132,23 @@ class Semantics(BroadwaySemantics):
         ast['inline'] = True
         return ast
 
+    def pointer_exit(self, ast):
+        pointers = [{'condition': None, 'pointers': ast['pointers']}] if ast['pointers'] else []
+        if ast['cond_pointers']:
+            pointers.extend([{'condition': c['condition'], 'pointers': c['structures']} for c in ast['cond_pointers']])
+        return { 'exit_pointer': pointers }
+
+    def analysis_rule_annotation(self, ast):
+        rules = [{'condition':None, 'effects': ast['effects']}] if ast['effects'] else []
+        if ast['rules']:
+            rules.extend([{'condition': c['condition'], 'effects': c['effects']} for c in ast['rules']])
+        return {
+            'analysis': {
+                'name': ast['name'],
+                'rules': rules
+            }
+        }
+
+    def default(self, ast):
+        ast['condition'] = None
+        return ast
