@@ -1,17 +1,28 @@
 procedure realloc(ptr, size)
 {
   analyze MemoryLeak {
-    if (HeapCount : memory_chunk is-exactly Unused) {
+    if (5 < 2 + 1.5 && (this is-exactly that || thing is-aliasof other)) {
+      x = 5 + y
       memory_chunk <- Error
-    }
-
-    default {
-      memory_chunk <- Error
+      add element
+      first second third
     }
   }
 
-  analyze Effects {
-    memory_chunk <- Error
-    variable <- Thing
+  access { thing }
+}
+
+
+procedure test (thing, other) {
+  on_entry {
+    other
+    delete thing
+  }
+  on_exit {
+    if (x10 is-sameas y5) {
+      sdlkfj --> adfslk
+    }
   }
 }
+
+

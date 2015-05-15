@@ -17,6 +17,9 @@ def aggregate_elements(names, annotations):
     return { p.plural(name): flatten_lists([n[name] for n in annotations if name in n])
              for name in names }
 
+def condense_operator(ast):
+    return ast if ast.get('operator') else ast['lhs']
+
 class Semantics(BroadwaySemantics):
     def __init__(self, *args, **kwargs):
         super(Semantics, self).__init__(*args, **kwargs)
@@ -151,4 +154,29 @@ class Semantics(BroadwaySemantics):
 
     def default(self, ast):
         ast['condition'] = None
+        return ast
+
+    def condition(self, ast):
+        return condense_operator(ast)
+
+    def bitwise_expression(self, ast):
+        return condense_operator(ast)
+
+    def sum_expression(self, ast):
+        return condense_operator(ast)
+
+    def mult_expression(self, ast):
+        return condense_operator(ast)
+
+    def factor(self, ast):
+        return condense_operator(ast)
+
+    def number(self, ast):
+        try:
+            return int(ast)
+        except ValueError:
+            return float(ast)
+
+    def identifier_operation(self, ast):
+        ast['operator'] = 'triple-identifier'
         return ast

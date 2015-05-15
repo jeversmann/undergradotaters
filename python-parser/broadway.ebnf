@@ -1,23 +1,23 @@
-start = annotations:{ annotation };
+start = annotations:{ annotation }$;
 
 annotation = header | procedure | property | global;
 
 header = '%{' code:{ c_code } '}%';
 
-procedure = 'procedure' name:procname '(' arguments:identifier_list ')' '{'
+procedure = 'procedure' ~ name:procname ~ '(' arguments:identifier_list ')' ~ '{'
             statements:{ procedure_annotation } '}';
 
 procedure_annotation = pointer_annotation | dependence_annotation
                      | analysis_rule_annotation | action_annotation | report_annotation;
 
 pointer_annotation = pointer_entry | pointer_exit;
-pointer_entry = 'on_entry' '{' entry_pointer:{ pointer_structure } '}';
-pointer_exit = 'on_exit' '{' pointers:{ pointer_structure } '}'
-             | 'on_exit' '{' cond_pointers:{ cond_pointer_structure } '}';
+pointer_entry = 'on_entry' ~ '{' entry_pointer:{ pointer_structure } '}';
+pointer_exit = 'on_exit' ~ '{' ( cond_pointers:{ cond_pointer_structure }
+                               | pointers:{ pointer_structure } ) '}';
 
-cond_pointer_structure = 'if' '(' condition:condition ')'
+cond_pointer_structure = 'if' ~ '(' condition:condition ')' ~
                               '{' structures:{ pointer_structure } '}'
-                       | 'default' '{' structures:{ pointer_structure } '}';
+                       | 'default' ~ '{' structures:{ pointer_structure } '}';
 
 
 pointer_structure = points_to
@@ -25,19 +25,18 @@ pointer_structure = points_to
                   | delete
                   | variable;
 variable = [io:'I/O'] name:varname;
-points_to = name:varname '-->' new:['new'] target:pointer_structure;
-struct = name:varname '{' { members:pointer_structure [','] } '}';
-delete = 'delete' name:varname;
+points_to = name:varname '-->' ~ new:['new'] target:pointer_structure;
+struct = name:varname '{' ~ { members:pointer_structure [','] } '}';
+delete = 'delete' ~ name:varname;
 
 dependence_annotation = access | modify;
-access = 'access' '{' names:identifier_list '}';
-modify = 'modify' '{' names:identifier_list '}';
+access = 'access' ~ '{' names:identifier_list '}';
+modify = 'modify' ~ '{' names:identifier_list '}';
 
 property = strong_property | weak_property;
-strong_property = 'property' @:property_definition;
-weak_property = 'weak-property' @:property_definition;
-property_definition = name:propname ':' def:enum_property_definition
-                    | name:propname ':' def:set_property_definition;
+strong_property = 'property' ~ @:property_definition;
+weak_property = 'weak-property' ~ @:property_definition;
+property_definition = name:propname ':' ~ def:(enum_property_definition | set_property_definition);
 
 enum_property_definition = direction:[direction] values:property_values [ initial:initial_value ];
 
@@ -45,7 +44,7 @@ direction = forward | backward;
 forward = '@forward';
 backward = '@backward';
 
-initial_value = 'default' @:propval;
+initial_value = 'default' ~ @:propval;
 
 property_values = '{' @:property_value_list '}';
 property_value_list = { @:property_value [ ',' &property_value ] };
@@ -57,25 +56,25 @@ set_type = union_equivalence:'union-equivalence'
          | union:'union-set'
          | intersect:'intersect-set';
 
-analysis_rule_annotation = 'analyze' name:propname '{' rules:{ analysis_rule } '}'
-                         | 'analyze' name:propname '{' effects:{ analysis_effect } '}';
-
+analysis_rule_annotation = 'analyze' ~ name:propname ~ ( '{' rules:{ analysis_rule } '}'
+                                                       | '{' effects:{ analysis_effect } '}');
+                         
 analysis_rule = if
               | default;
-if = 'if' '(' condition:condition ')' '{' effects:{ analysis_effect } '}';
-default = 'default' '{' effects:{ analysis_effect } '}';
+if = 'if' ~ '(' condition:condition ')' ~ '{' effects:{ analysis_effect } '}';
+default = 'default' ~ '{' effects:{ analysis_effect } '}';
 
-condition = lhs:cond { operator:('&&' | '||') rhs:cond };
-negation = '!' lhs:condition_group;
+condition = lhs:cond { operator:('&&' | '||') ~ rhs:cond };
 cond = negation | condition_group | test;
-condition_group = '(' @:condition ')';
+negation = operator:'!' ~ lhs:condition_group;
+condition_group = '(' ~ @:condition ')';
 
 test = enum_property_test | set_property_test | numeric_test | binding_test;
 
 enum_property_test = enum_unknown_test | enum_operator_test;
-enum_unknown_test = [property:varname ':'] name:varname time:[temporal_operator] 'is-??';
+enum_unknown_test = [property:varname ':'] name:varname time:[temporal_operator] operator:'is-??';
 enum_operator_test = [property:varname ':'] name:varname time:[temporal_operator]
-                     operator:enum_property_operator target:varname;
+                     operator:enum_property_operator ~ target:varname;
 
 temporal_operator = '@before' | '@after' | '@always' | '@ever';
 
@@ -83,33 +82,31 @@ enum_property_operator = 'is-exactly' | 'is-atleast' | 'could-be' | 'is-atmost';
 
 set_property_test = set_identifier_test | set_element_test | set_empty_test;
 set_identifier_test = name1:varname name2:propname name3:varname;
-set_element_test = element:varname 'is-element-of' set:varname;
+set_element_test = element:varname 'is-element-of' ~ set:varname;
 set_empty_test = set:varname 'is-{}';
 
-binding_test = binding_alias_test | binding_sameas_test | binding_empty_test;
-binding_alias_test = lhs:varname 'is-aliasof' rhs:varname;
-binding_sameas_test = lhs:varname 'is-sameas' rhs:varname;
-binding_empty_test = name:varname 'is-empty';
+binding_test = binding_operator_test | binding_empty_test;
+binding_operator_test = lhs:varname operator:('is-aliasof'|'is-sameas') ~ rhs:varname;
+binding_empty_test = lhs:varname operator:'is-empty';
 
 analysis_effect = numeric_assignment
                 | enum_property_assignment
                 | set_property_operation;
-numeric_assignment = name:varname '=' value:num_expression;
-enum_property_assignment = lhs:varname operator:('<-'|'<-+') rhs:varname;
+numeric_assignment = lhs:varname operator:('='!'=') ~ rhs:num_expression;
+enum_property_assignment = lhs:varname operator:('<-'|'<-+') ~ rhs:varname;
 
-set_property_operation = add_operation | remove_operation | identifier_operation;
-add_operation = 'add' @:varname;
-remove_operation = 'remove' @:varname;
-identifier_operation = varname varname varname;
+set_property_operation = set_modify_operation | identifier_operation;
+set_modify_operation = operator:('add'|'remove') ~ lhs:varname;
+identifier_operation = lhs:varname second:varname third:varname;
 
 
 report_annotation = report_conditional | report_unconditional | error_conditional
                   | error_unconditional;
 
-report_conditional = 'report' 'if' '(' condition:condition ')' report:report_element_list ';';
-report_unconditional = 'report' report:report_element_list ';';
-error_conditional = 'error' 'if' '(' condition:condition ')' error:report_element_list ';';
-error_unconditional = 'error' error:report_element_list ';';
+report_conditional = 'report' 'if' ~ '(' condition:condition ')' ~ report:report_element_list ';';
+report_unconditional = 'report' ~ report:report_element_list ';';
+error_conditional = 'error' 'if' ~ '(' condition:condition ')' ~ error:report_element_list ';';
+error_unconditional = 'error' ~ error:report_element_list ';';
 
 report_element_list = { elements:report_element [ '++' &report_element ] };
 
@@ -130,47 +127,28 @@ inline = 'when' '(' condition:condition ')' 'inline' ';';
 
 
 global = global_pointer | analysis_rule_annotation;
-global_pointer = 'global' '{' { @:pointer_structure [ ',' ] } '}';
+global_pointer = 'global' ~ '{' { @:pointer_structure [ ',' ] } '}';
 
 
-identifier_list = { @+:procname [ ',' &procname ] };
+numeric_test = num_compare_expression | numeric_is_number;
+numeric_is_number = lhs:propname operator:'is-#';
+num_compare_expression = lhs:num_expression operator:compare_operator ~ rhs:num_expression;
+compare_operator = '=='|'!='|'<='|'>='|'<'|'>';
+
+num_expression = bitwise_expression;
+bitwise_expression = lhs:sum_expression { operator:('|' !'|' | '&' !'&' | '^') ~ rhs:sum_expression };
+sum_expression = lhs:mult_expression { operator:('+' !'+' | '-') ~ rhs:mult_expression };
+mult_expression = lhs:factor { operator:('*'|'/'|'%') ~ rhs:factor };
+factor = lhs:group_expression | lhs:number | lhs:varname;
+group_expression = '(' ~ @:num_expression ')';
 
 propname = identifier;
 procname = identifier;
 propval = identifier;
 varname = identifier;
-number = ?/((\d+(\.\d*)?)|(\.\d+))/?;
-string = ?/\".+?\"/?;
-c_code = ?/([^}]|}(?!%))+/?;
-identifier = ?/[\w\.]+/?;
+number = /((\d+(\.\d*)?)|(\.\d+))/;
+string = /\".+?\"/;
+c_code = /([^}]|}(?!%))+/;
+identifier = /[a-zA-Z][\w\.]*/;
 
-
-
-
-bottom_test = name:varname 'is-??';
-exactly_test = name:varname 'is-exactly' value:propval;
-atleast_test = name:varname 'is-atleast' value:propval;
-could_be_test = name:varname 'could-be' value:propval;
-atmost_test = name:varname 'is-atmost' value:propval;
-
-
-
-
-numeric_test = num_compare_expression | numeric_is_number;
-numeric_is_number = name:propname 'is-#';
-num_compare_expression = equal_to | not_equal_to | less_than | greater_than
-                       | less_or_equal | greater_or_equal;
-equal_to = lhs:num_expression '==' rhs:num_expression;
-not_equal_to = lhs:num_expression '!=' rhs:num_expression;
-less_than = lhs:num_expression '<' rhs:num_expression;
-greater_than = lhs:num_expression '>' rhs:num_expression;
-less_or_equal= lhs:num_expression '<=' rhs:num_expression;
-greater_or_equal = lhs:num_expression '>=' rhs:num_expression;
-
-num_expression = bitwise_expression;
-bitwise_expression = lhs:sum_expression { op:('|' !'|' | '&' !'&' | '^') rhs:sum_expression };
-sum_expression = lhs:mult_expression { op:('+' !'+' | '-') rhs:mult_expression };
-mult_expression = lhs:factor { op:mult_op rhs:factor };
-factor = value:group_expression | value:number | value:varname;
-group_expression = '(' @:num_expression ')';
-mult_op = '*'|'/'|'%';
+identifier_list = { @+:procname [ ',' &procname ] };
