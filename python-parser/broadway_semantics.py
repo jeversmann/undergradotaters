@@ -2,9 +2,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from parser_base import BroadwaySemantics
 import inflect
 import itertools
-from pprint import pprint
 p = inflect.engine()
-
 
 def flatten_lists(ls):
     result = []
@@ -16,7 +14,7 @@ def flatten_lists(ls):
     return result
 
 def aggregate_elements(names, annotations):
-    return { p.plural(name): [n[name] for n in annotations if name in n]
+    return { p.plural(name): flatten_lists([n[name] for n in annotations if name in n])
              for name in names }
 
 class Semantics(BroadwaySemantics):
@@ -35,6 +33,19 @@ class Semantics(BroadwaySemantics):
 
     def header(self, ast):
         return { 'header': '\n'.join(ast['code']) }
+
+    def procedure(self, ast):
+        print(ast)
+        statements = ast['statements']
+        names = ['entry', 'exit', 'modify', 'access', 'report']
+        statements = aggregate_elements(names, statements)
+        return {
+            'procedure': {
+                'name': ast['name'],
+                'arguments': ast['arguments'],
+                'statements': statements
+            }
+        }
 
     def property(self, ast):
         definition = ast['def_']
@@ -68,9 +79,6 @@ class Semantics(BroadwaySemantics):
 
     def set_type(self, ast):
         return [v for k, v in ast.items() if v][0]
-
-    def procedure(self, ast):
-        return { 'procedure': ast }
 
     def global_(self, ast):
         return { (k if k != 'analysis_rule_annotation' else 'global_analysis') : v
@@ -117,3 +125,11 @@ class Semantics(BroadwaySemantics):
             pointers.extend([{'condition': c['condition'], 'pointers': c['structures']} for c in ast['cond_pointers']])
         return { 'exit': pointers }
 
+    def report_annotation(self, ast):
+        return { 'report': ast }
+
+    def callsite(self, ast):
+        return 'callsite'
+
+    def context(self, ast):
+        return 'context'

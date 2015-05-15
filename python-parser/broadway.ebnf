@@ -65,9 +65,7 @@ analysis_rule = if
 if = 'if' '(' condition:condition ')' '{' effects:{ analysis_effect } '}';
 default = 'default' '{' effects:{ analysis_effect } '}';
 
-condition = conjunction;
-conjunction = lhs:disjunction { '&&' rhs:disjunction };
-disjunction = lhs:cond { '||' rhs:cond };
+condition = lhs:cond { operator:('&&' | '||') rhs:cond };
 negation = '!' lhs:condition_group;
 cond = negation | condition_group | test;
 condition_group = '(' @:condition ')';
@@ -110,21 +108,22 @@ identifier_operation = varname propname varname;
 report_annotation = report_conditional | report_unconditional | error_conditional
                   | error_unconditional;
 
-report_conditional = 'report' 'if' '(' condition:condition ')' report_element_list ';';
-report_unconditional = 'report' report_element_list ';';
-error_conditional = 'error' 'if' '(' condition:condition ')' report_element_list ';';
-error_unconditional = 'error' report_element_list ';';
+report_conditional = 'report' 'if' '(' condition:condition ')' report:report_element_list ';';
+report_unconditional = 'report' report:report_element_list ';';
+error_conditional = 'error' 'if' '(' condition:condition ')' error:report_element_list ';';
+error_unconditional = 'error' error:report_element_list ';';
 
 report_element_list = { elements:report_element [ '++' &report_element ] };
 
-report_element = report_property | report_numeric | report_program_location
-               | report_identifier | string;
+report_element = report_program_location | report_property | report_numeric
+               | report_identifier | report_string;
 report_property = property:propname ':' name:varname time:[temporal_operator];
-report_numeric = num_expression time:[temporal_operator];
+report_numeric = expression:num_expression time:[temporal_operator];
 report_identifier = '[' name:varname ']';
-report_program_location = callsite | context;
+report_program_location = location:callsite | location:context;
 callsite = '@callsite';
 context = '@context';
+report_string = string:string;
 
 
 action_annotation = replace | inline;
@@ -143,7 +142,7 @@ procname = identifier;
 propval = identifier;
 varname = identifier;
 number = ?/((\d+(\.\d*)?)|(\.\d+))/?;
-string = ?/\".+\"/?;
+string = ?/\".+?\"/?;
 c_code = ?/([^}]|}(?!%))+/?;
 identifier = ?/[\w\.]+/?;
 
