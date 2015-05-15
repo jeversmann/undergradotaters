@@ -35,7 +35,7 @@ bool FMetaPass::runOnFunction(Function &f) {
     std::cout<< buffer.GetString() << std::endl;
     d["annotations"][1].Accept(writer2);
     std::cout<< buffer2.GetString() << std::endl;
-    return 0; 
+    return 0;
 }
 
 void FMetaPass::getAnalysisUsage(AnalysisUsage &AU) const {

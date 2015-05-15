@@ -1,0 +1,90 @@
+{
+  "annotations": [
+    {
+      "code": [
+        "#include <malloc.h>\n\n"
+      ]
+    }, 
+    {
+      "name": "MemoryLeak", 
+      "def_": {
+        "direction": "@backward", 
+        "values_": [
+          {
+            "values_": {
+              "values_": {
+                "value": "Error", 
+                "sublist": {
+                  "values_": {
+                    "values_": {
+                      "value": "MaybeDeallocated", 
+                      "sublist": {
+                        "values_": {
+                          "values_": [
+                            {
+                              "value": "Deallocated", 
+                              "sublist": null
+                            }, 
+                            {
+                              "value": "NotDeallocated", 
+                              "sublist": null
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ], 
+        "initial": {
+          "name": "NotDeallocated"
+        }
+      }, 
+      "def": null
+    }, 
+    {
+      "name": "HeapCount", 
+      "def_": {
+        "direction": null, 
+        "values_": [
+          {
+            "values_": {
+              "values_": {
+                "value": "Error", 
+                "sublist": {
+                  "values_": {
+                    "values_": {
+                      "value": "Multiple", 
+                      "sublist": {
+                        "values_": {
+                          "values_": {
+                            "value": "Single", 
+                            "sublist": {
+                              "values_": {
+                                "values_": {
+                                  "value": "Unused", 
+                                  "sublist": null
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ], 
+        "initial": {
+          "name": "Unused"
+        }
+      }, 
+      "def": null
+    }
+  ]
+}
