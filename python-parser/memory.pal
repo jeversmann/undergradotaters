@@ -4,8 +4,8 @@
 
 }%
 
-property Other : {Error { Multiple { Single { Unuserd }}}}
+property Other : {Error { Multiple { Single { Unused }}}}
          default Unused
 
-property HeapCount : {Error { Multiple { Single { Unuserd }}}}
+property HeapCount : {Error { Multiple { Single { Unused, Used }}}}
          default Unused

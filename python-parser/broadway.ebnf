@@ -38,17 +38,17 @@ weak_property = 'weak-property' @:property_definition;
 property_definition = name:propname ':' def:enum_property_definition
                     | name:propname ':' def:set_property_definition;
 
-enum_property_definition = direction:[direction] values+:property_values [ initial:initial_value ];
+enum_property_definition = direction:[direction] values:property_values [ initial:initial_value ];
 
 direction = forward | backward;
 forward = '@forward';
 backward = '@backward';
 
-initial_value = 'default' name:propval;
+initial_value = 'default' @:propval;
 
-property_values = '{' values:property_value_list '}';
-property_value_list = { values:property_value [ ',' &property_value ] };
-property_value = value:propval [ sublist:property_values ];
+property_values = '{' @:property_value_list '}';
+property_value_list = { @:property_value [ ',' &property_value ] };
+property_value = name:propval [ sublist:property_values ];
 
 set_property_definition = '{' type:set_type '}';
 set_type = union_equivalence:'union-equivalence'
@@ -131,7 +131,7 @@ replace = 'when' '(' condition:condition ')' 'replace-with' '%{' code:c_code '}%
 inline = 'when' '(' condition:condition ')' 'inline' ';';
 
 
-global = (global_pointer | analysis_rule_annotation);
+global = global_pointer | analysis_rule_annotation;
 global_pointer = 'global' '{' { structures+:pointer_structure [ ',' ] } '}';
 
 

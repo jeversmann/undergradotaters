@@ -10,6 +10,7 @@ def main(filename, trace):
         buffer = Buffer(f.read(), filename=filename, trace=True)
         ast = parser.parse(buffer, 'start', trace=trace)
         print(json.dumps(ast, indent=2))
+        print(ast)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
