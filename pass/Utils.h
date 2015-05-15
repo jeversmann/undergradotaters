@@ -92,4 +92,28 @@ void printSet(flow_set<FlowValue> set, bool printPhi = false) {
     errs() << "}\n";
   }
 }
+
+template <class T> class BroadwayLattice {
+private:
+  std::map<std::string, std::string> parents;
+  std::map<std::string, flow_set<T>> sets;
+
+public:
+  BroadwayLattice() {}
+
+  // Create a new set for a state
+  void addProperty(std::string name, std::string parent = "bottom") {
+    parents.emplace(name, parent);
+    sets[name]; // Constructs a set
+  }
+
+  // Add a var to a state's and its parent's sets
+  void addToProperty(std::string stateName, T var) {
+    sets.at(stateName).insert(var);
+    std::string parent = parents[stateName];
+    if (parent != "bottom") {
+      addToProperty(parent, var);
+    }
+  }
+};
 }
