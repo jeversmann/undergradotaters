@@ -4,10 +4,10 @@
 
 }%
 
-property Other : {Error { Multiple { Single { Unused }}}}
+property Other : @forward {Error { Multiple { Single { Unused }}}}
          default Unused
 
-property HeapCount : {Error { Multiple { Single { Unused, Used }}}}
+weak-property HeapCount : {Error { Multiple { Single { Unused, Used }}}}
          default Unused
 
-
+property SetProp : { union-set }

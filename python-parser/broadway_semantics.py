@@ -36,17 +36,20 @@ class Semantics(BroadwaySemantics):
         return { 'header': '\n'.join(ast['code']) }
 
     def property(self, ast):
-        name = ast['name']
         definition = ast['def_']
         node = { 
-            'name': name,
+            'name': ast['name'],
             'direction': definition['direction'],
             'initial': definition['initial'],
             'set_type': definition['set_type'],
-            'weak': definition['weak'],
+            'weak': ast['weak'],
             'lattice': definition['values_']
         }
         return { 'property': node }
+
+    def weak_property(self, ast):
+        ast['weak'] = True
+        return ast
 
     def property_value(self, ast):
         name = ast['name']
@@ -60,7 +63,10 @@ class Semantics(BroadwaySemantics):
             children.append(root)
             return children
         else:
-            return [root]                    
+            return [root]
+
+    def set_type(self, ast):
+        return [v for k, v in ast.items() if v][0]
 
     def procedure(self, ast):
         return { 'procedure': ast }
@@ -74,3 +80,9 @@ class Semantics(BroadwaySemantics):
 
     def analysis_rule_annotation(self, ast):
         return { 'analysis_rule_annotation': ast }
+
+    def forward(self, ast):
+        return 'forward'
+
+    def backward(self, ast):
+        return 'backward'
