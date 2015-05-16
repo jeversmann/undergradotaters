@@ -35,7 +35,7 @@ private:
   const AnalysisType &analysis;
   llvm::raw_ostream &os;
 
-    template <typename StateType> void printState(const StateType &state) const {
+  template <typename StateType> void printState(const StateType &state) const {
     os << "{ ";
     for (auto v : state)
       os << v->getName() << " ";

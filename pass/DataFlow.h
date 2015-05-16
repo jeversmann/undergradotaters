@@ -117,7 +117,7 @@ public:
         visitor.visit(node->rbegin(), node->rend());
 
       endStates[node] = visitor.getState();
-      for(auto &prop : initial.properties) {
+      for (auto &prop : initial.properties) {
         FlowSet updatedPhi(startStates[node].get(prop));
         updatedPhi.phiSets = endStates[node].get(prop).phiSets;
         startStates[node].put(prop, updatedPhi);

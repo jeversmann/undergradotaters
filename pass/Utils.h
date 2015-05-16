@@ -112,16 +112,17 @@ public:
 
   BroadwayLattice() {}
 
-  BroadwayLattice(const BroadwayLattice& other) {
+  BroadwayLattice(const BroadwayLattice &other) {
     parents = std::map<std::string, std::string>(other.parents);
     sets = std::map<std::string, flow_set<T>>(other.sets);
     properties = std::set<std::string>(other.properties);
   }
 
   // Create a new set for a state
-  BroadwayLattice<T>& addProperty(const std::string name, const std::string parent = "bottom") {
+  BroadwayLattice<T> &addProperty(const std::string name,
+                                  const std::string parent = "bottom") {
     parents.emplace(name, parent);
-    sets[name]; // Constructs a set
+    sets[name] = flow_set<T>();
     properties.insert(name);
     return *this;
   }
@@ -144,13 +145,13 @@ public:
     sets.at(stateName).erase(var);
     std::stack<std::string> parentsToCheck;
     parentsToCheck.push(stateName);
-    while(!parentsToCheck.empty()) {
+    while (!parentsToCheck.empty()) {
       std::string parent = parentsToCheck.top();
       parentsToCheck.pop(); // I hate c++
 
       // Find all the children that list this as a parent
-      for(auto &prop : properties) {
-        if(parents.at(prop) == parent) {
+      for (auto &prop : properties) {
+        if (parents.at(prop) == parent) {
           sets.at(prop).erase(var);
           parentsToCheck.push(prop); // Do its children next
         }
@@ -159,23 +160,21 @@ public:
   }
 
   // Access flow_set by property name
-  const flow_set<T> get(const std::string name) const {
-    return sets.at(name);
-  }
+  flow_set<T> get(const std::string name) const { return sets.at(name); }
 
-  void put(const std::string name, flow_set<T> set) {
-    sets.at(name) = set;
-  }
+  void put(const std::string name, flow_set<T> set) { sets[name] = set; }
 
   // Returns a new object with the same parents and properties
   BroadwayLattice<T> clone() const {
     BroadwayLattice<T> resp;
     resp.parents = std::map<std::string, std::string>(parents);
     resp.properties = std::set<std::string>(properties);
+    for (auto &prop : properties)
+      resp.sets[prop] = flow_set<T>();
     return resp;
   }
 
-  bool operator ==(const BroadwayLattice<T> &other) {
+  bool operator==(const BroadwayLattice<T> &other) {
     if (properties != other.properties)
       return false;
     for (auto &prop : properties) {
@@ -187,7 +186,7 @@ public:
     return true;
   }
 
-  bool operator !=(const BroadwayLattice<T> &other) {
+  bool operator!=(const BroadwayLattice<T> &other) {
     if (properties == other.properties)
       return false;
     for (auto &prop : properties) {
@@ -202,8 +201,8 @@ public:
 
 template <class FlowValue>
 BroadwayLattice<FlowValue> MeetUnion(BroadwayLattice<FlowValue> &first,
-                              BroadwayLattice<FlowValue> &second,
-                              const BasicBlock *from) {
+                                     BroadwayLattice<FlowValue> &second,
+                                     const BasicBlock *from) {
   BroadwayLattice<FlowValue> resp = first.clone();
   // Iterate through all of the properties in the lattice
   for (auto &prop : resp.properties) {
@@ -213,7 +212,7 @@ BroadwayLattice<FlowValue> MeetUnion(BroadwayLattice<FlowValue> &first,
       result.insert(e);
 
     // push the phi set for this node into the result set
-    for (auto e : second.get(prop).phiSets.at(from))
+    for (auto e : second.get(prop).phiSets[from])
       result.insert(e);
 
     result.universal = first.get(prop).universal || second.get(prop).universal;
@@ -227,8 +226,8 @@ BroadwayLattice<FlowValue> MeetUnion(BroadwayLattice<FlowValue> &first,
 
 template <class FlowValue>
 BroadwayLattice<FlowValue> MeetIntersect(BroadwayLattice<FlowValue> &first,
-                                  BroadwayLattice<FlowValue> &second,
-                                  const BasicBlock *from) {
+                                         BroadwayLattice<FlowValue> &second,
+                                         const BasicBlock *from) {
   BroadwayLattice<FlowValue> resp = first.clone();
   // Iterate through all of the properties in the lattice
   for (auto &prop : resp.properties) {
@@ -242,12 +241,12 @@ BroadwayLattice<FlowValue> MeetIntersect(BroadwayLattice<FlowValue> &first,
     // if either is universal, just take the other one
     if (firstSet.universal) {
       result.insert(secondSet.begin(), secondSet.end());
-      result.phiSets.at(from).insert(secondSet.phiSets.at(from).begin(),
-          secondSet.phiSets.at(from).end());
+      result.phiSets[from].insert(secondSet.phiSets[from].begin(),
+                                  secondSet.phiSets[from].end());
     } else if (secondSet.universal) {
       result.insert(firstSet.begin(), firstSet.end());
-      result.phiSets.at(from).insert(firstSet.phiSets.at(from).begin(),
-          firstSet.phiSets.at(from).end());
+      result.phiSets[from].insert(firstSet.phiSets[from].begin(),
+                                  firstSet.phiSets[from].end());
     } else {
       // if neither is universal, intersect of the sets
       for (auto &e : firstSet)
@@ -256,7 +255,7 @@ BroadwayLattice<FlowValue> MeetIntersect(BroadwayLattice<FlowValue> &first,
 
       // intersect the phi set for this node
       for (auto e : firstSet.phiSets[from])
-        if (secondSet.phiSets.at(from).find(e) != secondSet.phiSets.at(from).end())
+        if (secondSet.phiSets[from].find(e) != secondSet.phiSets[from].end())
           result.insert(e);
     }
 

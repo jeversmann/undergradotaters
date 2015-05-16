@@ -34,7 +34,10 @@ private:
 
 public:
   static char ID;
-  DCEPass() : FunctionPass(ID), analysis(MeetUnion<Value *>, BroadwayLattice<Value *>().addProperty("dce"), backward) {}
+  DCEPass()
+      : FunctionPass(ID),
+        analysis(MeetUnion<Value *>,
+                 BroadwayLattice<Value *>().addProperty("dce"), backward) {}
   bool runOnFunction(Function &) override;
   void getAnalysisUsage(AnalysisUsage &) const override;
 
