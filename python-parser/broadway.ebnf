@@ -2,7 +2,7 @@ start = annotations:{ annotation }$;
 
 annotation = header | procedure | property | global;
 
-header = '%{' code:{ c_code } '}%';
+header = '%{' ~ code:{ c_code } '}%';
 
 procedure = 'procedure' ~ name:procname ~ '(' arguments:identifier_list ')' ~ '{'
             statements:{ procedure_annotation } '}';
@@ -122,9 +122,9 @@ context = '@context';
 report_string = string:string;
 
 
-action_annotation = action:replace | action:inline;
-replace = 'when' '(' condition:condition ')' 'replace-with' '%{' code:c_code '}%';
-inline = 'when' '(' condition:condition ')' 'inline' ';';
+action_annotation = 'when' ~ @:(action:replace | action:inline);
+replace = '(' condition:condition ')' 'replace-with' '%{' ~ code:c_code '}%';
+inline = '(' condition:condition ')' 'inline' ';';
 
 
 global = global_pointer | analysis_rule_annotation;

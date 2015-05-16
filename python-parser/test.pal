@@ -19,10 +19,12 @@ procedure test (thing, other) {
     delete thing
   }
   on_exit {
-    if (x10 is-sameas y5) {
+    if (x10 is-sameas k) {
       sdlkfj --> adfslk
     }
   }
+
+  when (1 < 3) replace-with %{ sdlfakjdsf; asldfkasd }%
 }
 
 
