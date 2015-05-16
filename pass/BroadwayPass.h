@@ -29,9 +29,10 @@ public:
 
 class BroadwayPass : public FunctionPass {
   using FlowSet = flow_set<Value *>;
+  using DataFlow = DataFlowPass<Function, BroadwayVisitor<Function>, Value *>;
 
 private:
-  DataFlowPass<Function, BroadwayVisitor<Function>, Value *> analysis;
+  DataFlow analysis;
 
 public:
   static char ID;
