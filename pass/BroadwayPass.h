@@ -36,19 +36,18 @@ private:
 public:
   static char ID;
   BroadwayPass()
-      : FunctionPass(ID),
-        analysis(MeetUnion<Value *>,
-                 BroadwayLattice<Value *>().addProperty("dce"), backward) {}
+    : FunctionPass(ID),
+      analysis(MeetUnion<Value *>, backward) {}
   bool doInitialization(Module &) override;
   bool runOnFunction(Function &) override;
   void getAnalysisUsage(AnalysisUsage &) const override;
 
-  const FlowSet getInState(const BasicBlock *bb) const {
-    return analysis.getInState(bb).get("dce");
+  const Lattice getInState(const BasicBlock *bb) const {
+    return analysis.getInState(bb);
   }
 
-  const FlowSet getOutState(const BasicBlock *bb) const {
-    return analysis.getOutState(bb).get("dce");
+  const Lattice getOutState(const BasicBlock *bb) const {
+    return analysis.getOutState(bb);
   }
 };
 }

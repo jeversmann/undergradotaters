@@ -249,7 +249,7 @@ BroadwayLattice<FlowValue> MeetIntersect(BroadwayLattice<FlowValue> &first,
 }
 
 template <class FlowValue>
-void printLattice(BroadwayLattice<FlowValue> &lattice, bool printPhi = false) {
+void printLattice(const BroadwayLattice<FlowValue> &lattice, bool printPhi = false) {
   errs() << "{\n";
   for (auto &prop : lattice.properties) {
     errs() << "  " << prop << ": ";

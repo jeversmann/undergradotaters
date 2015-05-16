@@ -36,10 +36,11 @@ private:
   llvm::raw_ostream &os;
 
   template <typename StateType> void printState(const StateType &state) const {
-    os << "{ ";
-    for (auto v : state)
-      os << v->getName() << " ";
-    os << "}";
+    // os << "{ ";
+    // for (auto v : state)
+    //   os << v->getName() << " ";
+    // os << "}";
+    printLattice(state);
   }
 
   void emitBasicBlockStartAnnot(const llvm::BasicBlock &bb) const {
