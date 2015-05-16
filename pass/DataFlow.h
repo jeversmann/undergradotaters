@@ -35,10 +35,9 @@ private:
 
 public:
   DataFlowPass(Meet meet, Direction dir = forward, Lattice initial = Lattice())
-    : DataFlowPass(meet, dir, initial, initial) {}
+      : DataFlowPass(meet, dir, initial, initial) {}
 
-  DataFlowPass(Meet meet, Direction dir, Lattice initial,
-               Lattice boundary)
+  DataFlowPass(Meet meet, Direction dir, Lattice initial, Lattice boundary)
       : meet(meet), direction(dir), initial(initial), boundary(boundary) {}
 
   void applyMeet(Lattice &start, Lattice &end, const BasicBlock *node) {

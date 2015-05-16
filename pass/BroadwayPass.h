@@ -35,9 +35,7 @@ private:
 
 public:
   static char ID;
-  BroadwayPass()
-    : FunctionPass(ID),
-      analysis(MeetUnion<Value *>, backward) {}
+  BroadwayPass() : FunctionPass(ID), analysis(MeetUnion<Value *>, backward) {}
   bool doInitialization(Module &) override;
   bool runOnFunction(Function &) override;
   void getAnalysisUsage(AnalysisUsage &) const override;
