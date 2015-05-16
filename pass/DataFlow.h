@@ -134,9 +134,9 @@ public:
           worklist.insert(*itr);
     }
 
-    // Print analysis result
-    example::DataFlowAnnotator<DataFlowPass> annotator(*this, errs());
-    annotator.print(f);
+    // // Print analysis result
+    // example::DataFlowAnnotator<DataFlowPass> annotator(*this, errs());
+    // annotator.print(f);
 
     return false;
   }

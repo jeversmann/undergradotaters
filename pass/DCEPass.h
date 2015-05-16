@@ -38,8 +38,8 @@ public:
   bool runOnFunction(Function &) override;
   void getAnalysisUsage(AnalysisUsage &) const override;
 
-  const int getInState(const BasicBlock *bb) const {
-    return 5; //analysis.getInState(bb).get("dce");
+  const FlowSet getInState(const BasicBlock *bb) const {
+    return analysis.getInState(bb).get("dce");
   }
 
   const FlowSet getOutState(const BasicBlock *bb) const {
