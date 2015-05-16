@@ -78,34 +78,14 @@ flow_set<FlowValue> MeetIntersect(flow_set<FlowValue> &first,
   return result;
 }
 
-template <class FlowValue>
-void printSet(flow_set<FlowValue> set, bool printPhi = false) {
-  errs() << "{\n";
-  for (auto &e : set) {
-    errs() << " " << e->getName();
-  }
-  errs() << "\n}\n";
-
-  if (printPhi) {
-    errs() << "phiSets {\n";
-    for (auto &p : set.phiSets) {
-      errs() << "  " << p.first->getName() << ":";
-      for (auto &e : p.second)
-        errs() << " " << e->getName();
-      errs() << "\n";
-    }
-    errs() << "}\n";
-  }
-}
-
 /* ----------------
  * Broadway Lattice
  * ----------------
  */
 template <class T> class BroadwayLattice {
 private:
-  std::map<std::string, std::string> parents;
-  std::map<std::string, flow_set<T>> sets;
+  std::unordered_map<std::string, std::string> parents;
+  std::unordered_map<std::string, flow_set<T>> sets;
 
 public:
   std::set<std::string> properties; // To iterate through
@@ -113,8 +93,8 @@ public:
   BroadwayLattice() {}
 
   BroadwayLattice(const BroadwayLattice &other) {
-    parents = std::map<std::string, std::string>(other.parents);
-    sets = std::map<std::string, flow_set<T>>(other.sets);
+    parents = std::unordered_map<std::string, std::string>(other.parents);
+    sets = std::unordered_map<std::string, flow_set<T>>(other.sets);
     properties = std::set<std::string>(other.properties);
   }
 
@@ -130,7 +110,7 @@ public:
   // Add a var to a state's and its parent's sets
   void addToProperty(const std::string stateName, const T var) {
     sets.at(stateName).insert(var);
-    std::string parent = parents[stateName];
+    auto parent = parents[stateName];
     if (parent != "bottom") {
       addToProperty(parent, var);
     }
@@ -167,7 +147,7 @@ public:
   // Returns a new object with the same parents and properties
   BroadwayLattice<T> clone() const {
     BroadwayLattice<T> resp;
-    resp.parents = std::map<std::string, std::string>(parents);
+    resp.parents = std::unordered_map<std::string, std::string>(parents);
     resp.properties = std::set<std::string>(properties);
     for (auto &prop : properties)
       resp.sets[prop] = flow_set<T>();
@@ -187,15 +167,15 @@ public:
   }
 
   bool operator!=(const BroadwayLattice<T> &other) {
-    if (properties == other.properties)
-      return false;
+    if (properties != other.properties)
+      return true;
     for (auto &prop : properties) {
-      if (parents.at(prop) == other.parents.at(prop))
-        return false;
-      if (sets.at(prop) == other.sets.at(prop))
-        return false;
+      if (parents.at(prop) != other.parents.at(prop))
+        return true;
+      if (sets.at(prop) != other.sets.at(prop))
+        return true;
     }
-    return true;
+    return false;
   }
 };
 
@@ -266,5 +246,36 @@ BroadwayLattice<FlowValue> MeetIntersect(BroadwayLattice<FlowValue> &first,
   }
 
   return resp;
+}
+
+template <class FlowValue>
+void printLattice(BroadwayLattice<FlowValue> &lattice, bool printPhi = false) {
+  errs() << "{\n";
+  for (auto &prop : lattice.properties) {
+    errs() << "  " << prop << ": ";
+    const auto &set = lattice.get(prop);
+    printSet(set, printPhi);
+  }
+  errs() << "\n}\n";
+}
+
+template <class FlowValue>
+void printSet(const flow_set<FlowValue> &set, bool printPhi = false) {
+  errs() << "{\n    ";
+  for (auto &e : set) {
+    errs() << " " << e->getName();
+  }
+  errs() << "\n  }";
+
+  if (printPhi) {
+    errs() << " phiSets {\n";
+    for (auto &p : set.phiSets) {
+      errs() << "    " << p.first->getName() << ":";
+      for (auto &e : p.second)
+        errs() << " " << e->getName();
+    }
+    errs() << "  }";
+  }
+  errs() << "\n";
 }
 }

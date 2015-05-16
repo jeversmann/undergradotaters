@@ -18,7 +18,7 @@ template <class T> void DCEVisitor<T>::visitInstruction(Instruction &inst) {
         state.addToProperty("dce", i);
 
       // gen the operands if the result is not faint
-      if (state.isInProperty("dce", i))
+      if (state.isInProperty("dce", &inst))
         state.addToProperty("dce", i);
     }
   }
@@ -39,14 +39,14 @@ bool DCEPass::runOnFunction(Function &f) {
 
   for (auto &block : f) {
     auto state = Lattice(analysis.getOutState(&block));
-
     // iterate over the instructions, applying the transfer function and
     // removing it if possible
     auto visitor = DCEVisitor<Function>(f, state);
     for (auto inst = block.rbegin(), end = block.rend(); inst != end; ++inst) {
+
       // remove it if it isn't live
       if (!state.isInProperty("dce", &*inst) && !inst->isTerminator() &&
-          !inst->mayHaveSideEffects()) {
+          !inst->mayHaveSideEffects() && !inst->mayReadOrWriteMemory()) {
         toRemove.insert(&*inst);
         changed = true;
       }

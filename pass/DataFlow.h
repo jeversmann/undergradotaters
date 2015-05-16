@@ -117,6 +117,7 @@ public:
         visitor.visit(node->rbegin(), node->rend());
 
       endStates[node] = visitor.getState();
+
       for (auto &prop : initial.properties) {
         FlowSet updatedPhi(startStates[node].get(prop));
         updatedPhi.phiSets = endStates[node].get(prop).phiSets;
@@ -133,10 +134,6 @@ public:
              ++itr)
           worklist.insert(*itr);
     }
-
-    // // Print analysis result
-    // example::DataFlowAnnotator<DataFlowPass> annotator(*this, errs());
-    // annotator.print(f);
 
     return false;
   }
