@@ -53,6 +53,23 @@ bool BroadwayPass::doInitialization(Module &m) {
 bool BroadwayPass::runOnFunction(Function &f) {
   auto changed = false;
 
+  // Get all the names of all the things
+  for (auto const &bbl : f.getBasicBlockList()) {
+    for (auto const &inst : bbl.getInstList()) {
+      if (!isa<TerminatorInst>(inst)) {
+        /* names.insert(inst.getName()); */
+      }
+      for (unsigned int i = 0; i < inst.getNumOperands(); i++) {
+        llvm::Value *v = inst.getOperandUse(i);
+        if (isa<Instruction>(v) || isa<Argument>(v)) {
+          /* names.insert(v->getName()); */
+        }
+      }
+    }
+  }
+
+  analysis = DataFlow(MeetUnion<llvm::Value *>, backward); // Lattice
+
   analysis.run(f);
 
   example::DataFlowAnnotator<BroadwayPass> annotator(*this, errs());
