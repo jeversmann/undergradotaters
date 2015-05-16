@@ -1,0 +1,1261 @@
+{
+  "headers": [
+    "typedef long int ptrdiff_t;\ntypedef long unsigned int size_t;\ntypedef int wchar_t;\ntypedef struct {\n  long long __clang_max_align_nonce1\n      __attribute__((__aligned__(__alignof__(long long))));\n  long double __clang_max_align_nonce2\n      __attribute__((__aligned__(__alignof__(long double))));\n} max_align_t;\n\n\n\ntypedef unsigned char __u_char;\ntypedef unsigned short int __u_short;\ntypedef unsigned int __u_int;\ntypedef unsigned long int __u_long;\n\n\ntypedef signed char __int8_t;\ntypedef unsigned char __uint8_t;\ntypedef signed short int __int16_t;\ntypedef unsigned short int __uint16_t;\ntypedef signed int __int32_t;\ntypedef unsigned int __uint32_t;\n\ntypedef signed long int __int64_t;\ntypedef unsigned long int __uint64_t;\n\n\n\n\n\n\n\ntypedef long int __quad_t;\ntypedef unsigned long int __u_quad_t;\n\n\ntypedef unsigned long int __dev_t;\ntypedef unsigned int __uid_t;\ntypedef unsigned int __gid_t;\ntypedef unsigned long int __ino_t;\ntypedef unsigned long int __ino64_t;\ntypedef unsigned int __mode_t;\ntypedef unsigned long int __nlink_t;\ntypedef long int __off_t;\ntypedef long int __off64_t;\ntypedef int __pid_t;\ntypedef struct { int __val[2]; } __fsid_t;\ntypedef long int __clock_t;\ntypedef unsigned long int __rlim_t;\ntypedef unsigned long int __rlim64_t;\ntypedef unsigned int __id_t;\ntypedef long int __time_t;\ntypedef unsigned int __useconds_t;\ntypedef long int __suseconds_t;\n\ntypedef int __daddr_t;\ntypedef int __key_t;\n\n\ntypedef int __clockid_t;\n\n\ntypedef void * __timer_t;\n\n\ntypedef long int __blksize_t;\n\n\n\n\ntypedef long int __blkcnt_t;\ntypedef long int __blkcnt64_t;\n\n\ntypedef unsigned long int __fsblkcnt_t;\ntypedef unsigned long int __fsblkcnt64_t;\n\n\ntypedef unsigned long int __fsfilcnt_t;\ntypedef unsigned long int __fsfilcnt64_t;\n\n\ntypedef long int __fsword_t;\n\ntypedef long int __ssize_t;\n\n\ntypedef long int __syscall_slong_t;\n\ntypedef unsigned long int __syscall_ulong_t;\n\n\n\ntypedef __off64_t __loff_t;\ntypedef __quad_t *__qaddr_t;\ntypedef char *__caddr_t;\n\n\ntypedef long int __intptr_t;\n\n\ntypedef unsigned int __socklen_t;\n\n\n\n\n\n\n\n\nstruct _IO_FILE;\n\n\n\ntypedef struct _IO_FILE FILE;\ntypedef struct _IO_FILE __FILE;\n\n\n\n\ntypedef struct\n{\n  int __count;\n  union\n  {\n\n    unsigned int __wch;\n\n\n\n    char __wchb[4];\n  } __value;\n} __mbstate_t;\ntypedef struct\n{\n  __off_t __pos;\n  __mbstate_t __state;\n} _G_fpos_t;\ntypedef struct\n{\n  __off64_t __pos;\n  __mbstate_t __state;\n} _G_fpos64_t;\ntypedef __builtin_va_list va_list;\ntypedef __builtin_va_list __gnuc_va_list;\nstruct _IO_jump_t; struct _IO_FILE;\ntypedef void _IO_lock_t;\n\n\n\n\n\nstruct _IO_marker {\n  struct _IO_marker *_next;\n  struct _IO_FILE *_sbuf;\n\n\n\n  int _pos;\n};\n\n\nenum __codecvt_result\n{\n  __codecvt_ok,\n  __codecvt_partial,\n  __codecvt_error,\n  __codecvt_noconv\n};\nstruct _IO_FILE {\n  int _flags;\n\n\n\n\n  char* _IO_read_ptr;\n  char* _IO_read_end;\n  char* _IO_read_base;\n  char* _IO_write_base;\n  char* _IO_write_ptr;\n  char* _IO_write_end;\n  char* _IO_buf_base;\n  char* _IO_buf_end;\n\n  char *_IO_save_base;\n  char *_IO_backup_base;\n  char *_IO_save_end;\n\n  struct _IO_marker *_markers;\n\n  struct _IO_FILE *_chain;\n\n  int _fileno;\n\n\n\n  int _flags2;\n\n  __off_t _old_offset;\n\n\n\n  unsigned short _cur_column;\n  signed char _vtable_offset;\n  char _shortbuf[1];\n\n\n\n  _IO_lock_t *_lock;\n  __off64_t _offset;\n  void *__pad1;\n  void *__pad2;\n  void *__pad3;\n  void *__pad4;\n  size_t __pad5;\n\n  int _mode;\n\n  char _unused2[15 * sizeof (int) - 4 * sizeof (void *) - sizeof (size_t)];\n\n};\n\n\ntypedef struct _IO_FILE _IO_FILE;\n\n\nstruct _IO_FILE_plus;\n\nextern struct _IO_FILE_plus _IO_2_1_stdin_;\nextern struct _IO_FILE_plus _IO_2_1_stdout_;\nextern struct _IO_FILE_plus _IO_2_1_stderr_;\ntypedef __ssize_t __io_read_fn (void *__cookie, char *__buf, size_t __nbytes);\n\n\n\n\n\n\n\ntypedef __ssize_t __io_write_fn (void *__cookie, const char *__buf,\n     size_t __n);\n\n\n\n\n\n\n\ntypedef int __io_seek_fn (void *__cookie, __off64_t *__pos, int __w);\n\n\ntypedef int __io_close_fn (void *__cookie);\nextern int __underflow (_IO_FILE *);\nextern int __uflow (_IO_FILE *);\nextern int __overflow (_IO_FILE *, int);\nextern int _IO_getc (_IO_FILE *__fp);\nextern int _IO_putc (int __c, _IO_FILE *__fp);\nextern int _IO_feof (_IO_FILE *__fp) __attribute__ ((__nothrow__ ));\nextern int _IO_ferror (_IO_FILE *__fp) __attribute__ ((__nothrow__ ));\n\nextern int _IO_peekc_locked (_IO_FILE *__fp);\n\n\n\n\n\nextern void _IO_flockfile (_IO_FILE *) __attribute__ ((__nothrow__ ));\nextern void _IO_funlockfile (_IO_FILE *) __attribute__ ((__nothrow__ ));\nextern int _IO_ftrylockfile (_IO_FILE *) __attribute__ ((__nothrow__ ));\nextern int _IO_vfscanf (_IO_FILE * __restrict, const char * __restrict,\n   __gnuc_va_list, int *__restrict);\nextern int _IO_vfprintf (_IO_FILE *__restrict, const char *__restrict,\n    __gnuc_va_list);\nextern __ssize_t _IO_padn (_IO_FILE *, int, __ssize_t);\nextern size_t _IO_sgetn (_IO_FILE *, void *, size_t);\n\nextern __off64_t _IO_seekoff (_IO_FILE *, __off64_t, int, int);\nextern __off64_t _IO_seekpos (_IO_FILE *, __off64_t, int);\n\nextern void _IO_free_backup_area (_IO_FILE *) __attribute__ ((__nothrow__ ));\n\n\n\n\ntypedef __gnuc_va_list va_list;\ntypedef __off_t off_t;\ntypedef __ssize_t ssize_t;\n\n\n\n\n\n\n\ntypedef _G_fpos_t fpos_t;\n\n\n\nextern struct _IO_FILE *stdin;\nextern struct _IO_FILE *stdout;\nextern struct _IO_FILE *stderr;\n\n\n\n\n\n\n\nextern int remove (const char *__filename) __attribute__ ((__nothrow__ ));\n\nextern int rename (const char *__old, const char *__new) __attribute__ ((__nothrow__ ));\n\n\n\n\nextern int renameat (int __oldfd, const char *__old, int __newfd,\n       const char *__new) __attribute__ ((__nothrow__ ));\nextern FILE *tmpfile (void) ;\nextern char *tmpnam (char *__s) __attribute__ ((__nothrow__ )) ;\n\n\n\n\n\nextern char *tmpnam_r (char *__s) __attribute__ ((__nothrow__ )) ;\nextern char *tempnam (const char *__dir, const char *__pfx)\n     __attribute__ ((__nothrow__ )) __attribute__ ((__malloc__)) ;\nextern int fclose (FILE *__stream);\n\n\n\n\nextern int fflush (FILE *__stream);\nextern int fflush_unlocked (FILE *__stream);\nextern FILE *fopen (const char *__restrict __filename,\n      const char *__restrict __modes) ;\n\n\n\n\nextern FILE *freopen (const char *__restrict __filename,\n        const char *__restrict __modes,\n        FILE *__restrict __stream) ;\nextern FILE *fdopen (int __fd, const char *__modes) __attribute__ ((__nothrow__ )) ;\nextern FILE *fmemopen (void *__s, size_t __len, const char *__modes)\n  __attribute__ ((__nothrow__ )) ;\n\n\n\n\nextern FILE *open_memstream (char **__bufloc, size_t *__sizeloc) __attribute__ ((__nothrow__ )) ;\n\n\n\n\n\n\nextern void setbuf (FILE *__restrict __stream, char *__restrict __buf) __attribute__ ((__nothrow__ ));\n\n\n\nextern int setvbuf (FILE *__restrict __stream, char *__restrict __buf,\n      int __modes, size_t __n) __attribute__ ((__nothrow__ ));\n\n\n\n\n\nextern void setbuffer (FILE *__restrict __stream, char *__restrict __buf,\n         size_t __size) __attribute__ ((__nothrow__ ));\n\n\nextern void setlinebuf (FILE *__stream) __attribute__ ((__nothrow__ ));\nextern int fprintf (FILE *__restrict __stream,\n      const char *__restrict __format, ...);\n\n\n\n\nextern int printf (const char *__restrict __format, ...);\n\nextern int sprintf (char *__restrict __s,\n      const char *__restrict __format, ...) __attribute__ ((__nothrow__));\n\n\n\n\n\nextern int vfprintf (FILE *__restrict __s, const char *__restrict __format,\n       __gnuc_va_list __arg);\n\n\n\n\nextern int vprintf (const char *__restrict __format, __gnuc_va_list __arg);\n\nextern int vsprintf (char *__restrict __s, const char *__restrict __format,\n       __gnuc_va_list __arg) __attribute__ ((__nothrow__));\n\n\n\n\n\nextern int snprintf (char *__restrict __s, size_t __maxlen,\n       const char *__restrict __format, ...)\n     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 3, 4)));\n\nextern int vsnprintf (char *__restrict __s, size_t __maxlen,\n        const char *__restrict __format, __gnuc_va_list __arg)\n     __attribute__ ((__nothrow__)) __attribute__ ((__format__ (__printf__, 3, 0)));\nextern int vdprintf (int __fd, const char *__restrict __fmt,\n       __gnuc_va_list __arg)\n     __attribute__ ((__format__ (__printf__, 2, 0)));\nextern int dprintf (int __fd, const char *__restrict __fmt, ...)\n     __attribute__ ((__format__ (__printf__, 2, 3)));\nextern int fscanf (FILE *__restrict __stream,\n     const char *__restrict __format, ...) ;\n\n\n\n\nextern int scanf (const char *__restrict __format, ...) ;\n\nextern int sscanf (const char *__restrict __s,\n     const char *__restrict __format, ...) __attribute__ ((__nothrow__ ));\nextern int fscanf (FILE *__restrict __stream, const char *__restrict __format, ...) __asm__ (\"\" \"__isoc99_fscanf\") ;\n\n\nextern int scanf (const char *__restrict __format, ...) __asm__ (\"\" \"__isoc99_scanf\") ;\n\nextern int sscanf (const char *__restrict __s, const char *__restrict __format, ...) __asm__ (\"\" \"__isoc99_sscanf\") __attribute__ ((__nothrow__ ));\nextern int vfscanf (FILE *__restrict __s, const char *__restrict __format,\n      __gnuc_va_list __arg)\n     __attribute__ ((__format__ (__scanf__, 2, 0))) ;\n\n\n\n\n\nextern int vscanf (const char *__restrict __format, __gnuc_va_list __arg)\n     __attribute__ ((__format__ (__scanf__, 1, 0))) ;\n\n\nextern int vsscanf (const char *__restrict __s,\n      const char *__restrict __format, __gnuc_va_list __arg)\n     __attribute__ ((__nothrow__ )) __attribute__ ((__format__ (__scanf__, 2, 0)));\nextern int vfscanf (FILE *__restrict __s, const char *__restrict __format, __gnuc_va_list __arg) __asm__ (\"\" \"__isoc99_vfscanf\")\n\n\n\n     __attribute__ ((__format__ (__scanf__, 2, 0))) ;\nextern int vscanf (const char *__restrict __format, __gnuc_va_list __arg) __asm__ (\"\" \"__isoc99_vscanf\")\n\n     __attribute__ ((__format__ (__scanf__, 1, 0))) ;\nextern int vsscanf (const char *__restrict __s, const char *__restrict __format, __gnuc_va_list __arg) __asm__ (\"\" \"__isoc99_vsscanf\") __attribute__ ((__nothrow__ ))\n\n\n\n     __attribute__ ((__format__ (__scanf__, 2, 0)));\nextern int fgetc (FILE *__stream);\nextern int getc (FILE *__stream);\n\n\n\n\n\nextern int getchar (void);\nextern int getc_unlocked (FILE *__stream);\nextern int getchar_unlocked (void);\nextern int fgetc_unlocked (FILE *__stream);\nextern int fputc (int __c, FILE *__stream);\nextern int putc (int __c, FILE *__stream);\n\n\n\n\n\nextern int putchar (int __c);\nextern int fputc_unlocked (int __c, FILE *__stream);\n\n\n\n\n\n\n\nextern int putc_unlocked (int __c, FILE *__stream);\nextern int putchar_unlocked (int __c);\n\n\n\n\n\n\nextern int getw (FILE *__stream);\n\n\nextern int putw (int __w, FILE *__stream);\nextern char *fgets (char *__restrict __s, int __n, FILE *__restrict __stream)\n          ;\nextern __ssize_t __getdelim (char **__restrict __lineptr,\n          size_t *__restrict __n, int __delimiter,\n          FILE *__restrict __stream) ;\nextern __ssize_t getdelim (char **__restrict __lineptr,\n        size_t *__restrict __n, int __delimiter,\n        FILE *__restrict __stream) ;\n\n\n\n\n\n\n\nextern __ssize_t getline (char **__restrict __lineptr,\n       size_t *__restrict __n,\n       FILE *__restrict __stream) ;\nextern int fputs (const char *__restrict __s, FILE *__restrict __stream);\n\n\n\n\n\nextern int puts (const char *__s);\n\n\n\n\n\n\nextern int ungetc (int __c, FILE *__stream);\n\n\n\n\n\n\nextern size_t fread (void *__restrict __ptr, size_t __size,\n       size_t __n, FILE *__restrict __stream) ;\n\n\n\n\nextern size_t fwrite (const void *__restrict __ptr, size_t __size,\n        size_t __n, FILE *__restrict __s);\nextern size_t fread_unlocked (void *__restrict __ptr, size_t __size,\n         size_t __n, FILE *__restrict __stream) ;\nextern size_t fwrite_unlocked (const void *__restrict __ptr, size_t __size,\n          size_t __n, FILE *__restrict __stream);\nextern int fseek (FILE *__stream, long int __off, int __whence);\n\n\n\n\nextern long int ftell (FILE *__stream) ;\n\n\n\n\nextern void rewind (FILE *__stream);\nextern int fseeko (FILE *__stream, __off_t __off, int __whence);\n\n\n\n\nextern __off_t ftello (FILE *__stream) ;\nextern int fgetpos (FILE *__restrict __stream, fpos_t *__restrict __pos);\n\n\n\n\nextern int fsetpos (FILE *__stream, const fpos_t *__pos);\nextern void clearerr (FILE *__stream) __attribute__ ((__nothrow__ ));\n\nextern int feof (FILE *__stream) __attribute__ ((__nothrow__ )) ;\n\nextern int ferror (FILE *__stream) __attribute__ ((__nothrow__ )) ;\n\n\n\n\nextern void clearerr_unlocked (FILE *__stream) __attribute__ ((__nothrow__ ));\nextern int feof_unlocked (FILE *__stream) __attribute__ ((__nothrow__ )) ;\nextern int ferror_unlocked (FILE *__stream) __attribute__ ((__nothrow__ )) ;\nextern void perror (const char *__s);\n\n\n\n\n\n\n\nextern int sys_nerr;\nextern const char *const sys_errlist[];\n\n\n\n\nextern int fileno (FILE *__stream) __attribute__ ((__nothrow__ )) ;\n\n\n\n\nextern int fileno_unlocked (FILE *__stream) __attribute__ ((__nothrow__ )) ;\nextern FILE *popen (const char *__command, const char *__modes) ;\n\n\n\n\n\nextern int pclose (FILE *__stream);\n\n\n\n\n\nextern char *ctermid (char *__s) __attribute__ ((__nothrow__ ));\nextern void flockfile (FILE *__stream) __attribute__ ((__nothrow__ ));\n\n\n\nextern int ftrylockfile (FILE *__stream) __attribute__ ((__nothrow__ )) ;\n\n\nextern void funlockfile (FILE *__stream) __attribute__ ((__nothrow__ ));\nextern void *malloc (size_t __size) __attribute__ ((__nothrow__ )) __attribute__ ((__malloc__)) ;\n\n\nextern void *calloc (size_t __nmemb, size_t __size)\n     __attribute__ ((__nothrow__ )) __attribute__ ((__malloc__)) ;\n\n\n\n\n\n\nextern void *realloc (void *__ptr, size_t __size)\n     __attribute__ ((__nothrow__ )) __attribute__ ((__warn_unused_result__));\n\n\nextern void free (void *__ptr) __attribute__ ((__nothrow__ ));\n\n\nextern void cfree (void *__ptr) __attribute__ ((__nothrow__ ));\n\n\nextern void *memalign (size_t __alignment, size_t __size)\n     __attribute__ ((__nothrow__ )) __attribute__ ((__malloc__)) ;\n\n\nextern void *valloc (size_t __size) __attribute__ ((__nothrow__ )) __attribute__ ((__malloc__)) ;\n\n\n\nextern void * pvalloc (size_t __size) __attribute__ ((__nothrow__ )) __attribute__ ((__malloc__)) ;\n\n\n\nextern void *(*__morecore) (ptrdiff_t __size);\n\n\nextern void *__default_morecore (ptrdiff_t __size)\n     __attribute__ ((__nothrow__ )) __attribute__ ((__malloc__));\n\n\n\nstruct mallinfo\n{\n  int arena;\n  int ordblks;\n  int smblks;\n  int hblks;\n  int hblkhd;\n  int usmblks;\n  int fsmblks;\n  int uordblks;\n  int fordblks;\n  int keepcost;\n};\n\n\nextern struct mallinfo mallinfo (void) __attribute__ ((__nothrow__ ));\nextern int mallopt (int __param, int __val) __attribute__ ((__nothrow__ ));\n\n\n\nextern int malloc_trim (size_t __pad) __attribute__ ((__nothrow__ ));\n\n\n\nextern size_t malloc_usable_size (void *__ptr) __attribute__ ((__nothrow__ ));\n\n\nextern void malloc_stats (void) __attribute__ ((__nothrow__ ));\n\n\nextern int malloc_info (int __options, FILE *__fp) __attribute__ ((__nothrow__ ));\n\n\nextern void *malloc_get_state (void) __attribute__ ((__nothrow__ ));\n\n\n\nextern int malloc_set_state (void *__ptr) __attribute__ ((__nothrow__ ));\n\n\n\n\nextern void (*volatile __malloc_initialize_hook) (void)\n     __attribute__ ((__deprecated__));\n\nextern void (*volatile __free_hook) (void *__ptr,\n         const void *)\n     __attribute__ ((__deprecated__));\nextern void *(*volatile __malloc_hook) (size_t __size,\n            const void *)\n     __attribute__ ((__deprecated__));\nextern void *(*volatile __realloc_hook) (void *__ptr,\n             size_t __size,\n             const void *)\n     __attribute__ ((__deprecated__));\nextern void *(*volatile __memalign_hook) (size_t __alignment,\n       size_t __size,\n       const void *)\n     __attribute__ ((__deprecated__));\nextern void (*volatile __after_morecore_hook) (void);\n\n\nextern void __malloc_check_init (void) __attribute__ ((__nothrow__ )) __attribute__ ((__deprecated__));\n\n"
+  ], 
+  "global_analyses": [], 
+  "procedures": [
+    {
+      "statements": {
+        "exit_pointers": [
+          {
+            "pointers": [
+              {
+                "name": "return", 
+                "io": null, 
+                "members": null, 
+                "target": {
+                  "name": "memory_chunk", 
+                  "io": null, 
+                  "members": null, 
+                  "target": null, 
+                  "new": true, 
+                  "delete": null
+                }, 
+                "new": null, 
+                "delete": null
+              }
+            ], 
+            "condition": null
+          }
+        ], 
+        "reports": [
+          {
+            "condition": {
+              "lhs": {
+                "lhs": {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "NotDeallocated"
+                }, 
+                "operator": "||", 
+                "rhs": {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "MaybeDeallocated"
+                }
+              }, 
+              "operator": "&&", 
+              "rhs": {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "target": "Unused"
+              }
+            }, 
+            "report": {
+              "elements": [
+                {
+                  "string": "\"Error: malloc() at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\" probably not be freed.\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "condition": {
+              "lhs": {
+                "lhs": {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "NotDeallocated"
+                }, 
+                "operator": "||", 
+                "rhs": {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "MaybeDeallocated"
+                }
+              }, 
+              "operator": "&&", 
+              "rhs": {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "target": "Multiple"
+              }
+            }, 
+            "report": {
+              "elements": [
+                {
+                  "string": "\"Error: malloc() at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\" might not be freed.\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "condition": {
+              "property": "HeapCount", 
+              "name": "memory_chunk", 
+              "time": null, 
+              "operator": "is-exactly", 
+              "target": "Error"
+            }, 
+            "report": {
+              "elements": [
+                {
+                  "string": "\"Error: malloc() at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\" improperly freed.\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "report": {
+              "elements": [
+                {
+                  "string": "\"MemoryLeak: malloc at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\": \""
+                }, 
+                {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": null
+                }, 
+                {
+                  "string": "\" => \""
+                }, 
+                {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": "@after"
+                }, 
+                {
+                  "string": "\"\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "report": {
+              "elements": [
+                {
+                  "string": "\"HeapCount: malloc at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\": \""
+                }, 
+                {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": null
+                }, 
+                {
+                  "string": "\" => \""
+                }, 
+                {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": "@after"
+                }, 
+                {
+                  "string": "\"\\n\""
+                }
+              ]
+            }
+          }
+        ], 
+        "entry_pointers": [], 
+        "accesses": [], 
+        "modifies": [
+          "memory_chunk"
+        ], 
+        "analyses": [
+          {
+            "rules": [
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Single"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Unused", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Multiple"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Single", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Multiple"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Multiple", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Error", 
+                  "property": null
+                }
+              }
+            ], 
+            "name": "HeapCount"
+          }, 
+          {
+            "rules": [
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "NotDeallocated"
+                  }
+                ], 
+                "condition": {
+                  "lhs": {
+                    "name": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "target": "Deallocated", 
+                    "property": null
+                  }, 
+                  "operator": "||", 
+                  "rhs": {
+                    "name": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "target": "MaybeDeallocated", 
+                    "property": null
+                  }
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Error", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "NotDeallocated"
+                  }
+                ], 
+                "condition": null
+              }
+            ], 
+            "name": "MemoryLeak"
+          }
+        ], 
+        "actions": []
+      }, 
+      "name": "malloc", 
+      "arguments": [
+        "size"
+      ]
+    }, 
+    {
+      "statements": {
+        "exit_pointers": [
+          {
+            "pointers": [
+              {
+                "name": "return", 
+                "io": null, 
+                "members": null, 
+                "target": {
+                  "name": "memory_chunk", 
+                  "io": null, 
+                  "members": null, 
+                  "target": null, 
+                  "new": true, 
+                  "delete": null
+                }, 
+                "new": null, 
+                "delete": null
+              }
+            ], 
+            "condition": null
+          }
+        ], 
+        "reports": [
+          {
+            "condition": {
+              "property": "MemoryLeak", 
+              "name": "memory_chunk", 
+              "time": null, 
+              "operator": "is-exactly", 
+              "target": "NotDeallocated"
+            }, 
+            "report": {
+              "elements": [
+                {
+                  "string": "\"Error: malloc() at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\" might not be freed.\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "condition": {
+              "property": "HeapCount", 
+              "name": "memory_chunk", 
+              "time": null, 
+              "operator": "is-exactly", 
+              "target": "Error"
+            }, 
+            "report": {
+              "elements": [
+                {
+                  "string": "\"Error: malloc() at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\" improperly freed.\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "report": {
+              "elements": [
+                {
+                  "string": "\"MemoryLeak: calloc at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\": \""
+                }, 
+                {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": null
+                }, 
+                {
+                  "string": "\" => \""
+                }, 
+                {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": "@after"
+                }, 
+                {
+                  "string": "\"\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "report": {
+              "elements": [
+                {
+                  "string": "\"HeapCount: calloc at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\": \""
+                }, 
+                {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": null
+                }, 
+                {
+                  "string": "\" => \""
+                }, 
+                {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": "@after"
+                }, 
+                {
+                  "string": "\"\\n\""
+                }
+              ]
+            }
+          }
+        ], 
+        "entry_pointers": [], 
+        "accesses": [], 
+        "modifies": [
+          "memory_chunk"
+        ], 
+        "analyses": [
+          {
+            "rules": [
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Single"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Unused", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Multiple"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Single", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Multiple"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Multiple", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Error", 
+                  "property": null
+                }
+              }
+            ], 
+            "name": "HeapCount"
+          }, 
+          {
+            "rules": [
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "NotDeallocated"
+                  }
+                ], 
+                "condition": {
+                  "lhs": {
+                    "name": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "target": "Deallocated", 
+                    "property": null
+                  }, 
+                  "operator": "||", 
+                  "rhs": {
+                    "name": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "target": "MaybeDeallocated", 
+                    "property": null
+                  }
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Error", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "NotDeallocated"
+                  }
+                ], 
+                "condition": null
+              }
+            ], 
+            "name": "MemoryLeak"
+          }
+        ], 
+        "actions": []
+      }, 
+      "name": "calloc", 
+      "arguments": [
+        "num", 
+        "size"
+      ]
+    }, 
+    {
+      "statements": {
+        "exit_pointers": [], 
+        "reports": [
+          {
+            "report": {
+              "elements": [
+                {
+                  "string": "\"MemoryLeak: free at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\": \""
+                }, 
+                {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": null
+                }, 
+                {
+                  "string": "\" => \""
+                }, 
+                {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": "@after"
+                }, 
+                {
+                  "string": "\"\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "report": {
+              "elements": [
+                {
+                  "string": "\"HeapCount: free at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\": \""
+                }, 
+                {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": null
+                }, 
+                {
+                  "string": "\" => \""
+                }, 
+                {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": "@after"
+                }, 
+                {
+                  "string": "\"\\n\""
+                }
+              ]
+            }
+          }
+        ], 
+        "entry_pointers": [
+          {
+            "name": "ptr", 
+            "io": null, 
+            "members": null, 
+            "target": {
+              "name": "memory_chunk", 
+              "io": null, 
+              "members": null, 
+              "target": null, 
+              "new": null, 
+              "delete": null
+            }, 
+            "new": null, 
+            "delete": null
+          }
+        ], 
+        "accesses": [
+          "memory_chunk"
+        ], 
+        "modifies": [], 
+        "analyses": [
+          {
+            "rules": [
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Unused", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Unused"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Single", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Multiple"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Multiple", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Error", 
+                  "property": null
+                }
+              }
+            ], 
+            "name": "HeapCount"
+          }, 
+          {
+            "rules": [
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Unused"
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Deallocated"
+                  }
+                ], 
+                "condition": {
+                  "lhs": {
+                    "property": "HeapCount", 
+                    "name": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "target": "Single"
+                  }, 
+                  "operator": "&&", 
+                  "rhs": {
+                    "lhs": {
+                      "name": "memory_chunk", 
+                      "time": null, 
+                      "operator": "is-exactly", 
+                      "target": "NotDeallocated", 
+                      "property": null
+                    }, 
+                    "operator": "||", 
+                    "rhs": {
+                      "name": "memory_chunk", 
+                      "time": null, 
+                      "operator": "is-exactly", 
+                      "target": "MaybeDeallocated", 
+                      "property": null
+                    }
+                  }
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "MaybeDeallocated"
+                  }
+                ], 
+                "condition": {
+                  "lhs": {
+                    "property": "HeapCount", 
+                    "name": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "target": "Multiple"
+                  }, 
+                  "operator": "&&", 
+                  "rhs": {
+                    "lhs": {
+                      "name": "memory_chunk", 
+                      "time": null, 
+                      "operator": "is-exactly", 
+                      "target": "NotDeallocated", 
+                      "property": null
+                    }, 
+                    "operator": "||", 
+                    "rhs": {
+                      "name": "memory_chunk", 
+                      "time": null, 
+                      "operator": "is-exactly", 
+                      "target": "MaybeDeallocated", 
+                      "property": null
+                    }
+                  }
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": null
+              }
+            ], 
+            "name": "MemoryLeak"
+          }
+        ], 
+        "actions": []
+      }, 
+      "name": "free", 
+      "arguments": [
+        "ptr"
+      ]
+    }, 
+    {
+      "statements": {
+        "exit_pointers": [], 
+        "reports": [
+          {
+            "report": {
+              "elements": [
+                {
+                  "string": "\"MemoryLeak: free at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\": \""
+                }, 
+                {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": null
+                }, 
+                {
+                  "string": "\" => \""
+                }, 
+                {
+                  "property": "MemoryLeak", 
+                  "name": "memory_chunk", 
+                  "time": "@after"
+                }, 
+                {
+                  "string": "\"\\n\""
+                }
+              ]
+            }
+          }, 
+          {
+            "report": {
+              "elements": [
+                {
+                  "string": "\"HeapCount: free at \""
+                }, 
+                {
+                  "location": "callsite"
+                }, 
+                {
+                  "string": "\": \""
+                }, 
+                {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": null
+                }, 
+                {
+                  "string": "\" => \""
+                }, 
+                {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": "@after"
+                }, 
+                {
+                  "string": "\"\\n\""
+                }
+              ]
+            }
+          }
+        ], 
+        "entry_pointers": [
+          {
+            "name": "ptr", 
+            "io": null, 
+            "members": null, 
+            "target": {
+              "name": "memory_chunk", 
+              "io": null, 
+              "members": null, 
+              "target": null, 
+              "new": null, 
+              "delete": null
+            }, 
+            "new": null, 
+            "delete": null
+          }
+        ], 
+        "accesses": [
+          "memory_chunk"
+        ], 
+        "modifies": [], 
+        "analyses": [
+          {
+            "rules": [
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Unused", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Unused"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Single", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Multiple"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Multiple", 
+                  "property": null
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Error", 
+                  "property": null
+                }
+              }
+            ], 
+            "name": "HeapCount"
+          }, 
+          {
+            "rules": [
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": {
+                  "property": "HeapCount", 
+                  "name": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "target": "Unused"
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Deallocated"
+                  }
+                ], 
+                "condition": {
+                  "lhs": {
+                    "property": "HeapCount", 
+                    "name": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "target": "Single"
+                  }, 
+                  "operator": "&&", 
+                  "rhs": {
+                    "lhs": {
+                      "name": "memory_chunk", 
+                      "time": null, 
+                      "operator": "is-exactly", 
+                      "target": "NotDeallocated", 
+                      "property": null
+                    }, 
+                    "operator": "||", 
+                    "rhs": {
+                      "name": "memory_chunk", 
+                      "time": null, 
+                      "operator": "is-exactly", 
+                      "target": "MaybeDeallocated", 
+                      "property": null
+                    }
+                  }
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "MaybeDeallocated"
+                  }
+                ], 
+                "condition": {
+                  "lhs": {
+                    "property": "HeapCount", 
+                    "name": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "target": "Multiple"
+                  }, 
+                  "operator": "&&", 
+                  "rhs": {
+                    "lhs": {
+                      "name": "memory_chunk", 
+                      "time": null, 
+                      "operator": "is-exactly", 
+                      "target": "NotDeallocated", 
+                      "property": null
+                    }, 
+                    "operator": "||", 
+                    "rhs": {
+                      "name": "memory_chunk", 
+                      "time": null, 
+                      "operator": "is-exactly", 
+                      "target": "MaybeDeallocated", 
+                      "property": null
+                    }
+                  }
+                }
+              }, 
+              {
+                "effects": [
+                  {
+                    "lhs": "memory_chunk", 
+                    "operator": "<-", 
+                    "rhs": "Error"
+                  }
+                ], 
+                "condition": null
+              }
+            ], 
+            "name": "MemoryLeak"
+          }
+        ], 
+        "actions": []
+      }, 
+      "name": "cfree", 
+      "arguments": [
+        "ptr"
+      ]
+    }, 
+    {
+      "statements": {
+        "exit_pointers": [
+          {
+            "pointers": [
+              {
+                "name": "return", 
+                "io": null, 
+                "members": null, 
+                "target": {
+                  "name": "memory_chunk", 
+                  "io": null, 
+                  "members": null, 
+                  "target": null, 
+                  "new": true, 
+                  "delete": null
+                }, 
+                "new": null, 
+                "delete": null
+              }
+            ], 
+            "condition": null
+          }
+        ], 
+        "reports": [], 
+        "entry_pointers": [
+          {
+            "name": "ptr", 
+            "io": null, 
+            "members": null, 
+            "target": {
+              "name": "old_memory_chunk", 
+              "io": null, 
+              "members": null, 
+              "target": null, 
+              "new": null, 
+              "delete": null
+            }, 
+            "new": null, 
+            "delete": null
+          }
+        ], 
+        "accesses": [], 
+        "modifies": [
+          "old_memory_chunk"
+        ], 
+        "analyses": [], 
+        "actions": []
+      }, 
+      "name": "realloc", 
+      "arguments": [
+        "ptr", 
+        "size"
+      ]
+    }
+  ], 
+  "properties": [
+    {
+      "direction": "backward", 
+      "name": "MemoryLeak", 
+      "initial": "NotDeallocated", 
+      "weak": null, 
+      "set_type": null, 
+      "lattice": [
+        {
+          "name": "Deallocated", 
+          "parent": "MaybeDeallocated"
+        }, 
+        {
+          "name": "NotDeallocated", 
+          "parent": "MaybeDeallocated"
+        }, 
+        {
+          "name": "MaybeDeallocated", 
+          "parent": "Error"
+        }, 
+        {
+          "name": "Error", 
+          "parent": null
+        }
+      ]
+    }, 
+    {
+      "direction": null, 
+      "name": "HeapCount", 
+      "initial": "Unused", 
+      "weak": null, 
+      "set_type": null, 
+      "lattice": [
+        {
+          "name": "Unused", 
+          "parent": "Single"
+        }, 
+        {
+          "name": "Single", 
+          "parent": "Multiple"
+        }, 
+        {
+          "name": "Multiple", 
+          "parent": "Error"
+        }, 
+        {
+          "name": "Error", 
+          "parent": null
+        }
+      ]
+    }
+  ], 
+  "global_structures": []
+}
