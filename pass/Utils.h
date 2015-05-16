@@ -89,6 +89,7 @@ private:
 
 public:
   std::set<std::string> properties; // To iterate through
+  std::string initial;
 
   BroadwayLattice() {}
 
@@ -96,6 +97,7 @@ public:
     parents = std::unordered_map<std::string, std::string>(other.parents);
     sets = std::unordered_map<std::string, flow_set<T>>(other.sets);
     properties = std::set<std::string>(other.properties);
+    initial = std::string(other.initial);
   }
 
   // Create a new set for a state

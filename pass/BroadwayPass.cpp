@@ -8,7 +8,7 @@
 
 namespace dataflow {
 using namespace rapidjson;
-
+using jsValue = rapidjson::Value;
 template <class T> void BroadwayVisitor<T>::visitCallInst(CallInst &inst) {}
 
 char BroadwayPass::ID = 4;
@@ -17,8 +17,7 @@ bool BroadwayPass::doInitialization(Module &m) {
   FILE *fp = fopen("memory.json", "r"); // non-Windows use "r"
   char readBuffer[65536];
   FileReadStream is(fp, readBuffer, sizeof(readBuffer));
-  Document d;
-  d.ParseStream(is);
+  annotations.ParseStream(is);
   fclose(fp);
 
   StringBuffer buffer;
@@ -26,10 +25,28 @@ bool BroadwayPass::doInitialization(Module &m) {
   StringBuffer buffer2;
   Writer<StringBuffer> writer2(buffer2);
 
-  d["properties"].Accept(writer);
-  std::cout << buffer.GetString() << std::endl;
-  d["procedures"].Accept(writer2);
-  std::cout << buffer2.GetString() << std::endl;
+  assert(annotations.IsObject());
+  const jsValue &properties = annotations["properties"];
+  assert(properties.IsArray());
+  for (jsValue::ConstValueIterator property = properties.Begin();
+       property != properties.End(); ++property) {
+    assert(property->IsObject());
+    // do stuff with properties
+  }
+
+  const jsValue &procedures = annotations["procedures"];
+  assert(procedures.IsArray());
+  for (jsValue::ConstValueIterator procedure = procedures.Begin();
+       procedure != properties.End(); ++procedure) {
+    if (procedure->IsObject()) {
+      errs() << procedure->GetType() << "\n";
+      assert(procedure->IsObject());
+      const jsValue &name = (*procedure)["name"];
+      assert(name.IsString());
+      procedureAnnotations[name.GetString()] = procedure;
+    }
+  }
+
   return false;
 }
 

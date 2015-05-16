@@ -3,6 +3,7 @@
 
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/CFG.h>
+#include "rapidjson/document.h"
 
 namespace dataflow {
 using namespace llvm;
@@ -32,6 +33,9 @@ class BroadwayPass : public FunctionPass {
 
 private:
   DataFlowPass<Function, BroadwayVisitor<Function>, Value *> analysis;
+  rapidjson::Document annotations;
+  std::unordered_map<std::string, const rapidjson::Value *>
+      procedureAnnotations;
 
 public:
   static char ID;
