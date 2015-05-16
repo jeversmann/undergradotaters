@@ -5,6 +5,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Value.h>
 #include <unordered_set>
+#include "Utils.h"
 
 // A skeleton for printing your analysis results.
 
@@ -34,7 +35,7 @@ private:
   const AnalysisType &analysis;
   llvm::raw_ostream &os;
 
-  template <typename StateType> void printState(const StateType &state) const {
+  void printState(const dataflow::flow_set<llvm::Value *> &state) const {
     os << "{ ";
     for (auto v : state)
       os << v->getName() << " ";

@@ -22,41 +22,42 @@ using Worklist = SetVector<BasicBlock *>;
 template <class T, class Transfer, class FlowValue = Instruction *>
 class DataFlowPass {
 private:
+  using Lattice = BroadwayLattice<FlowValue>;
   using FlowSet = flow_set<FlowValue>;
 
-  using AnalysisStates = std::map<const BasicBlock *, FlowSet>;
-  using Meet = FlowSet (*)(FlowSet &, FlowSet &, const BasicBlock *);
+  using AnalysisStates = std::map<const BasicBlock *, Lattice>;
+  using Meet = Lattice (*)(Lattice &, Lattice &, const BasicBlock *);
 
   AnalysisStates inStates, outStates;
   Meet meet;
   Direction direction;
-  FlowSet initial, boundary;
+  Lattice initial, boundary;
 
 public:
-  DataFlowPass(Meet meet, Direction dir = forward, FlowSet initial = FlowSet())
+  DataFlowPass(Meet meet, Lattice initial, Direction dir = forward)
       : DataFlowPass(meet, initial, initial, dir) {}
 
-  DataFlowPass(Meet meet, FlowSet initial, FlowSet boundary = FlowSet(),
+  DataFlowPass(Meet meet, Lattice initial, Lattice boundary = Lattice(),
                Direction dir = forward)
       : meet(meet), direction(dir), initial(initial), boundary(boundary) {}
 
-  void applyMeet(FlowSet &start, FlowSet &end, const BasicBlock *node) {
+  void applyMeet(Lattice &start, Lattice &end, const BasicBlock *node) {
     start = meet(start, end, node);
   }
 
   void initializeState(Loop &f, Worklist &worklist) {
     for (auto bb = f.block_begin(), end = f.block_end(); bb != end; ++bb) {
       worklist.insert(*bb);
-      inStates[*bb] = FlowSet(initial);
-      outStates[*bb] = FlowSet(initial);
+      inStates[*bb] = Lattice(initial);
+      outStates[*bb] = Lattice(initial);
     }
   }
 
   void initializeState(Function &f, Worklist &worklist) {
     for (auto &bb : f) {
       worklist.insert(&bb);
-      inStates[&bb] = FlowSet(initial);
-      outStates[&bb] = FlowSet(initial);
+      inStates[&bb] = Lattice(initial);
+      outStates[&bb] = Lattice(initial);
     }
   }
 
@@ -84,7 +85,7 @@ public:
       }
 
       // save the old value to see if it changes
-      FlowSet start(startStates[node]);
+      Lattice start(startStates[node]);
 
       // apply the meet operator over the pred/succ nodes
       if (direction == forward) {
@@ -116,7 +117,11 @@ public:
         visitor.visit(node->rbegin(), node->rend());
 
       endStates[node] = visitor.getState();
-      startStates[node].phiSets = endStates[node].phiSets;
+      for(auto &prop : initial.properties) {
+        FlowSet updatedPhi(startStates[node].get(prop));
+        updatedPhi.phiSets = endStates[node].get(prop).phiSets;
+        startStates[node].put(prop, updatedPhi);
+      }
 
       // add the pred/succ to the worklist
       if (direction == forward)
@@ -137,26 +142,30 @@ public:
   }
 
   // to get printable states, get the values of the values
-  const FlowSet getInState(const BasicBlock *bb) const {
-    FlowSet values;
+  const Lattice getInState(const BasicBlock *bb) const {
+    Lattice values = initial.clone();
     if (inStates.find(bb) == inStates.end())
       return values;
 
-    for (auto &inst : inStates.at(bb))
-      values.insert(inst);
+    for (auto &prop : initial.properties)
+      for (auto &inst : inStates.at(bb).get(prop))
+        values.addToProperty(prop, inst);
     // the in state includes the phi sets coming into the node
-    for (const auto &p : inStates.at(bb).phiSets)
-      for (auto &inst : p.second)
-        values.insert(inst);
+    // This is probably ugly
+    for (auto &prop : initial.properties)
+      for (const auto &p : inStates.at(bb).get(prop).phiSets)
+        for (auto &inst : p.second)
+          values.addToProperty(prop, inst);
     return values;
   }
-  const FlowSet getOutState(const BasicBlock *bb) const {
-    FlowSet values;
+  const Lattice getOutState(const BasicBlock *bb) const {
+    Lattice values = initial.clone();
     if (outStates.find(bb) == outStates.end())
       return values;
 
-    for (auto &inst : outStates.at(bb))
-      values.insert(inst);
+    for (auto &prop : initial.properties)
+      for (auto &inst : outStates.at(bb).get(prop))
+        values.addToProperty(prop, inst);
 
     return values;
   }

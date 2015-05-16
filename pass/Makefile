@@ -1,4 +1,4 @@
-CXXFLAGS = $(shell llvm-config --cxxflags) -fno-rtti
+CXXFLAGS = $(shell llvm-config --cxxflags) -fno-rtti -fcolor-diagnostics
 CXX = clang
 
 all: dce-pass.so f-meta.so

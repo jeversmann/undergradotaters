@@ -6,22 +6,22 @@
 
 namespace dataflow {
 using namespace llvm;
+using Lattice = BroadwayLattice<Value *>;
 
 template <class T> class DCEVisitor : public InstVisitor<DCEVisitor<T>> {
-  using FlowSet = flow_set<Value *>;
 
 private:
   T &context;
 
 public:
-  FlowSet state;
+  Lattice state;
 
-  DCEVisitor(T &context, const FlowSet &state)
+  DCEVisitor(T &context, const Lattice &state)
       : context(context), state(state) {}
 
   void visitInstruction(Instruction &);
 
-  FlowSet &&getState() { return std::move(state); }
+  Lattice &&getState() { return std::move(state); }
 
   template <class C> static void postMeet(C &, BasicBlock &) {}
 };
@@ -34,16 +34,16 @@ private:
 
 public:
   static char ID;
-  DCEPass() : FunctionPass(ID), analysis(MeetUnion<Value *>, backward) {}
+  DCEPass() : FunctionPass(ID), analysis(MeetUnion<Value *>, BroadwayLattice<Value *>().addProperty("dce"), backward) {}
   bool runOnFunction(Function &) override;
   void getAnalysisUsage(AnalysisUsage &) const override;
 
-  const FlowSet getInState(const BasicBlock *bb) const {
-    return analysis.getInState(bb);
+  const int getInState(const BasicBlock *bb) const {
+    return 5; //analysis.getInState(bb).get("dce");
   }
 
   const FlowSet getOutState(const BasicBlock *bb) const {
-    return analysis.getOutState(bb);
+    return analysis.getOutState(bb).get("dce");
   }
 };
 }
