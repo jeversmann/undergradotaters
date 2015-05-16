@@ -1,5 +1,5 @@
 CXXFLAGS = $(shell llvm-config --cxxflags) -fno-rtti
-CXX = clang
+CXX = g++
 
 all: dce-pass.so f-meta.so
 
@@ -35,5 +35,4 @@ endif
 
 .PHONY: run
 run : dce-pass.so
-	opt -load ./licm-pass.so -load ./dce-pass.so -loop-simplify -licm-pass -dce-pass $(RUN_ARGS) -o run_out.bc
-
+	opt -load ./dce-pass.so -dce-pass $(RUN_ARGS) -o run_out.bc
