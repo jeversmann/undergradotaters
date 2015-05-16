@@ -36,11 +36,7 @@ bool FMetaPass::doInitialization(Module &m) {
   return false;
 }
 
-bool FMetaPass::runOnFunction(Function &f) {
-  
-
-  return false;
-}
+bool FMetaPass::runOnFunction(Function &f) { return false; }
 
 void FMetaPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
