@@ -16,9 +16,8 @@ using namespace cs380c;
 using namespace llvm;
 using namespace rapidjson;
 
-bool FMetaPass::runOnFunction(Function &f) {
-  outs() << f.getName() << "\n";
-  FILE *fp = fopen("out.txt", "r"); // non-Windows use "r"
+bool FMetaPass::doInitialization(Module &m) {
+  FILE *fp = fopen("memory.json", "r"); // non-Windows use "r"
   char readBuffer[65536];
   FileReadStream is(fp, readBuffer, sizeof(readBuffer));
   Document d;
@@ -30,11 +29,17 @@ bool FMetaPass::runOnFunction(Function &f) {
   StringBuffer buffer2;
   Writer<StringBuffer> writer2(buffer2);
 
-  d["annotations"][0].Accept(writer);
+  d["properties"].Accept(writer);
   std::cout << buffer.GetString() << std::endl;
-  d["annotations"][1].Accept(writer2);
+  d["procedures"].Accept(writer2);
   std::cout << buffer2.GetString() << std::endl;
-  return 0;
+  return false;
+}
+
+bool FMetaPass::runOnFunction(Function &f) {
+  
+
+  return false;
 }
 
 void FMetaPass::getAnalysisUsage(AnalysisUsage &AU) const {

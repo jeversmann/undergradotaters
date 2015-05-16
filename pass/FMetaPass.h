@@ -16,7 +16,9 @@ public:
   static char ID;
   FMetaPass() : llvm::FunctionPass(ID) {}
 
-  bool runOnFunction(llvm::Function &);
+  bool doInitialization(llvm::Module &) override;
+
+  bool runOnFunction(llvm::Function &) override;
 
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const;
 };
