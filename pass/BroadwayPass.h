@@ -8,7 +8,8 @@ namespace dataflow {
 using namespace llvm;
 using Lattice = BroadwayLattice<Value *>;
 
-template <class T> class BroadwayVisitor : public InstVisitor<BroadwayVisitor<T>> {
+template <class T>
+class BroadwayVisitor : public InstVisitor<BroadwayVisitor<T>> {
 
 private:
   T &context;
@@ -35,9 +36,9 @@ private:
 public:
   static char ID;
   BroadwayPass()
-    : FunctionPass(ID),
-      analysis(MeetUnion<Value *>,
-               BroadwayLattice<Value *>().addProperty("dce"), backward) {}
+      : FunctionPass(ID),
+        analysis(MeetUnion<Value *>,
+                 BroadwayLattice<Value *>().addProperty("dce"), backward) {}
   bool doInitialization(Module &) override;
   bool runOnFunction(Function &) override;
   void getAnalysisUsage(AnalysisUsage &) const override;
