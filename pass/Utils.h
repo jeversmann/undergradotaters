@@ -38,6 +38,7 @@ private:
 public:
   std::set<std::string> properties; // To iterate through
   std::string initial;
+  std::string name;
 
   BroadwayLattice() {}
 
@@ -46,6 +47,7 @@ public:
     sets = std::unordered_map<std::string, flow_set<T>>(other.sets);
     properties = std::set<std::string>(other.properties);
     initial = std::string(other.initial);
+    name = std::string(other.name);
   }
 
   // Create a new set for a state
@@ -57,12 +59,17 @@ public:
     return *this;
   }
 
-  // Add a var to a state's and its parent's sets
   void addToProperty(const std::string stateName, const T var) {
+    removeFromAll(var);
+    addToParents(stateName, var);
+  }
+
+  // Add a var to a state's and its parent's sets
+  void addToParents(const std::string stateName, const T var) {
     sets.at(stateName).insert(var);
     auto parent = parents[stateName];
     if (parent != "bottom") {
-      addToProperty(parent, var);
+      addToParents(parent, var);
     }
   }
 
@@ -72,7 +79,8 @@ public:
   }
 
   void removeFromProperty(const std::string stateName, const T var) {
-    sets.at(stateName).erase(var);
+    if (stateName != "bottom")
+      sets.at(stateName).erase(var);
     std::stack<std::string> parentsToCheck;
     parentsToCheck.push(stateName);
     while (!parentsToCheck.empty()) {
@@ -89,6 +97,11 @@ public:
     }
   }
 
+  void removeFromAll(const T var) {
+    for (const auto &prop : properties)
+      sets.at(prop).erase(var);
+  }
+
   // Access flow_set by property name
   flow_set<T> get(const std::string name) const { return sets.at(name); }
 
@@ -99,6 +112,7 @@ public:
     BroadwayLattice<T> resp;
     resp.parents = std::unordered_map<std::string, std::string>(parents);
     resp.properties = std::set<std::string>(properties);
+    resp.name = std::string(name);
     for (auto &prop : properties)
       resp.sets[prop] = flow_set<T>();
     return resp;

@@ -3,7 +3,7 @@ CXX = g++
 
 all: broadway-pass.so
 
-BroadwayPass.o: BroadwayPass.cpp BroadwayPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h BroadwayAST.h
+BroadwayPass.o: BroadwayPass.cpp BroadwayPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h BroadwayAST.h BroadwayAST.cpp
 	$(CXX) $(CXXFLAGS) BroadwayPass.cpp -c -o $@
 
 BroadwayAST.o: BroadwayAST.cpp BroadwayAST.h Makefile Utils.h 

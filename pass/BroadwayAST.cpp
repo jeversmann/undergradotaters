@@ -51,10 +51,9 @@ BroadwayOperation::BroadwayOperation(const jsValue &ast) {
 
   case kObjectType:
     op = ast["operator"].GetString();
-    lhs = std::unique_ptr<BroadwayOperation>(new BroadwayOperation(ast["lhs"]));
+    lhs = new BroadwayOperation(ast["lhs"]);
     if (ast.HasMember("rhs"))
-      rhs =
-          std::unique_ptr<BroadwayOperation>(new BroadwayOperation(ast["rhs"]));
+      rhs = new BroadwayOperation(ast["rhs"]);
     if (ast.HasMember("time") && ast["time"].IsString())
       time = ast["time"].GetString();
     if (ast.HasMember("property") && ast["property"].IsString())
@@ -65,5 +64,29 @@ BroadwayOperation::BroadwayOperation(const jsValue &ast) {
   default:
     return;
   }
+}
+
+BroadwayPointer::BroadwayPointer(const jsValue &ast) {
+  assert(ast.IsObject());
+  name = ast["name"].GetString();
+  io_flag = ast.HasMember("io") && ast["io"].IsBool() && ast["io"].GetBool();
+  new_flag =
+      ast.HasMember("new") && ast["new"].IsBool() && ast["new"].GetBool();
+  delete_flag = ast.HasMember("delete") && ast["delete"].IsBool() &&
+                ast["delete"].GetBool();
+  if (ast.HasMember("target") && ast["target"].IsObject()) {
+    target = new BroadwayPointer(ast["target"]);
+    target->parent = this;
+  }
+  if (ast.HasMember("members") && ast["members"].IsArray())
+    addArrayOfValues(ast["members"], members);
+}
+
+BroadwayExitPointer::BroadwayExitPointer(const jsValue &ast) {
+  assert(ast.IsObject());
+  if (ast.HasMember("condition") && !ast["condition"].IsNull())
+    condition = BroadwayOperation(ast["condition"]);
+  if (ast["pointers"].IsArray())
+    addArrayOfValues(ast["pointers"], pointers);
 }
 }

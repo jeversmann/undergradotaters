@@ -1,29 +1,13 @@
 // test comment
+property MemoryLeak : @backward { Error { MaybeDeallocated { Deallocated, NotDeallocated }}}
+                             default NotDeallocated
 
-procedure realloc(ptr, size)
-{
+property HeapCount : { Error { Multiple { Single { Unused }}}}
+                             default Unused
+
+procedure malloc (size) {
   analyze MemoryLeak {
-    if (5 < 2 + 1.5 && (this is-exactly that || thing is-aliasof other)) {
-      x = 5 + y
-      memory_chunk <- Error
-      add element
-      first second third
-    }
-  }
-
-  access { thing }
-}
-
-
-procedure test (thing, other) {
-  on_entry {
-    other
-    delete thing
-  }
-  on_exit {
-    if (x10 is-sameas k) {
-      sdlkfj --> adfslk
-    }
+    size <- Deallocated
   }
 
   when (1 < 3) replace-with %{ sdlfakjdsf; asldfkasd }%
