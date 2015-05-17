@@ -17,25 +17,24 @@ using namespace llvm;
 using namespace rapidjson;
 
 bool FMetaPass::runOnFunction(Function &f) {
-    outs() << f.getName() << "\n";
-    FILE* fp = fopen("out.txt", "r"); // non-Windows use "r"
-    char readBuffer[65536];
-    FileReadStream is(fp, readBuffer, sizeof(readBuffer));
-    Document d;
-    d.ParseStream(is);
-    fclose(fp);
+  outs() << f.getName() << "\n";
+  FILE *fp = fopen("out.txt", "r"); // non-Windows use "r"
+  char readBuffer[65536];
+  FileReadStream is(fp, readBuffer, sizeof(readBuffer));
+  Document d;
+  d.ParseStream(is);
+  fclose(fp);
 
-    StringBuffer buffer;
-    Writer<StringBuffer> writer(buffer);
-    StringBuffer buffer2;
-    Writer<StringBuffer> writer2(buffer2);
+  StringBuffer buffer;
+  Writer<StringBuffer> writer(buffer);
+  StringBuffer buffer2;
+  Writer<StringBuffer> writer2(buffer2);
 
-
-    d["annotations"][0].Accept(writer);
-    std::cout<< buffer.GetString() << std::endl;
-    d["annotations"][1].Accept(writer2);
-    std::cout<< buffer2.GetString() << std::endl;
-    return 0;
+  d["annotations"][0].Accept(writer);
+  std::cout << buffer.GetString() << std::endl;
+  d["annotations"][1].Accept(writer2);
+  std::cout << buffer2.GetString() << std::endl;
+  return 0;
 }
 
 void FMetaPass::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -43,6 +42,4 @@ void FMetaPass::getAnalysisUsage(AnalysisUsage &AU) const {
 }
 
 char FMetaPass::ID = 0;
-static RegisterPass<FMetaPass>
-    X("fmeta-pass",
-      "Messes with Function metadata");
+static RegisterPass<FMetaPass> X("fmeta-pass", "Messes with Function metadata");

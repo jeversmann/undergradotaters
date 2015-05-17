@@ -16,7 +16,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS
 
 
-__version__ = (2015, 5, 15, 3, 7, 40, 4)
+__version__ = (2015, 5, 15, 4, 7, 24, 4)
 
 __all__ = [
     'BroadwayParser',
@@ -339,14 +339,14 @@ class BroadwayParser(Parser):
             self._direction_()
         self.ast['direction'] = self.last_node
         self._property_values_()
-        self.ast.setlist('values', self.last_node)
+        self.ast['values'] = self.last_node
         with self._optional():
             self._initial_value_()
             self.ast['initial'] = self.last_node
 
         self.ast._define(
-            ['direction', 'initial'],
-            ['values']
+            ['direction', 'values', 'initial'],
+            []
         )
 
     @graken()
@@ -370,52 +370,37 @@ class BroadwayParser(Parser):
     def _initial_value_(self):
         self._token('default')
         self._propval_()
-        self.ast['name'] = self.last_node
-
-        self.ast._define(
-            ['name'],
-            []
-        )
+        self.ast['@'] = self.last_node
 
     @graken()
     def _property_values_(self):
         self._token('{')
         self._property_value_list_()
-        self.ast['values'] = self.last_node
+        self.ast['@'] = self.last_node
         self._token('}')
-
-        self.ast._define(
-            ['values'],
-            []
-        )
 
     @graken()
     def _property_value_list_(self):
 
         def block0():
             self._property_value_()
-            self.ast['values'] = self.last_node
+            self.ast['@'] = self.last_node
             with self._optional():
                 self._token(',')
                 with self._if():
                     self._property_value_()
         self._closure(block0)
 
-        self.ast._define(
-            ['values'],
-            []
-        )
-
     @graken()
     def _property_value_(self):
         self._propval_()
-        self.ast['value'] = self.last_node
+        self.ast['name'] = self.last_node
         with self._optional():
             self._property_values_()
             self.ast['sublist'] = self.last_node
 
         self.ast._define(
-            ['value', 'sublist'],
+            ['name', 'sublist'],
             []
         )
 
@@ -1057,13 +1042,12 @@ class BroadwayParser(Parser):
 
     @graken()
     def _global_(self):
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._global_pointer_()
-                with self._option():
-                    self._analysis_rule_annotation_()
-                self._error('no available options')
+        with self._choice():
+            with self._option():
+                self._global_pointer_()
+            with self._option():
+                self._analysis_rule_annotation_()
+            self._error('no available options')
 
     @graken()
     def _global_pointer_(self):
