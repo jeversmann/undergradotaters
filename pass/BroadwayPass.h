@@ -3,6 +3,8 @@
 
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/CFG.h>
+#include <llvm/Analysis/AliasAnalysis.h>
+#include <llvm/Analysis/AliasSetTracker.h>
 #include "rapidjson/document.h"
 #include "BroadwayAST.h"
 
@@ -30,13 +32,14 @@ public:
   template <class C> static void postMeet(C &, BasicBlock &) {}
 };
 
-class BroadwayPass : public FunctionPass {
+class BroadwayPass : public FunctionPass, public AliasAnalysis {
   using FlowSet = flow_set<llvm::Value *>;
   using DataFlow =
       DataFlowPass<Function, BroadwayVisitor<BroadwayPass, Function>,
                    BroadwayPass, llvm::Value *>;
 
 private:
+  llvm::AliasSetTracker *AT;
   void processPropertyAnnotations();
   void processProcedureAnnotations();
 
@@ -54,5 +57,22 @@ public:
   const Lattice getInState(const BasicBlock *bb) const { return Lattice(); }
 
   const Lattice getOutState(const BasicBlock *bb) const { return Lattice(); }
+
+  // AliasAnalysis things
+  void *getAdjustedAnalysisPointer(const void *ID) override {
+    if (ID == &AliasAnalysis::ID)
+      return (AliasAnalysis *)this;
+    return this;
+  }
+
+  AliasAnalysis::AliasResult
+  alias(const AliasAnalysis::Location &LocA,
+        const AliasAnalysis::Location &LocB) override;
+
+  void initializeBroadwayPassPass(llvm::PassRegistry &Registry) {}
 };
+}
+
+namespace llvm {
+void initializeBroadwayPassPass(PassRegistry &);
 }
