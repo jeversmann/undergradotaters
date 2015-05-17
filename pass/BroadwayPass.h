@@ -7,6 +7,7 @@
 #include <llvm/Analysis/AliasSetTracker.h>
 #include "rapidjson/document.h"
 #include "BroadwayAST.h"
+#include <unordered_set>
 
 namespace dataflow {
 using namespace llvm;
@@ -28,6 +29,11 @@ public:
   void visitCallInst(CallInst &);
 
   int getArgumentForPointer(const std::string &, BroadwayProcedure &);
+  std::unordered_set<llvm::Value *> &getPointsTo(BroadwayProcedure &, llvm::CallInst &, llvm::Value &);
+  std::unordered_set<llvm::Value *> &getPointsTo(BroadwayProcedure &, llvm::CallInst &, std::string &);
+  llvm::Value &getValueForPointer(BroadwayProcedure &, llvm::CallInst &, std::string &);
+
+
 
   Lattice &&getState() { return std::move(state); }
 

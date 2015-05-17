@@ -1,4 +1,3 @@
-InstVisitor doesn't respond to Phi Functions, which prevents us from creating correct data flow across basic block merges.
 If that were resolved, this branch could demonstrate a non-pointers version of Taint analysis if report was working.
 Report can use the janky variable lookup functions to evaluate conditionals, but they need to be parsed first. BdwyAST.h #125
 Once conditionals are evaluated, we just need a system to generate error output.

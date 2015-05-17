@@ -63,10 +63,12 @@ int BroadwayProcedure::getVarNameIndirection(std::string var) {
   int i = 0;
   for (auto &entry : entryPointers) {
     auto *pointerDef = entry.findDefinition(var);
-    auto *topDef = pointerDef;
-    while (topDef->parent != topDef->name) {
-      i++;
-      topDef = entry.findDefinition(topDef->parent);
+    if (pointerDef) {
+      auto *topDef = pointerDef;
+      while (topDef->parent != topDef->name) {
+        i++;
+        topDef = entry.findDefinition(topDef->parent);
+      }
     }
   }
   return i;

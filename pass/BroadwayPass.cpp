@@ -25,12 +25,10 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
             for (auto &effect : rule.effects) {
               if (effect.op == "<-" || effect.op == "<-+") {
                 auto &propname = effect.rhs->name;
-                int varloc = procedure.getVarNameLocation(effect.lhs->name);
-                llvm::errs() << varloc << " HERE ARE THE VARNAES\n";
-                if (varloc == -1) {
-                  state.addToProperty(propname, &inst);
-                } else {
-                  state.addToProperty(propname, inst.getArgOperand(varloc));
+                auto &pointerName = effect.lhs->name;
+                for (auto *value : getPointsTo(procedure, inst, pointerName)) {
+                  state.addToProperty(propname, value);
+                  errs() << "adding value " << value;
                 }
                 printLattice(state);
               }
@@ -48,6 +46,52 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
         }
       }
     }
+  }
+}
+
+template <class Pass, class T>
+std::unordered_set<llvm::Value *> &BroadwayVisitor<Pass, T>::getPointsTo(BroadwayProcedure &procedure, llvm::CallInst &inst, llvm::Value &pointer) {
+  std::unordered_set<llvm::Value *> *pointsTo = new std::unordered_set<llvm::Value *>();
+  pointsTo->insert(&pointer);
+  errs() << "In Get Points to for " << pointer << ": ";
+  for (auto * thing : *pointsTo)
+    errs() << *thing << ", ";
+  errs() << "\n";
+  return *pointsTo; // do something better here
+}
+
+template <class Pass, class T>
+std::unordered_set<llvm::Value *> &BroadwayVisitor<Pass, T>::getPointsTo(BroadwayProcedure &procedure, llvm::CallInst &inst, std::string &pointer) {
+  auto &value = getValueForPointer(procedure, inst, pointer);
+  errs () << "finding points to for " << value << "\n";
+  int indirection = procedure.getVarNameIndirection(pointer);
+  std::unordered_set<llvm::Value *> *pointsTo = &getPointsTo(procedure, inst, value);
+  errs() << "Parent Points to: ";
+  for (auto * thing : *pointsTo)
+    errs() << *thing << ", ";
+  errs() << "\n";
+  for (int i = 1; i < indirection; i++) {
+    for (auto *indirectPointer : *pointsTo) {
+      std::unordered_set<llvm::Value *> *indirectPointsTo = &getPointsTo(procedure, inst, *indirectPointer);
+      for (auto &to : *indirectPointsTo)
+        pointsTo->insert(to);
+    }
+  }
+  errs() << "Points to: ";
+  for (auto * thing : *pointsTo)
+    errs() << *thing << ", ";
+  errs() << "\n";
+  return *pointsTo;
+}
+
+template <class Pass, class T>
+llvm::Value &BroadwayVisitor<Pass, T>::getValueForPointer(BroadwayProcedure &procedure, llvm::CallInst &inst, std::string &pointer) {
+  int varloc = procedure.getVarNameLocation(pointer);
+  llvm::errs() << varloc << " HERE ARE THE VARNAES\n";
+  if (varloc == -1) {
+    return inst;
+  } else {
+    return *inst.getArgOperand(varloc);
   }
 }
 
@@ -191,7 +235,7 @@ void BroadwayPass::processCallInstPointers(CallInst &inst) {
   if (auto calledFunc = inst.getCalledFunction()) {
     outs() << calledFunc->getName() << "()\n";
     if (procedures.find(calledFunc->getName()) != procedures.end()) {
-      auto &procedure = *procedures[calledFunc->getName()];
+      //auto &procedure = *procedures[calledFunc->getName()];
       // We have information, so prevent others from looking at it
       deleteValue(&inst);
 
