@@ -6,6 +6,7 @@
 #include <set>
 
 #include <llvm/Pass.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/AliasSetTracker.h>
 #include <llvm/Support/raw_ostream.h>
@@ -36,7 +37,13 @@ public:
 
   AliasAnalysis::AliasResult alias(const Location &LocA,
                                    const Location &LocB) override {
-    return NoAlias;
+    if (auto callinst = llvm::dyn_cast<llvm::CallInst>(LocA.Ptr))
+      if (callinst->getArgOperand(0) == LocB.Ptr)
+        return MustAlias;
+    if (auto callinst = llvm::dyn_cast<llvm::CallInst>(LocB.Ptr))
+      if (callinst->getArgOperand(0) == LocA.Ptr)
+        return MustAlias;
+    return AliasAnalysis::alias(LocA, LocB);
   }
 };
 }

@@ -9,8 +9,10 @@
 #include <cstdio>
 
 #include <llvm/IR/Function.h>
+#include <llvm/IR/Module.h>
 #include <llvm/IR/Constant.h>
 #include <llvm/IR/CallSite.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/AliasSetTracker.h>
@@ -20,7 +22,7 @@ using namespace llvm;
 using namespace rapidjson;
 
 bool AAPass::runOnFunction(Function &f) {
-  InitializeAliasAnalysis(this, DL);
+  InitializeAliasAnalysis(this, &(f.getParent()->getDataLayout()));
   outs() << "====================== " << f.getName()
          << " ======================"
          << "\n";
@@ -31,7 +33,16 @@ bool AAPass::runOnFunction(Function &f) {
       if (auto callinst = dyn_cast<CallInst>(&inst)) {
         deleteValue(callinst);
         if (auto calledFunc = callinst->getCalledFunction()) {
-          outs() << calledFunc->getName() << "\n";
+          outs() << calledFunc->getName();
+          AliasSet &operand = AT->getAliasSetForPointer(
+              callinst->getArgOperand(0),
+              getTypeStoreSize(callinst->getArgOperand(0)->getType()),
+              AAMDNodes());
+          AliasSet &otherOperand = AT->getAliasSetForPointer(
+              &inst, getTypeStoreSize(inst.getType()), AAMDNodes());
+          if (&operand != &otherOperand) {
+            operand.mergeSetIn(otherOperand, *AT);
+          }
         }
       } else {
         AT->add(&inst);
