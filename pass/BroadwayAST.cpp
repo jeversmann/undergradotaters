@@ -69,6 +69,7 @@ BroadwayOperation::BroadwayOperation(const jsValue &ast) {
 BroadwayPointer::BroadwayPointer(const jsValue &ast) {
   assert(ast.IsObject());
   name = ast["name"].GetString();
+  parent = name;
   io_flag = ast.HasMember("io") && ast["io"].IsBool() && ast["io"].GetBool();
   new_flag =
       ast.HasMember("new") && ast["new"].IsBool() && ast["new"].GetBool();
@@ -76,12 +77,12 @@ BroadwayPointer::BroadwayPointer(const jsValue &ast) {
                 ast["delete"].GetBool();
   if (ast.HasMember("target") && ast["target"].IsObject()) {
     target = new BroadwayPointer(ast["target"]);
-    target->parent = this;
+    target->parent = name;
   }
   if (ast.HasMember("members") && ast["members"].IsArray())
     addArrayOfValues(ast["members"], members);
   for (auto &member : members)
-    member.parent = this;
+    member.parent = name;
 }
 
 BroadwayPointer *BroadwayPointer::findDefinition(const std::string &thing) {
@@ -100,11 +101,11 @@ BroadwayPointer *BroadwayPointer::findDefinition(const std::string &thing) {
   return nullptr;
 }
 
-BroadwayPointer *BroadwayPointer::getTopParent() {
-  if (parent)
-    return parent->getTopParent();
-  return this;
-}
+/* BroadwayPointer *BroadwayPointer::getTopParent() { */
+/*   if (parent) */
+/*     return parent->getTopParent(); */
+/*   return this; */
+/* } */
 
 BroadwayExitPointer::BroadwayExitPointer(const jsValue &ast) {
   assert(ast.IsObject());

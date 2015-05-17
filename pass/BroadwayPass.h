@@ -44,6 +44,7 @@ private:
   llvm::AliasSetTracker *AT;
   void processPropertyAnnotations();
   void processProcedureAnnotations();
+  void processCallInstPointers(CallInst &inst);
 
 public:
   static char ID;

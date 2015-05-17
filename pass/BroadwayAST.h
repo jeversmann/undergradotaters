@@ -50,10 +50,10 @@ public:
 class BroadwayPointer : public BroadwayBase {
 public:
   std::string name;
+  std::string parent;
   bool io_flag, delete_flag, new_flag;
   BroadwayPointer *target;
   std::vector<BroadwayPointer> members;
-  BroadwayPointer *parent;
 
   BroadwayPointer(){};
   BroadwayPointer(const jsValue &);
@@ -63,7 +63,7 @@ public:
   };
 
   BroadwayPointer *findDefinition(const std::string &);
-  BroadwayPointer *getTopParent();
+  /* BroadwayPointer *getTopParent(); */
 };
 
 class BroadwayExitPointer : public BroadwayBase {

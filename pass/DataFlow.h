@@ -59,7 +59,7 @@ public:
   }
 
   void initializeState(Function &f) {
-    printLattice(initial);
+    /* printLattice(initial); */
     errs() << initial.initial << "\n";
     std::unordered_set<llvm::Value *> instructions;
     for (auto &bb : f)

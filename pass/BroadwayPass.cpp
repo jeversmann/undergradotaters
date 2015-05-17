@@ -28,22 +28,22 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
 
                 llvm::Value *arg;
                 for (auto &entry : procedure.entryPointers) {
-                  auto *pointerDef = entry.findDefinition(propname);
-                  if (pointerDef) {
-                    auto *topDef = pointerDef->getTopParent();
-                    auto argNum =
-                        getArgumentForPointer(topDef->name, procedure);
-                    if (argNum != -1) {
-                      arg = inst.getArgOperand(argNum)->stripPointerCasts();
-                      break;
-                    }
+                  auto *pointerDef = entry.findDefinition(effect.lhs->name);
+                  auto *topDef = entry.findDefinition(pointerDef->parent);
+                  while (pointerDef->parent != pointerDef->name) {
+                    pointerDef = entry.findDefinition(pointerDef->parent);
+                  }
+                  auto argNum = getArgumentForPointer(topDef->name, procedure);
+                  if (argNum != -1) {
+                    arg = inst.getArgOperand(argNum)->stripPointerCasts();
+                    break;
                   }
 
                   if (arg) {
                     errs() << "------adding: " << propname << " " << *arg
                            << "\n";
                     state.addToProperty(propname, arg);
-                    printLattice(state);
+                    /* printLattice(state); */
                   }
                 }
               }
@@ -70,7 +70,7 @@ int BroadwayVisitor<Pass, T>::getArgumentForPointer(
 char BroadwayPass::ID = 4;
 
 bool BroadwayPass::doInitialization(Module &m) {
-  FILE *fp = fopen("test.json", "r"); // non-Windows use "r"
+  FILE *fp = fopen("memory.json", "r"); // non-Windows use "r"
   char readBuffer[65536];
   FileReadStream is(fp, readBuffer, sizeof(readBuffer));
   annotations.ParseStream(is);
@@ -97,21 +97,8 @@ bool BroadwayPass::runOnFunction(Function &f) {
     for (auto &inst : block) {
       // Get all the names of all the things for later
       instructions.insert(&inst);
-      outs() << inst << "\n";
       if (auto callinst = dyn_cast<CallInst>(&inst)) {
-        deleteValue(callinst);
-        /* if ((auto calledFunc = callinst->getCalledFunction()) */
-        if (!inst.getType()->isVoidTy()) {
-          AliasSet &operand = AT->getAliasSetForPointer(
-              callinst->getArgOperand(0),
-              getTypeStoreSize(callinst->getArgOperand(0)->getType()),
-              AAMDNodes());
-          AliasSet &otherOperand = AT->getAliasSetForPointer(
-              &inst, getTypeStoreSize(inst.getType()), AAMDNodes());
-          if (&operand != &otherOperand) {
-            operand.mergeSetIn(otherOperand, *AT);
-          }
-        }
+        processCallInstPointers(*callinst);
       } else {
         AT->add(&inst); // Everything else is handled
       }
@@ -169,7 +156,6 @@ void BroadwayPass::processPropertyAnnotations() {
                                       : "bottom";
         const auto &valueName = latticeValue["name"].GetString();
         lattice.addProperty(valueName, valueParent);
-        errs() << latticeValue["name"].GetString();
       }
     }
 
@@ -204,6 +190,42 @@ BroadwayPass::alias(const AliasAnalysis::Location &LocA,
     if (callinst->getArgOperand(0) == LocA.Ptr)
       return AliasAnalysis::AliasResult::MustAlias;
   return AliasAnalysis::alias(LocA, LocB);
+}
+
+void BroadwayPass::processCallInstPointers(CallInst &inst) {
+  if (auto calledFunc = inst.getCalledFunction()) {
+    outs() << calledFunc->getName() << "()\n";
+    if (procedures.find(calledFunc->getName()) != procedures.end()) {
+      auto &procedure = *procedures[calledFunc->getName()];
+      // We have information, so prevent others from looking at it
+      deleteValue(&inst);
+
+      /*
+       * Find any value that occurrs on the lhs more than once, and merge the
+       * alias sets of all of the things that point to it.
+       */
+      for (auto &entry : procedure.entryPointers) {
+        auto *pointerDef = entry.findDefinition(effect.lhs->name);
+      }
+
+      /* Old stuff for reference
+      if (!inst.getType()->isVoidTy()) {
+        AliasSet &operand = AT->getAliasSetForPointer(
+          inst.getArgOperand(0),
+          getTypeStoreSize(inst.getArgOperand(0)->getType()),
+          AAMDNodes());
+        AliasSet &otherOperand = AT->getAliasSetForPointer(
+          &inst, getTypeStoreSize(inst.getType()), AAMDNodes());
+        if (&operand != &otherOperand) {
+          operand.mergeSetIn(otherOperand, *AT);
+        }
+      }*/
+    } else {
+      AT->add(&inst); // We don't have information
+    }
+  } else {
+    AT->add(&inst); // Who knows about a no-name function?
+  }
 }
 
 void BroadwayPass::getAnalysisUsage(AnalysisUsage &AU) const {
