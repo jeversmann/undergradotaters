@@ -20,8 +20,8 @@ void DCEPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<AAPass>();
 }
 
-static RegisterPass<DCEPass>
-    X("dce-pass",
-      "Remove dead code from a function using faint variable analysis. (NOW SUPER BORKEN)", true,
-      true);
+static RegisterPass<DCEPass> X("dce-pass", "Remove dead code from a function "
+                                           "using faint variable analysis. "
+                                           "(NOW SUPER BORKEN)",
+                               true, true);
 }
