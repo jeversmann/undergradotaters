@@ -123,6 +123,9 @@ class Semantics(BroadwaySemantics):
     def callsite(self, ast):
         return 'callsite'
 
+    def string(self, ast):
+        return ast.strip('"').decode('string_escape')
+
     def context(self, ast):
         return 'context'
 

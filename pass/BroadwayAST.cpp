@@ -181,5 +181,15 @@ BroadwayReportElement::BroadwayReportElement(const jsValue &ast) {
     callsite = ast["location"].GetString() == "callsite";
     context = ast["location"].GetString() == "context";
   }
+  if (ast.HasMember("expression") && !ast["expression"].IsNull())
+    expression = BroadwayOperation(ast["expression"]);
+  if (ast.HasMember("time") && ast["time"].IsString())
+    time = ast["time"].GetString();
+  else
+    time = "@after";
+  if (ast.HasMember("property") && ast["property"].IsString())
+    property = ast["property"].GetString();
+  if (ast.HasMember("name") && ast["name"].IsString())
+    property = ast["name"].GetString();
 }
 }

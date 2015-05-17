@@ -78,6 +78,23 @@ public:
     return (property.find(var) != property.end());
   }
 
+  std::string getPropertyValue(const T var) {
+    std::set<std::string> props;
+    for (auto &prop : properties)
+      if (isInProperty(prop, var))
+        props.insert(prop);
+    while (props.size() > 1) {
+      std::set<std::string> remove;
+      for (auto &prop : props)
+        if (props.find(parents.at(prop)) != props.end())
+          remove.insert(prop);
+      
+      for (auto &rem : remove)
+        props.erase(rem);
+    }
+    return *props.begin();
+  }
+
   void removeFromProperty(const std::string stateName, const T var) {
     if (stateName != "bottom")
       sets.at(stateName).erase(var);

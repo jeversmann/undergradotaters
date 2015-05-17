@@ -13,6 +13,7 @@ using jsValue = rapidjson::Value;
 template <class Pass, class T>
 void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
   if (const auto &function = inst.getCalledFunction()) {
+    Lattice before(state);
     if (pass.procedures.find(function->getName()) != pass.procedures.end()) {
       auto &procedure = *pass.procedures[function->getName()];
       for (auto &analysis : procedure.analyses) {
@@ -40,13 +41,54 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
       for (auto &report : procedure.reports) {
         // evaluate condition to true
         for (auto &element : report.elements) {
-          // This should be executed elsewhere so it has access to before and
-          // after states
-          element.print(outs(), inst, state, state);
+          printReportElement(element, outs(), inst, procedure, before, state);
         }
       }
     }
   }
+}
+
+template <class Pass, class T>
+void BroadwayVisitor<Pass, T>::printReportElement(BroadwayReportElement &element,
+                                                  llvm::raw_ostream &os, CallInst &inst,
+                                                  BroadwayProcedure &procedure, 
+                                                  Lattice &beforeState,
+                                                  Lattice &afterState) {
+  if (element.callsite) {
+    os << "callsite: " << inst;
+  } else if (element.context) {
+    os << inst.getParent()->getParent();
+  } else if (element.name != "") {
+    
+    if (element.property != "") {
+      // print property result of value
+      auto &value = getValueForPointer(procedure, inst, element.name);
+      std::string state;
+      if (element.time == "@before")
+        state = beforeState.getPropertyValue(&value);
+      else
+        state = afterState.getPropertyValue(&value);
+      os << state;
+    } else {
+      // print values associated with pointer
+      os << "[";
+      auto first = true;
+      for (auto *value : getPointsTo(procedure, inst, element.name)) {
+        if (!first)
+          os << ", ";
+        else
+          first = false;
+        os << *value;
+      }
+      os << "]";
+      
+    }
+  } else if (element.expression.op != "") {
+    // evaluate and print expression result
+  } else {
+    os << element.text;
+  }
+
 }
 
 template <class Pass, class T>

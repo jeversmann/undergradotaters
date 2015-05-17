@@ -33,6 +33,8 @@ public:
   std::unordered_set<llvm::Value *> &getPointsTo(BroadwayProcedure &, llvm::CallInst &, std::string &);
   llvm::Value &getValueForPointer(BroadwayProcedure &, llvm::CallInst &, std::string &);
 
+  void printReportElement(BroadwayReportElement &, llvm::raw_ostream &, CallInst &,
+                          BroadwayProcedure &, Lattice &, Lattice &);
 
 
   Lattice &&getState() { return std::move(state); }

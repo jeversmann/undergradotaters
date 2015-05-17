@@ -99,23 +99,15 @@ public:
 class BroadwayReportElement : public BroadwayBase {
 public:
   std::string text;
+  std::string property;
+  std::string name;
+  std::string time;
+  BroadwayOperation expression;
   bool callsite = false;
   bool context = false;
 
   BroadwayReportElement(){};
   BroadwayReportElement(const jsValue &);
-
-  template <typename V>
-  void print(llvm::raw_ostream &os, CallInst &inst,
-             BroadwayLattice<V> &beforeState, BroadwayLattice<V> &afterState) {
-    if (callsite) {
-      os << inst;
-    } else if (context) {
-      // ??
-    } else {
-      os << text;
-    }
-  }
 };
 
 class BroadwayReport : public BroadwayBase {

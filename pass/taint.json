@@ -48,13 +48,13 @@
           "report": {
             "elements": [
               {
-                "string": "\"Executing Tainted input at \""
+                "string": "Executing Tainted input at "
               }, 
               {
                 "location": "callsite"
               }, 
               {
-                "string": "\"\\n\""
+                "string": "\n"
               }
             ]
           }
