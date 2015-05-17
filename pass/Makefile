@@ -12,11 +12,11 @@ BroadwayAST.o: BroadwayAST.cpp BroadwayAST.h Makefile Utils.h
 broadway-pass.so: BroadwayPass.o BroadwayAST.o
 	$(CXX) -shared $^ -o $@
 
+dce: dce-pass.so AAPass.so
+	opt -load ./dce-pass.so -dce-pass llvm/input/jackson.bc -o llvm/output/jackson.bc
+
 broadway: broadway-pass.so
 	opt -load ./broadway-pass.so -broadway-pass llvm/input/double_free.bc -o broadway_out.bc
-
-clean:
-	rm -f *.o *~ *.so
 
 # If the first argument is "run"...
 ifeq (run,$(firstword $(MAKECMDGOALS)))

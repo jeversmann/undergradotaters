@@ -6,7 +6,7 @@
 #include <iostream>
 #include <cstdio>
 
-namespace dataflow {
+using namespace dataflow;
 using namespace rapidjson;
 using jsValue = rapidjson::Value;
 
@@ -85,12 +85,45 @@ bool BroadwayPass::doInitialization(Module &m) {
 }
 
 bool BroadwayPass::runOnFunction(Function &f) {
+  // Start by doing Alias Analysis things
+  InitializeAliasAnalysis(this, &(f.getParent()->getDataLayout()));
+  outs() << "====================== " << f.getName()
+         << " ======================"
+         << "\n";
+  AT = new AliasSetTracker(*this);
+
+  // Everything needs to be added to the AT
+  for (auto &block : f) {
+    for (auto &inst : block) {
+      // Get all the names of all the things for later
+      instructions.insert(&inst);
+      outs() << inst << "\n";
+      if (auto callinst = dyn_cast<CallInst>(&inst)) {
+        deleteValue(callinst);
+        /* if ((auto calledFunc = callinst->getCalledFunction()) */
+        if (!inst.getType()->isVoidTy()) {
+          AliasSet &operand = AT->getAliasSetForPointer(
+              callinst->getArgOperand(0),
+              getTypeStoreSize(callinst->getArgOperand(0)->getType()),
+              AAMDNodes());
+          AliasSet &otherOperand = AT->getAliasSetForPointer(
+              &inst, getTypeStoreSize(inst.getType()), AAMDNodes());
+          if (&operand != &otherOperand) {
+            operand.mergeSetIn(otherOperand, *AT);
+          }
+        }
+      } else {
+        AT->add(&inst); // Everything else is handled
+      }
+    }
+  }
+
+  // Print Alias Results for now
+  AT->print(errs());
+
+  // Now perform Data Flow
   auto changed = false;
 
-  // Get all the names of all the things
-  for (auto &bbl : f.getBasicBlockList())
-    for (auto &inst : bbl)
-      instructions.insert(&inst);
   for (auto &arg : f.getArgumentList())
     instructions.insert(&arg);
 
@@ -104,15 +137,10 @@ bool BroadwayPass::runOnFunction(Function &f) {
   // example::DataFlowAnnotator<BroadwayPass> annotator(*this, errs());
   // annotator.print(f);
 
+  delete AT;
+
   return changed;
 }
-
-void BroadwayPass::getAnalysisUsage(AnalysisUsage &AU) const {
-  AU.setPreservesAll(); // this is wrong
-}
-
-static RegisterPass<BroadwayPass>
-    X("broadway-pass", "Run analysis using Broadway annotations.", true, true);
 
 void BroadwayPass::processPropertyAnnotations() {
   const auto &properties = annotations["properties"];
@@ -165,4 +193,32 @@ void BroadwayPass::processProcedureAnnotations() {
     }
   }
 }
+
+AliasAnalysis::AliasResult
+BroadwayPass::alias(const AliasAnalysis::Location &LocA,
+                    const AliasAnalysis::Location &LocB) {
+  if (auto callinst = llvm::dyn_cast<llvm::CallInst>(LocA.Ptr))
+    if (callinst->getArgOperand(0) == LocB.Ptr)
+      return AliasAnalysis::AliasResult::MustAlias;
+  if (auto callinst = llvm::dyn_cast<llvm::CallInst>(LocB.Ptr))
+    if (callinst->getArgOperand(0) == LocA.Ptr)
+      return AliasAnalysis::AliasResult::MustAlias;
+  return AliasAnalysis::alias(LocA, LocB);
 }
+
+void BroadwayPass::getAnalysisUsage(AnalysisUsage &AU) const {
+  AliasAnalysis::getAnalysisUsage(AU);
+  AU.setPreservesAll(); // this is wrong
+  AU.addRequiredTransitive<AliasAnalysis>();
+}
+
+static RegisterPass<BroadwayPass>
+    X("broadway-pass", "Run analysis using Broadway annotations.", true, true);
+
+static RegisterAnalysisGroup<AliasAnalysis> A("Alias Analysis");
+
+INITIALIZE_AG_PASS(BroadwayPass, AliasAnalysis, "broadway-pass",
+                   "Run analysis using Broadway annotations.",
+                   false, // Is CFG Only?
+                   true,  // Is Analysis?
+                   true)  // Is default Analysis Group implementation?
