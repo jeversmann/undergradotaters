@@ -25,12 +25,18 @@ public:
   std::string op;
   int number;
   std::string name;
-  std::unique_ptr<BroadwayOperation> lhs;
-  std::unique_ptr<BroadwayOperation> rhs;
+  BroadwayOperation *lhs;
+  BroadwayOperation *rhs;
   std::string property;
   std::string time;
   BroadwayOperation(){};
   BroadwayOperation(const jsValue &);
+  ~BroadwayOperation() {
+    // if (lhs)
+    //   delete lhs;
+    // if (rhs)
+    //   delete rhs;
+  }
 };
 
 class BroadwayAnalysisRule : public BroadwayBase {
@@ -41,16 +47,27 @@ public:
   BroadwayAnalysisRule(const jsValue &);
 };
 
-class BroadwayExitPointer : public BroadwayBase {
+class BroadwayPointer : public BroadwayBase {
 public:
-  BroadwayExitPointer(){};
-  BroadwayExitPointer(const jsValue &){};
+  std::string name;
+  bool io_flag, delete_flag, new_flag;
+  BroadwayPointer *target;
+  std::vector<BroadwayPointer> members;
+
+  BroadwayPointer(){};
+  BroadwayPointer(const jsValue &);
+  ~BroadwayPointer(){
+      // if (target)
+      //   delete target;
+  };
 };
 
-class BroadwayEntryPointer : public BroadwayBase {
+class BroadwayExitPointer : public BroadwayBase {
 public:
-  BroadwayEntryPointer(){};
-  BroadwayEntryPointer(const jsValue &){};
+  BroadwayOperation condition;
+  std::vector<BroadwayPointer> pointers;
+  BroadwayExitPointer(){};
+  BroadwayExitPointer(const jsValue &);
 };
 
 class BroadwayAnalysis : public BroadwayBase {
@@ -90,7 +107,7 @@ public:
   std::string name;
   std::vector<std::string> arguments;
   std::vector<BroadwayExitPointer> exitPointers;
-  std::vector<BroadwayEntryPointer> entryPointers;
+  std::vector<BroadwayPointer> entryPointers;
   std::vector<BroadwayAnalysis> analyses;
   std::vector<BroadwayAccess> accesses;
   std::vector<BroadwayModify> modifies;

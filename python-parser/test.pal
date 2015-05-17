@@ -23,6 +23,10 @@ procedure test (thing, other) {
   on_exit {
     if (x10 is-sameas k) {
       sdlkfj --> adfslk
+      struct {
+        things --> new other
+        name
+      }
     }
   }
 
