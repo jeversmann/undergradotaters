@@ -17,7 +17,7 @@
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/AliasSetTracker.h>
 
-using namespace cs380c;
+using namespace dataflow;
 using namespace llvm;
 using namespace rapidjson;
 
@@ -51,7 +51,6 @@ bool AAPass::runOnFunction(Function &f) {
   }
 
   AT->print(errs());
-  delete AT;
   return 0;
 }
 

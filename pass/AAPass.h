@@ -11,14 +11,14 @@
 #include <llvm/Analysis/AliasSetTracker.h>
 #include <llvm/Support/raw_ostream.h>
 
-namespace cs380c {
+namespace dataflow {
 
 class AAPass : public llvm::FunctionPass, public llvm::AliasAnalysis {
 private:
   // Private fields go here
-  llvm::AliasSetTracker *AT;
 
 public:
+  llvm::AliasSetTracker *AT;
   static char ID;
   AAPass() : llvm::FunctionPass(ID) {}
 

@@ -28,7 +28,7 @@ all: dce-pass.so broadway-pass.so
 DCEPass.o: DCEPass.cpp DCEPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h
 	$(CXX) $(CXXFLAGS) DCEPass.cpp -c -o $@
 
-dce-pass.so: DCEPass.o
+dce-pass.so: DCEPass.o AAPass.o
 	$(CXX) -shared $^ -o $@
 
 BroadwayPass.o: BroadwayPass.cpp BroadwayPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h
@@ -37,8 +37,8 @@ BroadwayPass.o: BroadwayPass.cpp BroadwayPass.h DataFlowAnnotator.h Makefile Dat
 broadway-pass.so: BroadwayPass.o
 	$(CXX) -shared $^ -o $@
 
-dce: dce-pass.so
-	opt -load ./dce-pass.so -dce-pass licm_out.bc -o dce_out.bc
+dce: dce-pass.so AAPass.so
+	opt -load ./dce-pass.so -dce-pass llvm/input/jackson.bc -o llvm/output/jackson.bc
 
 broadway: broadway-pass.so
 	opt -load ./broadway-pass.so -broadway-pass llvm/input/double_free.bc -o broadway_out.bc
