@@ -1,0 +1,93 @@
+{
+  "headers": [
+    ""
+  ], 
+  "global_analyses": [], 
+  "procedures": [
+    {
+      "name": "recv", 
+      "exit_pointers": [], 
+      "reports": [], 
+      "entry_pointers": [], 
+      "accesses": [], 
+      "modifies": [], 
+      "analyses": [
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "return", 
+                  "operator": "<-", 
+                  "rhs": "Tainted"
+                }
+              ], 
+              "condition": null
+            }
+          ], 
+          "name": "Taint"
+        }
+      ], 
+      "actions": [], 
+      "arguments": [
+        "socket"
+      ]
+    }, 
+    {
+      "name": "exec", 
+      "exit_pointers": [], 
+      "reports": [
+        {
+          "condition": {
+            "property": "Taint", 
+            "lhs": "command", 
+            "time": null, 
+            "operator": "is-exactly", 
+            "rhs": "Tainted"
+          }, 
+          "report": {
+            "elements": [
+              {
+                "string": "\"Executing Tainted input at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
+          }
+        }
+      ], 
+      "entry_pointers": [], 
+      "accesses": [], 
+      "modifies": [], 
+      "analyses": [], 
+      "actions": [], 
+      "arguments": [
+        "command"
+      ]
+    }
+  ], 
+  "properties": [
+    {
+      "direction": "forward", 
+      "name": "Taint", 
+      "initial": "Untainted", 
+      "weak": null, 
+      "set_type": null, 
+      "lattice": [
+        {
+          "name": "Untainted", 
+          "parent": "Tainted"
+        }, 
+        {
+          "name": "Tainted", 
+          "parent": null
+        }
+      ]
+    }
+  ], 
+  "global_structures": []
+}

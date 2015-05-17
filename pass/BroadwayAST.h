@@ -121,5 +121,9 @@ public:
   BroadwayProcedure(){};
   BroadwayProcedure(std::string name) : name(name){};
   BroadwayProcedure(const jsValue &);
+
+  // Janky variable lookup funcions
+  int getVarNameLocation(std::string var);
+  int getVarNameIndirection(std::string var);
 };
 }

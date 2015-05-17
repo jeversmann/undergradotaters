@@ -1,0 +1,15 @@
+%{
+// We don't even read this, lol
+}%
+
+property Taint : { Tainted { Untainted } }
+                 default Untainted
+
+procedure recv(socket) {
+  analyze Taint { return <- Tainted }
+}
+
+procedure exec(command) {
+  report if (Taint : command is-exactly Tainted)
+    "Executing Tainted input at " ++ @callsite ++ "\n";
+}

@@ -25,27 +25,14 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
             for (auto &effect : rule.effects) {
               if (effect.op == "<-" || effect.op == "<-+") {
                 auto &propname = effect.rhs->name;
-
-                llvm::Value *arg;
-                for (auto &entry : procedure.entryPointers) {
-                  auto *pointerDef = entry.findDefinition(effect.lhs->name);
-                  auto *topDef = entry.findDefinition(pointerDef->parent);
-                  while (pointerDef->parent != pointerDef->name) {
-                    pointerDef = entry.findDefinition(pointerDef->parent);
-                  }
-                  auto argNum = getArgumentForPointer(topDef->name, procedure);
-                  if (argNum != -1) {
-                    arg = inst.getArgOperand(argNum)->stripPointerCasts();
-                    break;
-                  }
-
-                  if (arg) {
-                    errs() << "------adding: " << propname << " " << *arg
-                           << "\n";
-                    state.addToProperty(propname, arg);
-                    /* printLattice(state); */
-                  }
+                int varloc = procedure.getVarNameLocation(effect.lhs->name);
+                llvm::errs() << varloc << " HERE ARE THE VARNAES\n";
+                if (varloc == -1) {
+                  state.addToProperty(propname, &inst);
+                } else {
+                  state.addToProperty(propname, inst.getArgOperand(varloc));
                 }
+                printLattice(state);
               }
             }
           }
@@ -70,7 +57,7 @@ int BroadwayVisitor<Pass, T>::getArgumentForPointer(
 char BroadwayPass::ID = 4;
 
 bool BroadwayPass::doInitialization(Module &m) {
-  FILE *fp = fopen("memory.json", "r"); // non-Windows use "r"
+  FILE *fp = fopen("taint.json", "r"); // non-Windows use "r"
   char readBuffer[65536];
   FileReadStream is(fp, readBuffer, sizeof(readBuffer));
   annotations.ParseStream(is);
@@ -121,8 +108,8 @@ bool BroadwayPass::runOnFunction(Function &f) {
     changed = analyzerPair.second->run(f) || changed;
   }
 
-  // example::DataFlowAnnotator<BroadwayPass> annotator(*this, errs());
-  // annotator.print(f);
+  example::DataFlowAnnotator<BroadwayPass> annotator(*this, errs());
+  annotator.print(f);
 
   delete AT;
 
@@ -203,10 +190,10 @@ void BroadwayPass::processCallInstPointers(CallInst &inst) {
       /*
        * Find any value that occurrs on the lhs more than once, and merge the
        * alias sets of all of the things that point to it.
-       */
       for (auto &entry : procedure.entryPointers) {
         auto *pointerDef = entry.findDefinition(effect.lhs->name);
       }
+       */
 
       /* Old stuff for reference
       if (!inst.getType()->isVoidTy()) {

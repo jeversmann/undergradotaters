@@ -25,6 +25,53 @@ BroadwayProcedure::BroadwayProcedure(const jsValue &procedure) {
   addArrayOfValues(procedure["actions"], actions);
 }
 
+/**
+ * -1 for return value of the procedure,
+ * -2 for not found, and others for Operand number
+ */
+int BroadwayProcedure::getVarNameLocation(std::string var) {
+  if (var == "return") {
+    return -1;
+  }
+
+  for (auto &entry : entryPointers) {
+    auto *pointerDef = entry.findDefinition(var);
+    auto *topDef = pointerDef;
+    while (topDef->parent != topDef->name) {
+      topDef = entry.findDefinition(topDef->parent);
+    }
+
+    int pos = find(arguments.begin(), arguments.end(), topDef->name) -
+              arguments.begin();
+
+    if (pos < arguments.size()) {
+      return pos;
+    } else {
+      return -2;
+    }
+  }
+  return -2;
+}
+
+// Returns a number representing indirection depth of a varname from function
+// call
+int BroadwayProcedure::getVarNameIndirection(std::string var) {
+  if (var == "return") {
+    return 0;
+  }
+
+  int i = 0;
+  for (auto &entry : entryPointers) {
+    auto *pointerDef = entry.findDefinition(var);
+    auto *topDef = pointerDef;
+    while (topDef->parent != topDef->name) {
+      i++;
+      topDef = entry.findDefinition(topDef->parent);
+    }
+  }
+  return i;
+}
+
 BroadwayAnalysis::BroadwayAnalysis(const jsValue &ast) {
   assert(ast.IsObject());
   name = ast["name"].GetString();

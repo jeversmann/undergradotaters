@@ -57,9 +57,13 @@ public:
   bool runOnFunction(Function &) override;
   void getAnalysisUsage(AnalysisUsage &) const override;
 
-  const Lattice getInState(const BasicBlock *bb) const { return Lattice(); }
+  const Lattice getInState(const BasicBlock *bb) const {
+    return analyzers.at("Taint")->getInState(bb);
+  }
 
-  const Lattice getOutState(const BasicBlock *bb) const { return Lattice(); }
+  const Lattice getOutState(const BasicBlock *bb) const {
+    return analyzers.at("Taint")->getOutState(bb);
+  }
 
   // AliasAnalysis things
   void *getAdjustedAnalysisPointer(const void *ID) override {
