@@ -80,6 +80,8 @@ BroadwayPointer::BroadwayPointer(const jsValue &ast) {
   }
   if (ast.HasMember("members") && ast["members"].IsArray())
     addArrayOfValues(ast["members"], members);
+  for (auto &member : members)
+    member.parent = this;
 }
 
 BroadwayPointer *BroadwayPointer::findDefinition(const std::string &thing) {

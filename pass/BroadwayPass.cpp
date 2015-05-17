@@ -24,7 +24,6 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
           if (rule.condition.op == "") { // || evaluate condition to true
             for (auto &effect : rule.effects) {
               if (effect.op == "<-" || effect.op == "<-+") {
-                auto &variable = effect.lhs->name;
                 auto &propname = effect.rhs->name;
 
                 llvm::Value *arg;
