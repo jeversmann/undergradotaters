@@ -21,7 +21,7 @@ public:
   Lattice state;
 
   BroadwayVisitor(Pass &pass, T &context, const Lattice &state)
-      : pass(pass), context(context), state(state) {}
+      : context(context), pass(pass), state(state) {}
 
   void visitCallInst(CallInst &);
 

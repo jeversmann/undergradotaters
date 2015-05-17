@@ -1,13 +1,7 @@
 CXXFLAGS = $(shell llvm-config --cxxflags) -fno-rtti
 CXX = g++
 
-all: dce-pass.so broadway-pass.so
-
-DCEPass.o: DCEPass.cpp DCEPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h
-	$(CXX) $(CXXFLAGS) DCEPass.cpp -c -o $@
-
-dce-pass.so: DCEPass.o
-	$(CXX) -shared $^ -o $@
+all: broadway-pass.so
 
 BroadwayPass.o: BroadwayPass.cpp BroadwayPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h BroadwayAST.h
 	$(CXX) $(CXXFLAGS) BroadwayPass.cpp -c -o $@
@@ -17,9 +11,6 @@ BroadwayAST.o: BroadwayAST.cpp BroadwayAST.h Makefile Utils.h
 
 broadway-pass.so: BroadwayPass.o BroadwayAST.o
 	$(CXX) -shared $^ -o $@
-
-dce: dce-pass.so
-	opt -load ./dce-pass.so -dce-pass licm_out.bc -o dce_out.bc
 
 broadway: broadway-pass.so
 	opt -load ./broadway-pass.so -broadway-pass llvm/input/double_free.bc -o broadway_out.bc

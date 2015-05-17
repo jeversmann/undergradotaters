@@ -43,8 +43,8 @@ public:
 
   DataFlowPass(Pass &pass, Meet meet, Direction dir, Lattice initial,
                Lattice boundary)
-      : pass(pass), meet(meet), direction(dir), initial(initial),
-        boundary(boundary) {}
+      : meet(meet), direction(dir), initial(initial), boundary(boundary),
+        pass(pass) {}
 
   void applyMeet(Lattice &start, Lattice &end, const BasicBlock *node) {
     start = meet(start, end, node);
