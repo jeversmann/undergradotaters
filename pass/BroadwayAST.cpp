@@ -161,4 +161,23 @@ BroadwayExitPointer::BroadwayExitPointer(const jsValue &ast) {
   if (ast["pointers"].IsArray())
     addArrayOfValues(ast["pointers"], pointers);
 }
+
+BroadwayReport::BroadwayReport(const jsValue &ast) {
+  assert(ast.IsObject());
+  if (ast.HasMember("condition") && !ast["condition"].IsNull())
+    condition = BroadwayOperation(ast["condition"]);
+  if (ast["report"].IsObject())
+    if (ast["report"]["elements"].IsArray())
+      addArrayOfValues(ast["report"]["elements"], elements);
+}
+
+BroadwayReportElement::BroadwayReportElement(const jsValue &ast) {
+  assert(ast.IsObject());
+  if (ast.HasMember("string") && !ast["string"].IsNull()) {
+    text = ast["string"].GetString();
+  } else if (ast.HasMember("location") && !ast["location"].IsNull()) {
+    callsite = ast["location"].GetString() == "callsite";
+    context = ast["location"].GetString() == "context";
+  }
+}
 }

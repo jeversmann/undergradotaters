@@ -37,7 +37,15 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
             }
           }
         }
-        // do stuff
+      }
+
+      for (auto &report : procedure.reports) {
+        // evaluate condition to true
+        for (auto &element : report.elements) {
+          // This should be executed elsewhere so it has access to before and
+          // after states
+          element.print(outs(), inst, state, state);
+        }
       }
     }
   }
@@ -217,7 +225,7 @@ void BroadwayPass::processCallInstPointers(CallInst &inst) {
 
 void BroadwayPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AliasAnalysis::getAnalysisUsage(AU);
-  AU.setPreservesAll(); // this is wrong
+  AU.setPreservesAll(); // this is right now
   AU.addRequiredTransitive<AliasAnalysis>();
 }
 
