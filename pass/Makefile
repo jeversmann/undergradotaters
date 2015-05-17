@@ -19,9 +19,9 @@ AAPass.o: AAPass.cpp AAPass.h Makefile
 	$(CXX) $(CXXFLAGS) AAPass.cpp -c -o $@
 
 experimental-alias: AAPass.so
-	opt -load ./AAPass.so -basicaa -myaa llvm/input/double_free.bc -o llvm/output/double_free.bc
+	opt -load ./AAPass.so -myaa llvm/input/double_free.bc -o llvm/output/double_free.bc
 print-experimental: AAPass.so
-	opt -load ./AAPass.so -basicaa -myaa -print-alias-sets llvm/input/double_free.bc -o llvm/output/double_free.bc
+	opt -load ./AAPass.so -myaa -print-alias-sets llvm/input/jackson.bc -o llvm/output/jackson.bc
 
 all: dce-pass.so broadway-pass.so
 
