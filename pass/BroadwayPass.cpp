@@ -77,10 +77,11 @@ bool BroadwayPass::runOnFunction(Function &f) {
     for (auto &inst : block) {
       // Get all the names of all the things for later
       instructions.insert(&inst);
+      outs() << inst << "\n";
       if (auto callinst = dyn_cast<CallInst>(&inst)) {
         deleteValue(callinst);
-        if (auto calledFunc = callinst->getCalledFunction()) {
-          outs() << calledFunc->getName();
+        /* if ((auto calledFunc = callinst->getCalledFunction()) */
+        if (!inst.getType()->isVoidTy()) {
           AliasSet &operand = AT->getAliasSetForPointer(
               callinst->getArgOperand(0),
               getTypeStoreSize(callinst->getArgOperand(0)->getType()),
