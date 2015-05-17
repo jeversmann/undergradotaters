@@ -14,6 +14,33 @@ template <class Pass, class T>
 void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
   if (const auto &function = inst.getCalledFunction()) {
     if (pass.procedures.find(function->getName()) != pass.procedures.end()) {
+      auto &procedure = pass.procedures[function->getName()];
+      for (auto &analysis : procedure->analyses) {
+        auto &property = analysis.name;
+        if (property != state.name)
+          continue;
+
+        for (auto &rule : analysis.rules) {
+          if (rule.condition.op == "") { // || evaluate condition to true
+            for (auto &effect : rule.effects) {
+              if (effect.op == "<-" || effect.op == "<-+") {
+                auto &variable = effect.lhs->name;
+                auto &propname = effect.rhs->name;
+                std::vector<std::string>::iterator ptr =
+                    std::find(procedure->arguments.begin(),
+                              procedure->arguments.end(), variable);
+                if (ptr != procedure->arguments.end()) {
+                  int argNum = (int)(ptr - procedure->arguments.begin());
+                  errs() << "adding: " << propname << " "
+                         << *inst.getArgOperand(argNum) << "\n";
+                  state.addToProperty(propname, inst.getArgOperand(argNum));
+                  printLattice(state);
+                }
+              }
+            }
+          }
+        }
+      }
       // do stuff
     }
   }
@@ -22,7 +49,7 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
 char BroadwayPass::ID = 4;
 
 bool BroadwayPass::doInitialization(Module &m) {
-  FILE *fp = fopen("memory.json", "r"); // non-Windows use "r"
+  FILE *fp = fopen("test.json", "r"); // non-Windows use "r"
   char readBuffer[65536];
   FileReadStream is(fp, readBuffer, sizeof(readBuffer));
   annotations.ParseStream(is);
@@ -78,6 +105,7 @@ void BroadwayPass::processPropertyAnnotations() {
     auto direction = property["direction"] == "backward" ? backward : forward;
 
     Lattice lattice;
+    lattice.name = propertyName;
     const auto &values = property["lattice"];
     assert(values.IsArray());
     for (jsValue::ConstValueIterator latticeIter = values.Begin();

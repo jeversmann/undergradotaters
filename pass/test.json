@@ -1,0 +1,88 @@
+{
+  "headers": [], 
+  "global_analyses": [], 
+  "procedures": [
+    {
+      "name": "malloc", 
+      "exit_pointers": [], 
+      "reports": [], 
+      "entry_pointers": [], 
+      "accesses": [], 
+      "modifies": [], 
+      "analyses": [
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "size", 
+                  "operator": "<-", 
+                  "rhs": "Deallocated"
+                }
+              ], 
+              "condition": null
+            }
+          ], 
+          "name": "MemoryLeak"
+        }
+      ], 
+      "actions": [], 
+      "arguments": [
+        "size"
+      ]
+    }
+  ], 
+  "properties": [
+    {
+      "direction": "backward", 
+      "name": "MemoryLeak", 
+      "initial": "NotDeallocated", 
+      "weak": null, 
+      "set_type": null, 
+      "lattice": [
+        {
+          "name": "Deallocated", 
+          "parent": "MaybeDeallocated"
+        }, 
+        {
+          "name": "NotDeallocated", 
+          "parent": "MaybeDeallocated"
+        }, 
+        {
+          "name": "MaybeDeallocated", 
+          "parent": "Error"
+        }, 
+        {
+          "name": "Error", 
+          "parent": null
+        }
+      ]
+    }, 
+    {
+      "direction": "forward", 
+      "name": "HeapCount", 
+      "initial": "Unused", 
+      "weak": null, 
+      "set_type": null, 
+      "lattice": [
+        {
+          "name": "Unused", 
+          "parent": "Single"
+        }, 
+        {
+          "name": "Single", 
+          "parent": "Multiple"
+        }, 
+        {
+          "name": "Multiple", 
+          "parent": "Error"
+        }, 
+        {
+          "name": "Error", 
+          "parent": null
+        }
+      ]
+    }
+  ], 
+  "global_structures": []
+}
