@@ -29,3 +29,4 @@
 
 # Python
 *.pyc
+python-parser/parser_base.py

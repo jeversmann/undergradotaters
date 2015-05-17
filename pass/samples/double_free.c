@@ -1,13 +1,12 @@
 #include <malloc.h>
 
-
 // Calculate the fibonacci number at num
 int fib(int num) {
   // Make an array to memoize
-  int * array;
+  int *array;
   int resp;
-  if ( NULL == (array = malloc((num+1) * sizeof(int))) ) {
-    return(-1);
+  if (NULL == (array = malloc((num + 1) * sizeof(int)))) {
+    return (-1);
   }
 
   if (num <= 1) {
@@ -19,7 +18,7 @@ int fib(int num) {
   }
 
   for (int i = 2; i < num; i++) {
-    array[i] = array[i-1] + array[i-2];
+    array[i] = array[i - 1] + array[i - 2];
     resp = array[i]; // Last one will be the answer
   }
 
@@ -27,13 +26,12 @@ int fib(int num) {
   return resp;
 }
 
-
 int main() {
   // Fill an array with fib numbers
 
-  int * array;
-  if ( NULL == (array = malloc(5 * sizeof(int))) ) {
-    return(-1);
+  int *array;
+  if (NULL == (array = malloc(5 * sizeof(int)))) {
+    return (-1);
   }
 
   array[0] = fib(6);
@@ -48,4 +46,3 @@ int main() {
 
   return 0; // This worked
 }
-
