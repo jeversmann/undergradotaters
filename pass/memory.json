@@ -1232,7 +1232,7 @@
       ]
     }, 
     {
-      "direction": null, 
+      "direction": "forward", 
       "name": "HeapCount", 
       "initial": "Unused", 
       "weak": null, 

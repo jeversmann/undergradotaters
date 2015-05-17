@@ -54,7 +54,7 @@ class Semantics(BroadwaySemantics):
         definition = ast['def_']
         node = { 
             'name': ast['name'],
-            'direction': definition['direction'],
+            'direction': definition['direction'] or 'forward',
             'initial': definition['initial'],
             'set_type': definition['set_type'],
             'weak': ast['weak'],

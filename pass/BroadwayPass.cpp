@@ -20,18 +20,42 @@ bool BroadwayPass::doInitialization(Module &m) {
   annotations.ParseStream(is);
   fclose(fp);
 
-  StringBuffer buffer;
-  Writer<StringBuffer> writer(buffer);
-  StringBuffer buffer2;
-  Writer<StringBuffer> writer2(buffer2);
-
   assert(annotations.IsObject());
-  const jsValue &properties = annotations["properties"];
+  const auto &properties = annotations["properties"];
   assert(properties.IsArray());
-  for (jsValue::ConstValueIterator property = properties.Begin();
-       property != properties.End(); ++property) {
-    assert(property->IsObject());
-    // do stuff with properties
+  for (jsValue::ConstValueIterator iter = properties.Begin();
+       iter != properties.End(); ++iter) {
+    auto &property = *iter;
+    assert(property.IsObject());
+    assert(property["name"].IsString());
+    const auto &propertyName = property["name"].GetString();
+    auto direction = property["direction"] == "backward" ? backward : forward;
+
+    Lattice lattice;
+    const auto &values = property["lattice"];
+    assert(values.IsArray());
+    for (jsValue::ConstValueIterator latticeIter = properties.Begin();
+         latticeIter != properties.End(); ++latticeIter) {
+      auto &latticeValue = *latticeIter;
+      assert(latticeValue.IsObject());
+      assert(latticeValue["name"].IsString());
+      const auto &valueParent = latticeValue.HasMember("parent")
+                                    ? latticeValue["parent"].GetString()
+                                    : "bottom";
+      const auto &valueName = latticeValue["name"].GetString();
+      lattice.addProperty(valueName, valueParent);
+    }
+
+    if (property.HasMember("initial") && property["initial"].IsString())
+      lattice.initial = property["initial"].GetString();
+
+    errs() << "property: " << propertyName << " ";
+    printLattice(lattice);
+    errs() << "\n";
+
+    auto *analyzer =
+        new DataFlow(MeetIntersect<llvm::Value *>, direction, lattice);
+    analyzers[propertyName] = std::unique_ptr<DataFlow>(analyzer);
   }
 
   const jsValue &procedures = annotations["procedures"];
@@ -39,7 +63,6 @@ bool BroadwayPass::doInitialization(Module &m) {
   for (jsValue::ConstValueIterator procedure = procedures.Begin();
        procedure != properties.End(); ++procedure) {
     if (procedure->IsObject()) {
-      errs() << procedure->GetType() << "\n";
       assert(procedure->IsObject());
       const jsValue &name = (*procedure)["name"];
       assert(name.IsString());
@@ -68,9 +91,9 @@ bool BroadwayPass::runOnFunction(Function &f) {
     }
   }
 
-  analysis = DataFlow(MeetUnion<llvm::Value *>, backward); // Lattice
+  // analysis = DataFlow(MeetUnion<llvm::Value *>, backward); // Lattice
 
-  analysis.run(f);
+  // analysis.run(f);
 
   example::DataFlowAnnotator<BroadwayPass> annotator(*this, errs());
   annotator.print(f);

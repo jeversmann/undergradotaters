@@ -33,24 +33,20 @@ class BroadwayPass : public FunctionPass {
   using DataFlow = DataFlowPass<Function, BroadwayVisitor<Function>, Value *>;
 
 private:
-  DataFlow analysis;
   rapidjson::Document annotations;
   std::unordered_map<std::string, const rapidjson::Value *>
       procedureAnnotations;
+  std::unordered_map<std::string, std::unique_ptr<DataFlow>> analyzers;
 
 public:
   static char ID;
-  BroadwayPass() : FunctionPass(ID), analysis(MeetUnion<Value *>, backward) {}
+  BroadwayPass() : FunctionPass(ID) {}
   bool doInitialization(Module &) override;
   bool runOnFunction(Function &) override;
   void getAnalysisUsage(AnalysisUsage &) const override;
 
-  const Lattice getInState(const BasicBlock *bb) const {
-    return analysis.getInState(bb);
-  }
+  const Lattice getInState(const BasicBlock *bb) const { return Lattice(); }
 
-  const Lattice getOutState(const BasicBlock *bb) const {
-    return analysis.getOutState(bb);
-  }
+  const Lattice getOutState(const BasicBlock *bb) const { return Lattice(); }
 };
 }
