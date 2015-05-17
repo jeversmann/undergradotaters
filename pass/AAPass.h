@@ -29,4 +29,8 @@ public:
 };
 }
 
+namespace llvm {
+  void initializeAAPassPass(PassRegistry&);
+}
+
 #endif

@@ -1,13 +1,15 @@
 CXXFLAGS = $(shell llvm-config --cxxflags) -fno-rtti
-CXX = g++ 
+CXX = g++
+
+default: experimental-alias
 
 clean:
 	rm -f *.o *~ *.so
 
-basic-alias: 
+basic-alias:
 	opt -basicaa llvm/input/double_free.bc -o llvm/output/double_free.bc
 
-print-basic-alias:	
+print-basic-alias:
 	opt -basicaa -print-alias-sets llvm/input/double_free.bc -o llvm/output/double_free.bc
 
 AAPass.so: AAPass.o

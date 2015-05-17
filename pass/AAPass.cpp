@@ -73,10 +73,8 @@ char AAPass::ID = 0;
 static RegisterPass<AAPass> X("myaa", "Example Alias Analysis Pass");
 static RegisterAnalysisGroup<AliasAnalysis> A("Alias Analysis");
 
-namespace llvm {
 INITIALIZE_AG_PASS(AAPass, AliasAnalysis, "myaa",
                    "A more complex alias analysis implementation",
                    false, // Is CFG Only?
                    true,  // Is Analysis?
                    false) // Is default Analysis Group implementation?
-}
