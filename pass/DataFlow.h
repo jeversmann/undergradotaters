@@ -19,7 +19,7 @@ enum Direction { backward = 0, forward = 1 };
 
 using Worklist = SetVector<BasicBlock *>;
 
-template <class T, class Transfer, class FlowValue = Instruction *>
+template <class T, class Transfer, class Pass, class FlowValue = Instruction *>
 class DataFlowPass {
 private:
   using Lattice = BroadwayLattice<FlowValue>;
@@ -31,20 +31,26 @@ private:
   AnalysisStates inStates, outStates;
   Meet meet;
   Direction direction;
-  Lattice initial, boundary;
+  Worklist worklist;
 
 public:
-  DataFlowPass(Meet meet, Direction dir = forward, Lattice initial = Lattice())
-      : DataFlowPass(meet, dir, initial, initial) {}
+  Lattice initial, boundary;
+  Pass &pass;
 
-  DataFlowPass(Meet meet, Direction dir, Lattice initial, Lattice boundary)
-      : meet(meet), direction(dir), initial(initial), boundary(boundary) {}
+  DataFlowPass(Pass &pass, Meet meet, Direction dir = forward,
+               Lattice initial = Lattice())
+      : DataFlowPass(pass, meet, dir, initial, initial) {}
+
+  DataFlowPass(Pass &pass, Meet meet, Direction dir, Lattice initial,
+               Lattice boundary)
+      : pass(pass), meet(meet), direction(dir), initial(initial),
+        boundary(boundary) {}
 
   void applyMeet(Lattice &start, Lattice &end, const BasicBlock *node) {
     start = meet(start, end, node);
   }
 
-  void initializeState(Loop &f, Worklist &worklist) {
+  void initializeState(Loop &f) {
     for (auto bb = f.block_begin(), end = f.block_end(); bb != end; ++bb) {
       worklist.insert(*bb);
       inStates[*bb] = Lattice(initial);
@@ -52,7 +58,15 @@ public:
     }
   }
 
-  void initializeState(Function &f, Worklist &worklist) {
+  void initializeState(Function &f) {
+    printLattice(initial);
+    errs() << initial.initial << "\n";
+    std::unordered_set<llvm::Value *> instructions;
+    for (auto &bb : f)
+      for (auto &inst : bb)
+        instructions.insert(&inst);
+    for (auto &inst : instructions)
+      initial.addToProperty(initial.initial, inst);
     for (auto &bb : f) {
       worklist.insert(&bb);
       inStates[&bb] = Lattice(initial);
@@ -61,9 +75,8 @@ public:
   }
 
   bool run(T &f) {
-    auto worklist = Worklist();
-
-    initializeState(f, worklist);
+    auto superChanged = false;
+    initializeState(f);
 
     // keep track of the first time we visit each node
     std::unordered_set<BasicBlock *> seen;
@@ -102,14 +115,16 @@ public:
         }
       }
 
-      if (start != startStates[node])
+      if (start != startStates[node]) {
         changed = true;
+        superChanged = true;
+      }
 
       if (!changed)
         continue;
 
       // apply the transfer functions to the node in the correct direction
-      auto visitor = Transfer(f, startStates[node]);
+      auto visitor = Transfer(pass, f, startStates[node]);
       if (direction == forward)
         visitor.visit(node);
       else
@@ -134,7 +149,7 @@ public:
           worklist.insert(*itr);
     }
 
-    return false;
+    return superChanged;
   }
 
   // to get printable states, get the values of the values

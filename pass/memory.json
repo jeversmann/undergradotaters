@@ -5,1200 +5,1190 @@
   "global_analyses": [], 
   "procedures": [
     {
-      "statements": {
-        "exit_pointers": [
-          {
-            "pointers": [
-              {
-                "name": "return", 
+      "name": "malloc", 
+      "exit_pointers": [
+        {
+          "pointers": [
+            {
+              "name": "return", 
+              "io": null, 
+              "members": null, 
+              "target": {
+                "name": "memory_chunk", 
                 "io": null, 
                 "members": null, 
-                "target": {
-                  "name": "memory_chunk", 
-                  "io": null, 
-                  "members": null, 
-                  "target": null, 
-                  "new": true, 
-                  "delete": null
-                }, 
-                "new": null, 
+                "target": null, 
+                "new": true, 
                 "delete": null
-              }
-            ], 
-            "condition": null
-          }
-        ], 
-        "reports": [
-          {
-            "condition": {
-              "lhs": {
-                "lhs": {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "NotDeallocated"
-                }, 
-                "operator": "||", 
-                "rhs": {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "MaybeDeallocated"
-                }
               }, 
-              "operator": "&&", 
-              "rhs": {
-                "property": "HeapCount", 
-                "name": "memory_chunk", 
+              "new": null, 
+              "delete": null
+            }
+          ], 
+          "condition": null
+        }
+      ], 
+      "reports": [
+        {
+          "condition": {
+            "lhs": {
+              "lhs": {
+                "property": "MemoryLeak", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Unused"
-              }
-            }, 
-            "report": {
-              "elements": [
-                {
-                  "string": "\"Error: malloc() at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\" probably not be freed.\\n\""
-                }
-              ]
-            }
-          }, 
-          {
-            "condition": {
-              "lhs": {
-                "lhs": {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "NotDeallocated"
-                }, 
-                "operator": "||", 
-                "rhs": {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "MaybeDeallocated"
-                }
+                "rhs": "NotDeallocated"
               }, 
-              "operator": "&&", 
+              "operator": "||", 
               "rhs": {
-                "property": "HeapCount", 
-                "name": "memory_chunk", 
+                "property": "MemoryLeak", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Multiple"
+                "rhs": "MaybeDeallocated"
               }
             }, 
-            "report": {
-              "elements": [
-                {
-                  "string": "\"Error: malloc() at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\" might not be freed.\\n\""
-                }
-              ]
-            }
-          }, 
-          {
-            "condition": {
+            "operator": "&&", 
+            "rhs": {
               "property": "HeapCount", 
-              "name": "memory_chunk", 
+              "lhs": "memory_chunk", 
               "time": null, 
               "operator": "is-exactly", 
-              "target": "Error"
+              "rhs": "Unused"
+            }
+          }, 
+          "report": {
+            "elements": [
+              {
+                "string": "\"Error: malloc() at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\" probably not be freed.\\n\""
+              }
+            ]
+          }
+        }, 
+        {
+          "condition": {
+            "lhs": {
+              "lhs": {
+                "property": "MemoryLeak", 
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "NotDeallocated"
+              }, 
+              "operator": "||", 
+              "rhs": {
+                "property": "MemoryLeak", 
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "MaybeDeallocated"
+              }
             }, 
-            "report": {
-              "elements": [
-                {
-                  "string": "\"Error: malloc() at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\" improperly freed.\\n\""
-                }
-              ]
+            "operator": "&&", 
+            "rhs": {
+              "property": "HeapCount", 
+              "lhs": "memory_chunk", 
+              "time": null, 
+              "operator": "is-exactly", 
+              "rhs": "Multiple"
             }
           }, 
-          {
-            "report": {
-              "elements": [
-                {
-                  "string": "\"MemoryLeak: malloc at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\": \""
-                }, 
-                {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": null
-                }, 
-                {
-                  "string": "\" => \""
-                }, 
-                {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": "@after"
-                }, 
-                {
-                  "string": "\"\\n\""
-                }
-              ]
-            }
-          }, 
-          {
-            "report": {
-              "elements": [
-                {
-                  "string": "\"HeapCount: malloc at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\": \""
-                }, 
-                {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": null
-                }, 
-                {
-                  "string": "\" => \""
-                }, 
-                {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": "@after"
-                }, 
-                {
-                  "string": "\"\\n\""
-                }
-              ]
-            }
+          "report": {
+            "elements": [
+              {
+                "string": "\"Error: malloc() at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\" might not be freed.\\n\""
+              }
+            ]
           }
-        ], 
-        "entry_pointers": [], 
-        "accesses": [], 
-        "modifies": [
-          "memory_chunk"
-        ], 
-        "analyses": [
-          {
-            "rules": [
+        }, 
+        {
+          "condition": {
+            "property": "HeapCount", 
+            "lhs": "memory_chunk", 
+            "time": null, 
+            "operator": "is-exactly", 
+            "rhs": "Error"
+          }, 
+          "report": {
+            "elements": [
               {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Single"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Unused", 
-                  "property": null
-                }
+                "string": "\"Error: malloc() at \""
               }, 
               {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Multiple"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Single", 
-                  "property": null
-                }
+                "location": "callsite"
               }, 
               {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Multiple"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Multiple", 
-                  "property": null
-                }
+                "string": "\" improperly freed.\\n\""
+              }
+            ]
+          }
+        }, 
+        {
+          "report": {
+            "elements": [
+              {
+                "string": "\"MemoryLeak: malloc at \""
               }, 
               {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
+                "location": "callsite"
+              }, 
+              {
+                "string": "\": \""
+              }, 
+              {
+                "property": "MemoryLeak", 
+                "name": "memory_chunk", 
+                "time": null
+              }, 
+              {
+                "string": "\" => \""
+              }, 
+              {
+                "property": "MemoryLeak", 
+                "name": "memory_chunk", 
+                "time": "@after"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
+          }
+        }, 
+        {
+          "report": {
+            "elements": [
+              {
+                "string": "\"HeapCount: malloc at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\": \""
+              }, 
+              {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": null
+              }, 
+              {
+                "string": "\" => \""
+              }, 
+              {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": "@after"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
+          }
+        }
+      ], 
+      "entry_pointers": [], 
+      "accesses": [], 
+      "modifies": [
+        "memory_chunk"
+      ], 
+      "analyses": [
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Single"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Unused", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Multiple"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Single", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Multiple"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Multiple", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Error", 
+                "property": null
+              }
+            }
+          ], 
+          "name": "HeapCount"
+        }, 
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "NotDeallocated"
+                }
+              ], 
+              "condition": {
+                "lhs": {
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Error", 
+                  "rhs": "Deallocated", 
+                  "property": null
+                }, 
+                "operator": "||", 
+                "rhs": {
+                  "lhs": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "rhs": "MaybeDeallocated", 
                   "property": null
                 }
               }
-            ], 
-            "name": "HeapCount"
-          }, 
-          {
-            "rules": [
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "NotDeallocated"
-                  }
-                ], 
-                "condition": {
-                  "lhs": {
-                    "name": "memory_chunk", 
-                    "time": null, 
-                    "operator": "is-exactly", 
-                    "target": "Deallocated", 
-                    "property": null
-                  }, 
-                  "operator": "||", 
-                  "rhs": {
-                    "name": "memory_chunk", 
-                    "time": null, 
-                    "operator": "is-exactly", 
-                    "target": "MaybeDeallocated", 
-                    "property": null
-                  }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
                 }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Error", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "NotDeallocated"
-                  }
-                ], 
-                "condition": null
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Error", 
+                "property": null
               }
-            ], 
-            "name": "MemoryLeak"
-          }
-        ], 
-        "actions": []
-      }, 
-      "name": "malloc", 
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "NotDeallocated"
+                }
+              ], 
+              "condition": null
+            }
+          ], 
+          "name": "MemoryLeak"
+        }
+      ], 
+      "actions": [], 
       "arguments": [
         "size"
       ]
     }, 
     {
-      "statements": {
-        "exit_pointers": [
-          {
-            "pointers": [
-              {
-                "name": "return", 
+      "name": "calloc", 
+      "exit_pointers": [
+        {
+          "pointers": [
+            {
+              "name": "return", 
+              "io": null, 
+              "members": null, 
+              "target": {
+                "name": "memory_chunk", 
                 "io": null, 
                 "members": null, 
-                "target": {
-                  "name": "memory_chunk", 
-                  "io": null, 
-                  "members": null, 
-                  "target": null, 
-                  "new": true, 
-                  "delete": null
-                }, 
-                "new": null, 
+                "target": null, 
+                "new": true, 
                 "delete": null
+              }, 
+              "new": null, 
+              "delete": null
+            }
+          ], 
+          "condition": null
+        }
+      ], 
+      "reports": [
+        {
+          "condition": {
+            "property": "MemoryLeak", 
+            "lhs": "memory_chunk", 
+            "time": null, 
+            "operator": "is-exactly", 
+            "rhs": "NotDeallocated"
+          }, 
+          "report": {
+            "elements": [
+              {
+                "string": "\"Error: malloc() at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\" might not be freed.\\n\""
               }
-            ], 
-            "condition": null
+            ]
           }
-        ], 
-        "reports": [
-          {
-            "condition": {
-              "property": "MemoryLeak", 
-              "name": "memory_chunk", 
-              "time": null, 
-              "operator": "is-exactly", 
-              "target": "NotDeallocated"
+        }, 
+        {
+          "condition": {
+            "property": "HeapCount", 
+            "lhs": "memory_chunk", 
+            "time": null, 
+            "operator": "is-exactly", 
+            "rhs": "Error"
+          }, 
+          "report": {
+            "elements": [
+              {
+                "string": "\"Error: malloc() at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\" improperly freed.\\n\""
+              }
+            ]
+          }
+        }, 
+        {
+          "report": {
+            "elements": [
+              {
+                "string": "\"MemoryLeak: calloc at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\": \""
+              }, 
+              {
+                "property": "MemoryLeak", 
+                "name": "memory_chunk", 
+                "time": null
+              }, 
+              {
+                "string": "\" => \""
+              }, 
+              {
+                "property": "MemoryLeak", 
+                "name": "memory_chunk", 
+                "time": "@after"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
+          }
+        }, 
+        {
+          "report": {
+            "elements": [
+              {
+                "string": "\"HeapCount: calloc at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\": \""
+              }, 
+              {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": null
+              }, 
+              {
+                "string": "\" => \""
+              }, 
+              {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": "@after"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
+          }
+        }
+      ], 
+      "entry_pointers": [], 
+      "accesses": [], 
+      "modifies": [
+        "memory_chunk"
+      ], 
+      "analyses": [
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Single"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Unused", 
+                "property": null
+              }
             }, 
-            "report": {
-              "elements": [
+            {
+              "effects": [
                 {
-                  "string": "\"Error: malloc() at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\" might not be freed.\\n\""
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Multiple"
                 }
-              ]
-            }
-          }, 
-          {
-            "condition": {
-              "property": "HeapCount", 
-              "name": "memory_chunk", 
-              "time": null, 
-              "operator": "is-exactly", 
-              "target": "Error"
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Single", 
+                "property": null
+              }
             }, 
-            "report": {
-              "elements": [
+            {
+              "effects": [
                 {
-                  "string": "\"Error: malloc() at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\" improperly freed.\\n\""
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Multiple"
                 }
-              ]
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Multiple", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Error", 
+                "property": null
+              }
             }
-          }, 
-          {
-            "report": {
-              "elements": [
+          ], 
+          "name": "HeapCount"
+        }, 
+        {
+          "rules": [
+            {
+              "effects": [
                 {
-                  "string": "\"MemoryLeak: calloc at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\": \""
-                }, 
-                {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": null
-                }, 
-                {
-                  "string": "\" => \""
-                }, 
-                {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": "@after"
-                }, 
-                {
-                  "string": "\"\\n\""
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "NotDeallocated"
                 }
-              ]
-            }
-          }, 
-          {
-            "report": {
-              "elements": [
-                {
-                  "string": "\"HeapCount: calloc at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\": \""
-                }, 
-                {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": null
-                }, 
-                {
-                  "string": "\" => \""
-                }, 
-                {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": "@after"
-                }, 
-                {
-                  "string": "\"\\n\""
-                }
-              ]
-            }
-          }
-        ], 
-        "entry_pointers": [], 
-        "accesses": [], 
-        "modifies": [
-          "memory_chunk"
-        ], 
-        "analyses": [
-          {
-            "rules": [
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Single"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
+              ], 
+              "condition": {
+                "lhs": {
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Unused", 
+                  "rhs": "Deallocated", 
                   "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Multiple"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
+                }, 
+                "operator": "||", 
+                "rhs": {
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Single", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Multiple"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Multiple", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Error", 
+                  "rhs": "MaybeDeallocated", 
                   "property": null
                 }
               }
-            ], 
-            "name": "HeapCount"
-          }, 
-          {
-            "rules": [
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "NotDeallocated"
-                  }
-                ], 
-                "condition": {
-                  "lhs": {
-                    "name": "memory_chunk", 
-                    "time": null, 
-                    "operator": "is-exactly", 
-                    "target": "Deallocated", 
-                    "property": null
-                  }, 
-                  "operator": "||", 
-                  "rhs": {
-                    "name": "memory_chunk", 
-                    "time": null, 
-                    "operator": "is-exactly", 
-                    "target": "MaybeDeallocated", 
-                    "property": null
-                  }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
                 }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Error", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "NotDeallocated"
-                  }
-                ], 
-                "condition": null
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Error", 
+                "property": null
               }
-            ], 
-            "name": "MemoryLeak"
-          }
-        ], 
-        "actions": []
-      }, 
-      "name": "calloc", 
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "NotDeallocated"
+                }
+              ], 
+              "condition": null
+            }
+          ], 
+          "name": "MemoryLeak"
+        }
+      ], 
+      "actions": [], 
       "arguments": [
         "num", 
         "size"
       ]
     }, 
     {
-      "statements": {
-        "exit_pointers": [], 
-        "reports": [
-          {
-            "report": {
-              "elements": [
-                {
-                  "string": "\"MemoryLeak: free at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\": \""
-                }, 
-                {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": null
-                }, 
-                {
-                  "string": "\" => \""
-                }, 
-                {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": "@after"
-                }, 
-                {
-                  "string": "\"\\n\""
-                }
-              ]
-            }
-          }, 
-          {
-            "report": {
-              "elements": [
-                {
-                  "string": "\"HeapCount: free at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\": \""
-                }, 
-                {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": null
-                }, 
-                {
-                  "string": "\" => \""
-                }, 
-                {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": "@after"
-                }, 
-                {
-                  "string": "\"\\n\""
-                }
-              ]
-            }
-          }
-        ], 
-        "entry_pointers": [
-          {
-            "name": "ptr", 
-            "io": null, 
-            "members": null, 
-            "target": {
-              "name": "memory_chunk", 
-              "io": null, 
-              "members": null, 
-              "target": null, 
-              "new": null, 
-              "delete": null
-            }, 
-            "new": null, 
-            "delete": null
-          }
-        ], 
-        "accesses": [
-          "memory_chunk"
-        ], 
-        "modifies": [], 
-        "analyses": [
-          {
-            "rules": [
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Unused", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Unused"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Single", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Multiple"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Multiple", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Error", 
-                  "property": null
-                }
-              }
-            ], 
-            "name": "HeapCount"
-          }, 
-          {
-            "rules": [
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Unused"
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Deallocated"
-                  }
-                ], 
-                "condition": {
-                  "lhs": {
-                    "property": "HeapCount", 
-                    "name": "memory_chunk", 
-                    "time": null, 
-                    "operator": "is-exactly", 
-                    "target": "Single"
-                  }, 
-                  "operator": "&&", 
-                  "rhs": {
-                    "lhs": {
-                      "name": "memory_chunk", 
-                      "time": null, 
-                      "operator": "is-exactly", 
-                      "target": "NotDeallocated", 
-                      "property": null
-                    }, 
-                    "operator": "||", 
-                    "rhs": {
-                      "name": "memory_chunk", 
-                      "time": null, 
-                      "operator": "is-exactly", 
-                      "target": "MaybeDeallocated", 
-                      "property": null
-                    }
-                  }
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "MaybeDeallocated"
-                  }
-                ], 
-                "condition": {
-                  "lhs": {
-                    "property": "HeapCount", 
-                    "name": "memory_chunk", 
-                    "time": null, 
-                    "operator": "is-exactly", 
-                    "target": "Multiple"
-                  }, 
-                  "operator": "&&", 
-                  "rhs": {
-                    "lhs": {
-                      "name": "memory_chunk", 
-                      "time": null, 
-                      "operator": "is-exactly", 
-                      "target": "NotDeallocated", 
-                      "property": null
-                    }, 
-                    "operator": "||", 
-                    "rhs": {
-                      "name": "memory_chunk", 
-                      "time": null, 
-                      "operator": "is-exactly", 
-                      "target": "MaybeDeallocated", 
-                      "property": null
-                    }
-                  }
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": null
-              }
-            ], 
-            "name": "MemoryLeak"
-          }
-        ], 
-        "actions": []
-      }, 
       "name": "free", 
-      "arguments": [
-        "ptr"
-      ]
-    }, 
-    {
-      "statements": {
-        "exit_pointers": [], 
-        "reports": [
-          {
-            "report": {
-              "elements": [
-                {
-                  "string": "\"MemoryLeak: free at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\": \""
-                }, 
-                {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": null
-                }, 
-                {
-                  "string": "\" => \""
-                }, 
-                {
-                  "property": "MemoryLeak", 
-                  "name": "memory_chunk", 
-                  "time": "@after"
-                }, 
-                {
-                  "string": "\"\\n\""
-                }
-              ]
-            }
-          }, 
-          {
-            "report": {
-              "elements": [
-                {
-                  "string": "\"HeapCount: free at \""
-                }, 
-                {
-                  "location": "callsite"
-                }, 
-                {
-                  "string": "\": \""
-                }, 
-                {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": null
-                }, 
-                {
-                  "string": "\" => \""
-                }, 
-                {
-                  "property": "HeapCount", 
-                  "name": "memory_chunk", 
-                  "time": "@after"
-                }, 
-                {
-                  "string": "\"\\n\""
-                }
-              ]
-            }
+      "exit_pointers": [], 
+      "reports": [
+        {
+          "report": {
+            "elements": [
+              {
+                "string": "\"MemoryLeak: free at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\": \""
+              }, 
+              {
+                "property": "MemoryLeak", 
+                "name": "memory_chunk", 
+                "time": null
+              }, 
+              {
+                "string": "\" => \""
+              }, 
+              {
+                "property": "MemoryLeak", 
+                "name": "memory_chunk", 
+                "time": "@after"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
           }
-        ], 
-        "entry_pointers": [
-          {
-            "name": "ptr", 
+        }, 
+        {
+          "report": {
+            "elements": [
+              {
+                "string": "\"HeapCount: free at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\": \""
+              }, 
+              {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": null
+              }, 
+              {
+                "string": "\" => \""
+              }, 
+              {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": "@after"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
+          }
+        }
+      ], 
+      "entry_pointers": [
+        {
+          "name": "ptr", 
+          "io": null, 
+          "members": null, 
+          "target": {
+            "name": "memory_chunk", 
             "io": null, 
             "members": null, 
-            "target": {
-              "name": "memory_chunk", 
-              "io": null, 
-              "members": null, 
-              "target": null, 
-              "new": null, 
-              "delete": null
-            }, 
+            "target": null, 
             "new": null, 
             "delete": null
-          }
-        ], 
-        "accesses": [
-          "memory_chunk"
-        ], 
-        "modifies": [], 
-        "analyses": [
-          {
-            "rules": [
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Unused", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Unused"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Single", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Multiple"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Multiple", 
-                  "property": null
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
-                  "name": "memory_chunk", 
-                  "time": null, 
-                  "operator": "is-exactly", 
-                  "target": "Error", 
-                  "property": null
-                }
-              }
-            ], 
-            "name": "HeapCount"
           }, 
-          {
-            "rules": [
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": {
+          "new": null, 
+          "delete": null
+        }
+      ], 
+      "accesses": [
+        "memory_chunk"
+      ], 
+      "modifies": [], 
+      "analyses": [
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Unused", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Unused"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Single", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Multiple"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Multiple", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Error", 
+                "property": null
+              }
+            }
+          ], 
+          "name": "HeapCount"
+        }, 
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": {
+                "property": "HeapCount", 
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Unused"
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Deallocated"
+                }
+              ], 
+              "condition": {
+                "lhs": {
                   "property": "HeapCount", 
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Unused"
-                }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Deallocated"
-                  }
-                ], 
-                "condition": {
+                  "rhs": "Single"
+                }, 
+                "operator": "&&", 
+                "rhs": {
                   "lhs": {
-                    "property": "HeapCount", 
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "Single"
+                    "rhs": "NotDeallocated", 
+                    "property": null
                   }, 
-                  "operator": "&&", 
+                  "operator": "||", 
                   "rhs": {
-                    "lhs": {
-                      "name": "memory_chunk", 
-                      "time": null, 
-                      "operator": "is-exactly", 
-                      "target": "NotDeallocated", 
-                      "property": null
-                    }, 
-                    "operator": "||", 
-                    "rhs": {
-                      "name": "memory_chunk", 
-                      "time": null, 
-                      "operator": "is-exactly", 
-                      "target": "MaybeDeallocated", 
-                      "property": null
-                    }
-                  }
-                }
-              }, 
-              {
-                "effects": [
-                  {
                     "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "MaybeDeallocated"
-                  }
-                ], 
-                "condition": {
-                  "lhs": {
-                    "property": "HeapCount", 
-                    "name": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "Multiple"
-                  }, 
-                  "operator": "&&", 
-                  "rhs": {
-                    "lhs": {
-                      "name": "memory_chunk", 
-                      "time": null, 
-                      "operator": "is-exactly", 
-                      "target": "NotDeallocated", 
-                      "property": null
-                    }, 
-                    "operator": "||", 
-                    "rhs": {
-                      "name": "memory_chunk", 
-                      "time": null, 
-                      "operator": "is-exactly", 
-                      "target": "MaybeDeallocated", 
-                      "property": null
-                    }
+                    "rhs": "MaybeDeallocated", 
+                    "property": null
                   }
                 }
-              }, 
-              {
-                "effects": [
-                  {
-                    "lhs": "memory_chunk", 
-                    "operator": "<-", 
-                    "rhs": "Error"
-                  }
-                ], 
-                "condition": null
               }
-            ], 
-            "name": "MemoryLeak"
-          }
-        ], 
-        "actions": []
-      }, 
-      "name": "cfree", 
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "MaybeDeallocated"
+                }
+              ], 
+              "condition": {
+                "lhs": {
+                  "property": "HeapCount", 
+                  "lhs": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "rhs": "Multiple"
+                }, 
+                "operator": "&&", 
+                "rhs": {
+                  "lhs": {
+                    "lhs": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "rhs": "NotDeallocated", 
+                    "property": null
+                  }, 
+                  "operator": "||", 
+                  "rhs": {
+                    "lhs": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "rhs": "MaybeDeallocated", 
+                    "property": null
+                  }
+                }
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": null
+            }
+          ], 
+          "name": "MemoryLeak"
+        }
+      ], 
+      "actions": [], 
       "arguments": [
         "ptr"
       ]
     }, 
     {
-      "statements": {
-        "exit_pointers": [
-          {
-            "pointers": [
+      "name": "cfree", 
+      "exit_pointers": [], 
+      "reports": [
+        {
+          "report": {
+            "elements": [
               {
-                "name": "return", 
+                "string": "\"MemoryLeak: free at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\": \""
+              }, 
+              {
+                "property": "MemoryLeak", 
+                "name": "memory_chunk", 
+                "time": null
+              }, 
+              {
+                "string": "\" => \""
+              }, 
+              {
+                "property": "MemoryLeak", 
+                "name": "memory_chunk", 
+                "time": "@after"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
+          }
+        }, 
+        {
+          "report": {
+            "elements": [
+              {
+                "string": "\"HeapCount: free at \""
+              }, 
+              {
+                "location": "callsite"
+              }, 
+              {
+                "string": "\": \""
+              }, 
+              {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": null
+              }, 
+              {
+                "string": "\" => \""
+              }, 
+              {
+                "property": "HeapCount", 
+                "name": "memory_chunk", 
+                "time": "@after"
+              }, 
+              {
+                "string": "\"\\n\""
+              }
+            ]
+          }
+        }
+      ], 
+      "entry_pointers": [
+        {
+          "name": "ptr", 
+          "io": null, 
+          "members": null, 
+          "target": {
+            "name": "memory_chunk", 
+            "io": null, 
+            "members": null, 
+            "target": null, 
+            "new": null, 
+            "delete": null
+          }, 
+          "new": null, 
+          "delete": null
+        }
+      ], 
+      "accesses": [
+        "memory_chunk"
+      ], 
+      "modifies": [], 
+      "analyses": [
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Unused", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Unused"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Single", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Multiple"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Multiple", 
+                "property": null
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": {
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Error", 
+                "property": null
+              }
+            }
+          ], 
+          "name": "HeapCount"
+        }, 
+        {
+          "rules": [
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": {
+                "property": "HeapCount", 
+                "lhs": "memory_chunk", 
+                "time": null, 
+                "operator": "is-exactly", 
+                "rhs": "Unused"
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Deallocated"
+                }
+              ], 
+              "condition": {
+                "lhs": {
+                  "property": "HeapCount", 
+                  "lhs": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "rhs": "Single"
+                }, 
+                "operator": "&&", 
+                "rhs": {
+                  "lhs": {
+                    "lhs": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "rhs": "NotDeallocated", 
+                    "property": null
+                  }, 
+                  "operator": "||", 
+                  "rhs": {
+                    "lhs": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "rhs": "MaybeDeallocated", 
+                    "property": null
+                  }
+                }
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "MaybeDeallocated"
+                }
+              ], 
+              "condition": {
+                "lhs": {
+                  "property": "HeapCount", 
+                  "lhs": "memory_chunk", 
+                  "time": null, 
+                  "operator": "is-exactly", 
+                  "rhs": "Multiple"
+                }, 
+                "operator": "&&", 
+                "rhs": {
+                  "lhs": {
+                    "lhs": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "rhs": "NotDeallocated", 
+                    "property": null
+                  }, 
+                  "operator": "||", 
+                  "rhs": {
+                    "lhs": "memory_chunk", 
+                    "time": null, 
+                    "operator": "is-exactly", 
+                    "rhs": "MaybeDeallocated", 
+                    "property": null
+                  }
+                }
+              }
+            }, 
+            {
+              "effects": [
+                {
+                  "lhs": "memory_chunk", 
+                  "operator": "<-", 
+                  "rhs": "Error"
+                }
+              ], 
+              "condition": null
+            }
+          ], 
+          "name": "MemoryLeak"
+        }
+      ], 
+      "actions": [], 
+      "arguments": [
+        "ptr"
+      ]
+    }, 
+    {
+      "name": "realloc", 
+      "exit_pointers": [
+        {
+          "pointers": [
+            {
+              "name": "return", 
+              "io": null, 
+              "members": null, 
+              "target": {
+                "name": "memory_chunk", 
                 "io": null, 
                 "members": null, 
-                "target": {
-                  "name": "memory_chunk", 
-                  "io": null, 
-                  "members": null, 
-                  "target": null, 
-                  "new": true, 
-                  "delete": null
-                }, 
-                "new": null, 
+                "target": null, 
+                "new": true, 
                 "delete": null
-              }
-            ], 
-            "condition": null
-          }
-        ], 
-        "reports": [], 
-        "entry_pointers": [
-          {
-            "name": "ptr", 
-            "io": null, 
-            "members": null, 
-            "target": {
-              "name": "old_memory_chunk", 
-              "io": null, 
-              "members": null, 
-              "target": null, 
+              }, 
               "new": null, 
               "delete": null
-            }, 
+            }
+          ], 
+          "condition": null
+        }
+      ], 
+      "reports": [], 
+      "entry_pointers": [
+        {
+          "name": "ptr", 
+          "io": null, 
+          "members": null, 
+          "target": {
+            "name": "old_memory_chunk", 
+            "io": null, 
+            "members": null, 
+            "target": null, 
             "new": null, 
             "delete": null
-          }
-        ], 
-        "accesses": [], 
-        "modifies": [
-          "old_memory_chunk"
-        ], 
-        "analyses": [], 
-        "actions": []
-      }, 
-      "name": "realloc", 
+          }, 
+          "new": null, 
+          "delete": null
+        }
+      ], 
+      "accesses": [], 
+      "modifies": [
+        "old_memory_chunk"
+      ], 
+      "analyses": [], 
+      "actions": [], 
       "arguments": [
         "ptr", 
         "size"

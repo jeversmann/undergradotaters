@@ -42,12 +42,10 @@ class Semantics(BroadwaySemantics):
         statements = ast['statements']
         names = ['entry_pointer', 'exit_pointer', 'modify', 'access', 'report', 'action', 'analysis']
         statements = aggregate_elements(names, statements)
+        statements['name'] = ast['name']
+        statements['arguments'] = ast['arguments']
         return {
-            'procedure': {
-                'name': ast['name'],
-                'arguments': ast['arguments'],
-                'statements': statements
-            }
+            'procedure': statements
         }
 
     def property(self, ast):

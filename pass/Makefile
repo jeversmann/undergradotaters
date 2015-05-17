@@ -31,10 +31,13 @@ DCEPass.o: DCEPass.cpp DCEPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h
 dce-pass.so: DCEPass.o AAPass.o
 	$(CXX) -shared $^ -o $@
 
-BroadwayPass.o: BroadwayPass.cpp BroadwayPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h
+BroadwayPass.o: BroadwayPass.cpp BroadwayPass.h DataFlowAnnotator.h Makefile DataFlow.h Utils.h BroadwayAST.h
 	$(CXX) $(CXXFLAGS) BroadwayPass.cpp -c -o $@
 
-broadway-pass.so: BroadwayPass.o
+BroadwayAST.o: BroadwayAST.cpp BroadwayAST.h Makefile Utils.h 
+	$(CXX) $(CXXFLAGS) BroadwayAST.cpp -c -o $@
+
+broadway-pass.so: BroadwayPass.o BroadwayAST.o
 	$(CXX) -shared $^ -o $@
 
 dce: dce-pass.so AAPass.so
