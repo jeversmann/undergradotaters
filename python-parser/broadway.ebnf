@@ -73,9 +73,9 @@ condition_group = '(' ~ @:condition ')';
 test = enum_property_test | set_property_test | numeric_test | binding_test;
 
 enum_property_test = enum_unknown_test | enum_operator_test;
-enum_unknown_test = [property:varname ':'] name:varname time:[temporal_operator] operator:'is-??';
-enum_operator_test = [property:varname ':'] name:varname time:[temporal_operator]
-                     operator:enum_property_operator ~ target:varname;
+enum_unknown_test = [property:varname ':'] lhs:varname time:[temporal_operator] operator:'is-??';
+enum_operator_test = [property:varname ':'] lhs:varname time:[temporal_operator]
+                     operator:enum_property_operator ~ rhs:varname;
 
 temporal_operator = '@before' | '@after' | '@always' | '@ever';
 

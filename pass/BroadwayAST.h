@@ -1,6 +1,7 @@
 #pragma once
 #include "rapidjson/document.h"
 #include <vector>
+#include <memory>
 
 namespace dataflow {
 using namespace rapidjson;
@@ -19,6 +20,27 @@ public:
   }
 };
 
+class BroadwayOperation : public BroadwayBase {
+public:
+  std::string op;
+  int number;
+  std::string name;
+  std::unique_ptr<BroadwayOperation> lhs;
+  std::unique_ptr<BroadwayOperation> rhs;
+  std::string property;
+  std::string time;
+  BroadwayOperation(){};
+  BroadwayOperation(const jsValue &);
+};
+
+class BroadwayAnalysisRule : public BroadwayBase {
+public:
+  BroadwayOperation condition;
+  std::vector<BroadwayOperation> effects;
+  BroadwayAnalysisRule(){};
+  BroadwayAnalysisRule(const jsValue &);
+};
+
 class BroadwayExitPointer : public BroadwayBase {
 public:
   BroadwayExitPointer(){};
@@ -33,8 +55,10 @@ public:
 
 class BroadwayAnalysis : public BroadwayBase {
 public:
+  std::string name;
+  std::vector<BroadwayAnalysisRule> rules;
   BroadwayAnalysis(){};
-  BroadwayAnalysis(const jsValue &){};
+  BroadwayAnalysis(const jsValue &);
 };
 
 class BroadwayAccess : public BroadwayBase {

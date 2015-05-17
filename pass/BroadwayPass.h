@@ -10,17 +10,18 @@ namespace dataflow {
 using namespace llvm;
 using Lattice = BroadwayLattice<llvm::Value *>;
 
-template <class T>
-class BroadwayVisitor : public InstVisitor<BroadwayVisitor<T>> {
+template <class Pass, class T>
+class BroadwayVisitor : public InstVisitor<BroadwayVisitor<Pass, T>> {
 
 private:
   T &context;
+  Pass &pass;
 
 public:
   Lattice state;
 
-  BroadwayVisitor(T &context, const Lattice &state)
-      : context(context), state(state) {}
+  BroadwayVisitor(Pass &pass, T &context, const Lattice &state)
+      : pass(pass), context(context), state(state) {}
 
   void visitCallInst(CallInst &);
 
@@ -32,22 +33,19 @@ public:
 class BroadwayPass : public FunctionPass {
   using FlowSet = flow_set<llvm::Value *>;
   using DataFlow =
-      DataFlowPass<Function, BroadwayVisitor<Function>, llvm::Value *>;
+      DataFlowPass<Function, BroadwayVisitor<BroadwayPass, Function>,
+                   BroadwayPass, llvm::Value *>;
 
 private:
-  rapidjson::Document annotations;
-  std::unordered_map<std::string, std::unique_ptr<BroadwayProcedure>>
-      procedures;
-  std::unordered_map<std::string, std::unique_ptr<DataFlow>> analyzers;
-
   void processPropertyAnnotations();
   void processProcedureAnnotations();
-  void processAnalysisAnnotations();
-  void processActionAnnotations();
-  void processReportAnnotations();
 
 public:
   static char ID;
+  rapidjson::Document annotations;
+  std::unordered_map<std::string, BroadwayProcedure *> procedures;
+  std::unordered_map<std::string, DataFlow *> analyzers;
+  std::unordered_set<llvm::Value *> instructions;
   BroadwayPass() : FunctionPass(ID) {}
   bool doInitialization(Module &) override;
   bool runOnFunction(Function &) override;

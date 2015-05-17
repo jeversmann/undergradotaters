@@ -34,27 +34,27 @@
             "lhs": {
               "lhs": {
                 "property": "MemoryLeak", 
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "NotDeallocated"
+                "rhs": "NotDeallocated"
               }, 
               "operator": "||", 
               "rhs": {
                 "property": "MemoryLeak", 
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "MaybeDeallocated"
+                "rhs": "MaybeDeallocated"
               }
             }, 
             "operator": "&&", 
             "rhs": {
               "property": "HeapCount", 
-              "name": "memory_chunk", 
+              "lhs": "memory_chunk", 
               "time": null, 
               "operator": "is-exactly", 
-              "target": "Unused"
+              "rhs": "Unused"
             }
           }, 
           "report": {
@@ -76,27 +76,27 @@
             "lhs": {
               "lhs": {
                 "property": "MemoryLeak", 
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "NotDeallocated"
+                "rhs": "NotDeallocated"
               }, 
               "operator": "||", 
               "rhs": {
                 "property": "MemoryLeak", 
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "MaybeDeallocated"
+                "rhs": "MaybeDeallocated"
               }
             }, 
             "operator": "&&", 
             "rhs": {
               "property": "HeapCount", 
-              "name": "memory_chunk", 
+              "lhs": "memory_chunk", 
               "time": null, 
               "operator": "is-exactly", 
-              "target": "Multiple"
+              "rhs": "Multiple"
             }
           }, 
           "report": {
@@ -116,10 +116,10 @@
         {
           "condition": {
             "property": "HeapCount", 
-            "name": "memory_chunk", 
+            "lhs": "memory_chunk", 
             "time": null, 
             "operator": "is-exactly", 
-            "target": "Error"
+            "rhs": "Error"
           }, 
           "report": {
             "elements": [
@@ -215,10 +215,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Unused", 
+                "rhs": "Unused", 
                 "property": null
               }
             }, 
@@ -231,10 +231,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Single", 
+                "rhs": "Single", 
                 "property": null
               }
             }, 
@@ -247,10 +247,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Multiple", 
+                "rhs": "Multiple", 
                 "property": null
               }
             }, 
@@ -263,10 +263,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Error", 
+                "rhs": "Error", 
                 "property": null
               }
             }
@@ -285,18 +285,18 @@
               ], 
               "condition": {
                 "lhs": {
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Deallocated", 
+                  "rhs": "Deallocated", 
                   "property": null
                 }, 
                 "operator": "||", 
                 "rhs": {
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "MaybeDeallocated", 
+                  "rhs": "MaybeDeallocated", 
                   "property": null
                 }
               }
@@ -310,10 +310,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Error", 
+                "rhs": "Error", 
                 "property": null
               }
             }, 
@@ -364,10 +364,10 @@
         {
           "condition": {
             "property": "MemoryLeak", 
-            "name": "memory_chunk", 
+            "lhs": "memory_chunk", 
             "time": null, 
             "operator": "is-exactly", 
-            "target": "NotDeallocated"
+            "rhs": "NotDeallocated"
           }, 
           "report": {
             "elements": [
@@ -386,10 +386,10 @@
         {
           "condition": {
             "property": "HeapCount", 
-            "name": "memory_chunk", 
+            "lhs": "memory_chunk", 
             "time": null, 
             "operator": "is-exactly", 
-            "target": "Error"
+            "rhs": "Error"
           }, 
           "report": {
             "elements": [
@@ -485,10 +485,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Unused", 
+                "rhs": "Unused", 
                 "property": null
               }
             }, 
@@ -501,10 +501,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Single", 
+                "rhs": "Single", 
                 "property": null
               }
             }, 
@@ -517,10 +517,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Multiple", 
+                "rhs": "Multiple", 
                 "property": null
               }
             }, 
@@ -533,10 +533,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Error", 
+                "rhs": "Error", 
                 "property": null
               }
             }
@@ -555,18 +555,18 @@
               ], 
               "condition": {
                 "lhs": {
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Deallocated", 
+                  "rhs": "Deallocated", 
                   "property": null
                 }, 
                 "operator": "||", 
                 "rhs": {
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "MaybeDeallocated", 
+                  "rhs": "MaybeDeallocated", 
                   "property": null
                 }
               }
@@ -580,10 +580,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Error", 
+                "rhs": "Error", 
                 "property": null
               }
             }, 
@@ -707,10 +707,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Unused", 
+                "rhs": "Unused", 
                 "property": null
               }
             }, 
@@ -723,10 +723,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Single", 
+                "rhs": "Single", 
                 "property": null
               }
             }, 
@@ -739,10 +739,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Multiple", 
+                "rhs": "Multiple", 
                 "property": null
               }
             }, 
@@ -755,10 +755,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Error", 
+                "rhs": "Error", 
                 "property": null
               }
             }
@@ -777,10 +777,10 @@
               ], 
               "condition": {
                 "property": "HeapCount", 
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Unused"
+                "rhs": "Unused"
               }
             }, 
             {
@@ -794,26 +794,26 @@
               "condition": {
                 "lhs": {
                   "property": "HeapCount", 
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Single"
+                  "rhs": "Single"
                 }, 
                 "operator": "&&", 
                 "rhs": {
                   "lhs": {
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "NotDeallocated", 
+                    "rhs": "NotDeallocated", 
                     "property": null
                   }, 
                   "operator": "||", 
                   "rhs": {
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "MaybeDeallocated", 
+                    "rhs": "MaybeDeallocated", 
                     "property": null
                   }
                 }
@@ -830,26 +830,26 @@
               "condition": {
                 "lhs": {
                   "property": "HeapCount", 
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Multiple"
+                  "rhs": "Multiple"
                 }, 
                 "operator": "&&", 
                 "rhs": {
                   "lhs": {
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "NotDeallocated", 
+                    "rhs": "NotDeallocated", 
                     "property": null
                   }, 
                   "operator": "||", 
                   "rhs": {
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "MaybeDeallocated", 
+                    "rhs": "MaybeDeallocated", 
                     "property": null
                   }
                 }
@@ -974,10 +974,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Unused", 
+                "rhs": "Unused", 
                 "property": null
               }
             }, 
@@ -990,10 +990,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Single", 
+                "rhs": "Single", 
                 "property": null
               }
             }, 
@@ -1006,10 +1006,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Multiple", 
+                "rhs": "Multiple", 
                 "property": null
               }
             }, 
@@ -1022,10 +1022,10 @@
                 }
               ], 
               "condition": {
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Error", 
+                "rhs": "Error", 
                 "property": null
               }
             }
@@ -1044,10 +1044,10 @@
               ], 
               "condition": {
                 "property": "HeapCount", 
-                "name": "memory_chunk", 
+                "lhs": "memory_chunk", 
                 "time": null, 
                 "operator": "is-exactly", 
-                "target": "Unused"
+                "rhs": "Unused"
               }
             }, 
             {
@@ -1061,26 +1061,26 @@
               "condition": {
                 "lhs": {
                   "property": "HeapCount", 
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Single"
+                  "rhs": "Single"
                 }, 
                 "operator": "&&", 
                 "rhs": {
                   "lhs": {
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "NotDeallocated", 
+                    "rhs": "NotDeallocated", 
                     "property": null
                   }, 
                   "operator": "||", 
                   "rhs": {
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "MaybeDeallocated", 
+                    "rhs": "MaybeDeallocated", 
                     "property": null
                   }
                 }
@@ -1097,26 +1097,26 @@
               "condition": {
                 "lhs": {
                   "property": "HeapCount", 
-                  "name": "memory_chunk", 
+                  "lhs": "memory_chunk", 
                   "time": null, 
                   "operator": "is-exactly", 
-                  "target": "Multiple"
+                  "rhs": "Multiple"
                 }, 
                 "operator": "&&", 
                 "rhs": {
                   "lhs": {
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "NotDeallocated", 
+                    "rhs": "NotDeallocated", 
                     "property": null
                   }, 
                   "operator": "||", 
                   "rhs": {
-                    "name": "memory_chunk", 
+                    "lhs": "memory_chunk", 
                     "time": null, 
                     "operator": "is-exactly", 
-                    "target": "MaybeDeallocated", 
+                    "rhs": "MaybeDeallocated", 
                     "property": null
                   }
                 }

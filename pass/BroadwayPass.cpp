@@ -9,7 +9,15 @@
 namespace dataflow {
 using namespace rapidjson;
 using jsValue = rapidjson::Value;
-template <class T> void BroadwayVisitor<T>::visitCallInst(CallInst &inst) {}
+
+template <class Pass, class T>
+void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
+  if (const auto &function = inst.getCalledFunction()) {
+    if (pass.procedures.find(function->getName()) != pass.procedures.end()) {
+      // do stuff
+    }
+  }
+}
 
 char BroadwayPass::ID = 4;
 
@@ -24,9 +32,6 @@ bool BroadwayPass::doInitialization(Module &m) {
 
   processPropertyAnnotations();
   processProcedureAnnotations();
-  processAnalysisAnnotations();
-  processActionAnnotations();
-  processReportAnnotations();
 
   return false;
 }
@@ -35,23 +40,18 @@ bool BroadwayPass::runOnFunction(Function &f) {
   auto changed = false;
 
   // Get all the names of all the things
-  for (auto const &bbl : f.getBasicBlockList()) {
-    for (auto const &inst : bbl.getInstList()) {
-      if (!isa<TerminatorInst>(inst)) {
-        /* names.insert(inst.getName()); */
-      }
-      for (unsigned int i = 0; i < inst.getNumOperands(); i++) {
-        llvm::Value *v = inst.getOperandUse(i);
-        if (isa<Instruction>(v) || isa<Argument>(v)) {
-          /* names.insert(v->getName()); */
-        }
-      }
-    }
+  for (auto &bbl : f.getBasicBlockList())
+    for (auto &inst : bbl)
+      instructions.insert(&inst);
+  for (auto &arg : f.getArgumentList())
+    instructions.insert(&arg);
+
+  for (auto &analyzerPair : analyzers)
+    analyzerPair.second->initializeState(f);
+
+  for (auto &analyzerPair : analyzers) {
+    changed = analyzerPair.second->run(f) || changed;
   }
-
-  // analysis = DataFlow(MeetUnion<llvm::Value *>, backward); // Lattice
-
-  // analysis.run(f);
 
   example::DataFlowAnnotator<BroadwayPass> annotator(*this, errs());
   annotator.print(f);
@@ -80,24 +80,27 @@ void BroadwayPass::processPropertyAnnotations() {
     Lattice lattice;
     const auto &values = property["lattice"];
     assert(values.IsArray());
-    for (jsValue::ConstValueIterator latticeIter = properties.Begin();
-         latticeIter != properties.End(); ++latticeIter) {
+    for (jsValue::ConstValueIterator latticeIter = values.Begin();
+         latticeIter != values.End(); ++latticeIter) {
       auto &latticeValue = *latticeIter;
-      assert(latticeValue.IsObject());
-      assert(latticeValue["name"].IsString());
-      const auto &valueParent = latticeValue.HasMember("parent")
-                                    ? latticeValue["parent"].GetString()
-                                    : "bottom";
-      const auto &valueName = latticeValue["name"].GetString();
-      lattice.addProperty(valueName, valueParent);
+      if (latticeValue.IsObject()) {
+        assert(latticeValue.IsObject());
+        assert(latticeValue["name"].IsString());
+        const auto &valueParent = latticeValue.HasMember("parent") &&
+                                          latticeValue["parent"].IsString()
+                                      ? latticeValue["parent"].GetString()
+                                      : "bottom";
+        const auto &valueName = latticeValue["name"].GetString();
+        lattice.addProperty(valueName, valueParent);
+        errs() << latticeValue["name"].GetString();
+      }
     }
 
     if (property.HasMember("initial") && property["initial"].IsString())
       lattice.initial = property["initial"].GetString();
 
-    auto *analyzer =
-        new DataFlow(MeetIntersect<llvm::Value *>, direction, lattice);
-    analyzers[propertyName] = std::unique_ptr<DataFlow>(analyzer);
+    analyzers[propertyName] =
+        new DataFlow(*this, MeetIntersect<llvm::Value *>, direction, lattice);
   }
 }
 
@@ -108,15 +111,9 @@ void BroadwayPass::processProcedureAnnotations() {
        procIter != procs.End(); ++procIter) {
     auto &procedure = *procIter;
     if (procedure.IsObject()) {
-      auto *proc = new BroadwayProcedure(procedure);
-      procedures[proc->name] = std::unique_ptr<BroadwayProcedure>(proc);
+      procedures[procedure["name"].GetString()] =
+          new BroadwayProcedure(procedure);
     }
   }
 }
-
-void BroadwayPass::processAnalysisAnnotations() {}
-
-void BroadwayPass::processActionAnnotations() {}
-
-void BroadwayPass::processReportAnnotations() {}
 }
