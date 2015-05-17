@@ -59,12 +59,17 @@ public:
     return *this;
   }
 
-  // Add a var to a state's and its parent's sets
   void addToProperty(const std::string stateName, const T var) {
+    removeFromAll(var);
+    addToParents(stateName, var);
+  }
+
+  // Add a var to a state's and its parent's sets
+  void addToParents(const std::string stateName, const T var) {
     sets.at(stateName).insert(var);
     auto parent = parents[stateName];
     if (parent != "bottom") {
-      addToProperty(parent, var);
+      addToParents(parent, var);
     }
   }
 
@@ -74,7 +79,8 @@ public:
   }
 
   void removeFromProperty(const std::string stateName, const T var) {
-    sets.at(stateName).erase(var);
+    if (stateName != "bottom")
+      sets.at(stateName).erase(var);
     std::stack<std::string> parentsToCheck;
     parentsToCheck.push(stateName);
     while (!parentsToCheck.empty()) {
@@ -89,6 +95,11 @@ public:
         }
       }
     }
+  }
+
+  void removeFromAll(const T var) {
+    for (const auto &prop : properties)
+      sets.at(prop).erase(var);
   }
 
   // Access flow_set by property name

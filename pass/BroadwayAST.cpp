@@ -74,8 +74,10 @@ BroadwayPointer::BroadwayPointer(const jsValue &ast) {
       ast.HasMember("new") && ast["new"].IsBool() && ast["new"].GetBool();
   delete_flag = ast.HasMember("delete") && ast["delete"].IsBool() &&
                 ast["delete"].GetBool();
-  if (ast.HasMember("target") && ast["target"].IsObject())
+  if (ast.HasMember("target") && ast["target"].IsObject()) {
     target = new BroadwayPointer(ast["target"]);
+    target->parent = this;
+  }
   if (ast.HasMember("members") && ast["members"].IsArray())
     addArrayOfValues(ast["members"], members);
 }

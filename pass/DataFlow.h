@@ -66,7 +66,7 @@ public:
       for (auto &inst : bb)
         instructions.insert(&inst);
     for (auto &inst : instructions)
-      initial.addToProperty(initial.initial, inst);
+      initial.addToProperty(initial.initial, inst->stripPointerCasts());
     for (auto &bb : f) {
       worklist.insert(&bb);
       inStates[&bb] = Lattice(initial);

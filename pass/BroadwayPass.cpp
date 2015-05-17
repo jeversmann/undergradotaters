@@ -31,9 +31,10 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
                               procedure->arguments.end(), variable);
                 if (ptr != procedure->arguments.end()) {
                   int argNum = (int)(ptr - procedure->arguments.begin());
-                  errs() << "adding: " << propname << " "
+                  errs() << "------adding: " << propname << " "
                          << *inst.getArgOperand(argNum) << "\n";
-                  state.addToProperty(propname, inst.getArgOperand(argNum));
+                  state.addToProperty(propname, inst.getArgOperand(argNum)
+                                                    ->stripPointerCasts());
                   printLattice(state);
                 }
               }
@@ -80,8 +81,8 @@ bool BroadwayPass::runOnFunction(Function &f) {
     changed = analyzerPair.second->run(f) || changed;
   }
 
-  example::DataFlowAnnotator<BroadwayPass> annotator(*this, errs());
-  annotator.print(f);
+  // example::DataFlowAnnotator<BroadwayPass> annotator(*this, errs());
+  // annotator.print(f);
 
   return changed;
 }

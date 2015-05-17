@@ -53,6 +53,7 @@ public:
   bool io_flag, delete_flag, new_flag;
   BroadwayPointer *target;
   std::vector<BroadwayPointer> members;
+  BroadwayPointer *parent;
 
   BroadwayPointer(){};
   BroadwayPointer(const jsValue &);
