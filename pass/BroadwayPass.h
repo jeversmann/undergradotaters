@@ -4,10 +4,11 @@
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/CFG.h>
 #include "rapidjson/document.h"
+#include "BroadwayAST.h"
 
 namespace dataflow {
 using namespace llvm;
-using Lattice = BroadwayLattice<Value *>;
+using Lattice = BroadwayLattice<llvm::Value *>;
 
 template <class T>
 class BroadwayVisitor : public InstVisitor<BroadwayVisitor<T>> {
@@ -29,14 +30,21 @@ public:
 };
 
 class BroadwayPass : public FunctionPass {
-  using FlowSet = flow_set<Value *>;
-  using DataFlow = DataFlowPass<Function, BroadwayVisitor<Function>, Value *>;
+  using FlowSet = flow_set<llvm::Value *>;
+  using DataFlow =
+      DataFlowPass<Function, BroadwayVisitor<Function>, llvm::Value *>;
 
 private:
   rapidjson::Document annotations;
-  std::unordered_map<std::string, const rapidjson::Value *>
-      procedureAnnotations;
+  std::unordered_map<std::string, std::unique_ptr<BroadwayProcedure>>
+      procedures;
   std::unordered_map<std::string, std::unique_ptr<DataFlow>> analyzers;
+
+  void processPropertyAnnotations();
+  void processProcedureAnnotations();
+  void processAnalysisAnnotations();
+  void processActionAnnotations();
+  void processReportAnnotations();
 
 public:
   static char ID;

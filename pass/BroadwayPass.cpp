@@ -21,54 +21,12 @@ bool BroadwayPass::doInitialization(Module &m) {
   fclose(fp);
 
   assert(annotations.IsObject());
-  const auto &properties = annotations["properties"];
-  assert(properties.IsArray());
-  for (jsValue::ConstValueIterator iter = properties.Begin();
-       iter != properties.End(); ++iter) {
-    auto &property = *iter;
-    assert(property.IsObject());
-    assert(property["name"].IsString());
-    const auto &propertyName = property["name"].GetString();
-    auto direction = property["direction"] == "backward" ? backward : forward;
 
-    Lattice lattice;
-    const auto &values = property["lattice"];
-    assert(values.IsArray());
-    for (jsValue::ConstValueIterator latticeIter = properties.Begin();
-         latticeIter != properties.End(); ++latticeIter) {
-      auto &latticeValue = *latticeIter;
-      assert(latticeValue.IsObject());
-      assert(latticeValue["name"].IsString());
-      const auto &valueParent = latticeValue.HasMember("parent")
-                                    ? latticeValue["parent"].GetString()
-                                    : "bottom";
-      const auto &valueName = latticeValue["name"].GetString();
-      lattice.addProperty(valueName, valueParent);
-    }
-
-    if (property.HasMember("initial") && property["initial"].IsString())
-      lattice.initial = property["initial"].GetString();
-
-    errs() << "property: " << propertyName << " ";
-    printLattice(lattice);
-    errs() << "\n";
-
-    auto *analyzer =
-        new DataFlow(MeetIntersect<llvm::Value *>, direction, lattice);
-    analyzers[propertyName] = std::unique_ptr<DataFlow>(analyzer);
-  }
-
-  const jsValue &procedures = annotations["procedures"];
-  assert(procedures.IsArray());
-  for (jsValue::ConstValueIterator procedure = procedures.Begin();
-       procedure != properties.End(); ++procedure) {
-    if (procedure->IsObject()) {
-      assert(procedure->IsObject());
-      const jsValue &name = (*procedure)["name"];
-      assert(name.IsString());
-      procedureAnnotations[name.GetString()] = procedure;
-    }
-  }
+  processPropertyAnnotations();
+  processProcedureAnnotations();
+  processAnalysisAnnotations();
+  processActionAnnotations();
+  processReportAnnotations();
 
   return false;
 }
@@ -107,4 +65,58 @@ void BroadwayPass::getAnalysisUsage(AnalysisUsage &AU) const {
 
 static RegisterPass<BroadwayPass>
     X("broadway-pass", "Run analysis using Broadway annotations.", true, true);
+
+void BroadwayPass::processPropertyAnnotations() {
+  const auto &properties = annotations["properties"];
+  assert(properties.IsArray());
+  for (jsValue::ConstValueIterator iter = properties.Begin();
+       iter != properties.End(); ++iter) {
+    auto &property = *iter;
+    assert(property.IsObject());
+    assert(property["name"].IsString());
+    const auto &propertyName = property["name"].GetString();
+    auto direction = property["direction"] == "backward" ? backward : forward;
+
+    Lattice lattice;
+    const auto &values = property["lattice"];
+    assert(values.IsArray());
+    for (jsValue::ConstValueIterator latticeIter = properties.Begin();
+         latticeIter != properties.End(); ++latticeIter) {
+      auto &latticeValue = *latticeIter;
+      assert(latticeValue.IsObject());
+      assert(latticeValue["name"].IsString());
+      const auto &valueParent = latticeValue.HasMember("parent")
+                                    ? latticeValue["parent"].GetString()
+                                    : "bottom";
+      const auto &valueName = latticeValue["name"].GetString();
+      lattice.addProperty(valueName, valueParent);
+    }
+
+    if (property.HasMember("initial") && property["initial"].IsString())
+      lattice.initial = property["initial"].GetString();
+
+    auto *analyzer =
+        new DataFlow(MeetIntersect<llvm::Value *>, direction, lattice);
+    analyzers[propertyName] = std::unique_ptr<DataFlow>(analyzer);
+  }
+}
+
+void BroadwayPass::processProcedureAnnotations() {
+  const jsValue &procs = annotations["procedures"];
+  assert(procs.IsArray());
+  for (jsValue::ConstValueIterator procIter = procs.Begin();
+       procIter != procs.End(); ++procIter) {
+    auto &procedure = *procIter;
+    if (procedure.IsObject()) {
+      auto *proc = new BroadwayProcedure(procedure);
+      procedures[proc->name] = std::unique_ptr<BroadwayProcedure>(proc);
+    }
+  }
+}
+
+void BroadwayPass::processAnalysisAnnotations() {}
+
+void BroadwayPass::processActionAnnotations() {}
+
+void BroadwayPass::processReportAnnotations() {}
 }
