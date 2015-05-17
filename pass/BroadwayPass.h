@@ -25,6 +25,8 @@ public:
 
   void visitCallInst(CallInst &);
 
+  int getArgumentForPointer(const std::string &, BroadwayProcedure &);
+
   Lattice &&getState() { return std::move(state); }
 
   template <class C> static void postMeet(C &, BasicBlock &) {}

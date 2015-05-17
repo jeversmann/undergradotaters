@@ -61,6 +61,9 @@ public:
       // if (target)
       //   delete target;
   };
+
+  BroadwayPointer *findDefinition(const std::string &);
+  BroadwayPointer *getTopParent();
 };
 
 class BroadwayExitPointer : public BroadwayBase {

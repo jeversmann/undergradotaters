@@ -14,8 +14,8 @@ template <class Pass, class T>
 void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
   if (const auto &function = inst.getCalledFunction()) {
     if (pass.procedures.find(function->getName()) != pass.procedures.end()) {
-      auto &procedure = pass.procedures[function->getName()];
-      for (auto &analysis : procedure->analyses) {
+      auto &procedure = *pass.procedures[function->getName()];
+      for (auto &analysis : procedure.analyses) {
         auto &property = analysis.name;
         if (property != state.name)
           continue;
@@ -26,25 +26,46 @@ void BroadwayVisitor<Pass, T>::visitCallInst(CallInst &inst) {
               if (effect.op == "<-" || effect.op == "<-+") {
                 auto &variable = effect.lhs->name;
                 auto &propname = effect.rhs->name;
-                std::vector<std::string>::iterator ptr =
-                    std::find(procedure->arguments.begin(),
-                              procedure->arguments.end(), variable);
-                if (ptr != procedure->arguments.end()) {
-                  int argNum = (int)(ptr - procedure->arguments.begin());
-                  errs() << "------adding: " << propname << " "
-                         << *inst.getArgOperand(argNum) << "\n";
-                  state.addToProperty(propname, inst.getArgOperand(argNum)
-                                                    ->stripPointerCasts());
-                  printLattice(state);
+
+                llvm::Value *arg;
+                for (auto &entry : procedure.entryPointers) {
+                  auto *pointerDef = entry.findDefinition(propname);
+                  if (pointerDef) {
+                    auto *topDef = pointerDef->getTopParent();
+                    auto argNum =
+                        getArgumentForPointer(topDef->name, procedure);
+                    if (argNum != -1) {
+                      arg = inst.getArgOperand(argNum)->stripPointerCasts();
+                      break;
+                    }
+                  }
+
+                  if (arg) {
+                    errs() << "------adding: " << propname << " " << *arg
+                           << "\n";
+                    state.addToProperty(propname, arg);
+                    printLattice(state);
+                  }
                 }
               }
             }
           }
         }
+        // do stuff
       }
-      // do stuff
     }
   }
+}
+
+template <class Pass, class T>
+int BroadwayVisitor<Pass, T>::getArgumentForPointer(
+    const std::string &variable, BroadwayProcedure &procedure) {
+  std::vector<std::string>::iterator ptr = std::find(
+      procedure.arguments.begin(), procedure.arguments.end(), variable);
+  if (ptr != procedure.arguments.end()) {
+    return (int)(ptr - procedure.arguments.begin());
+  }
+  return -1;
 }
 
 char BroadwayPass::ID = 4;

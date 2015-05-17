@@ -82,6 +82,28 @@ BroadwayPointer::BroadwayPointer(const jsValue &ast) {
     addArrayOfValues(ast["members"], members);
 }
 
+BroadwayPointer *BroadwayPointer::findDefinition(const std::string &thing) {
+  if (name == thing)
+    return &*this;
+  if (target) {
+    auto *result = target->findDefinition(thing);
+    if (result)
+      return result;
+  }
+  for (auto &member : members) {
+    auto *result = member.findDefinition(thing);
+    if (result)
+      return result;
+  }
+  return nullptr;
+}
+
+BroadwayPointer *BroadwayPointer::getTopParent() {
+  if (parent)
+    return parent->getTopParent();
+  return this;
+}
+
 BroadwayExitPointer::BroadwayExitPointer(const jsValue &ast) {
   assert(ast.IsObject());
   if (ast.HasMember("condition") && !ast["condition"].IsNull())
