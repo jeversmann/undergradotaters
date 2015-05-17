@@ -1,5 +1,7 @@
 #pragma once
 #include "rapidjson/document.h"
+#include "Utils.h"
+#include <llvm/Support/raw_ostream.h>
 #include <vector>
 #include <memory>
 
@@ -94,10 +96,35 @@ public:
   BroadwayModify(const jsValue &){};
 };
 
+class BroadwayReportElement : public BroadwayBase {
+public:
+  std::string text;
+  bool callsite = false;
+  bool context = false;
+
+  BroadwayReportElement(){};
+  BroadwayReportElement(const jsValue &);
+
+  template <typename V>
+  void print(llvm::raw_ostream &os, CallInst &inst,
+             BroadwayLattice<V> &beforeState, BroadwayLattice<V> &afterState) {
+    if (callsite) {
+      os << inst;
+    } else if (context) {
+      // ??
+    } else {
+      os << text;
+    }
+  }
+};
+
 class BroadwayReport : public BroadwayBase {
 public:
+  BroadwayOperation condition;
+  std::vector<BroadwayReportElement> elements;
+
   BroadwayReport(){};
-  BroadwayReport(const jsValue &){};
+  BroadwayReport(const jsValue &);
 };
 
 class BroadwayAction : public BroadwayBase {
