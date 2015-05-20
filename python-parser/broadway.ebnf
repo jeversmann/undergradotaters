@@ -67,7 +67,7 @@ default = 'default' ~ '{' effects:{ analysis_effect } '}';
 
 condition = lhs:cond { operator:('&&' | '||') ~ rhs:cond };
 cond = negation | condition_group | test;
-negation = operator:'!' ~ lhs:condition_group;
+negation = operator:'!' ~ lhs:(condition_group | test);
 condition_group = '(' ~ @:condition ')';
 
 test = enum_property_test | set_property_test | numeric_test | binding_test;
@@ -147,9 +147,9 @@ propname = identifier;
 procname = identifier;
 propval = identifier;
 varname = identifier;
-number = /((\d+(\.\d*)?)|(\.\d+))/;
+number = /[+-]?((\d+(\.\d*)?)|(\.\d+))/;
 string = /\".+?\"/;
 c_code = /([^}]|}(?!%))+/;
-identifier = /[a-zA-Z][\w\.]*/;
+identifier = /[_a-zA-Z][_\w\.]*/;
 
 identifier_list = { @+:procname [ ',' &procname ] };
